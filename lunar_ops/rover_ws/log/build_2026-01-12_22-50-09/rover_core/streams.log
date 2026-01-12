@@ -1,0 +1,25 @@
+[0.187s] Invoking command in '/workspace/lunar_ops/rover_ws/build/rover_core': PYTHONPATH=/workspace/lunar_ops/rover_ws/build/rover_core/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/lunar_ops/rover_ws/install/rover_core/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/lunar_ops/rover_ws/build/rover_core/build --no-deps symlink_data
+[0.264s] running develop
+[0.290s] running egg_info
+[0.291s] creating rover_core.egg-info
+[0.291s] writing rover_core.egg-info/PKG-INFO
+[0.291s] writing dependency_links to rover_core.egg-info/dependency_links.txt
+[0.292s] writing entry points to rover_core.egg-info/entry_points.txt
+[0.292s] writing requirements to rover_core.egg-info/requires.txt
+[0.293s] writing top-level names to rover_core.egg-info/top_level.txt
+[0.293s] writing manifest file 'rover_core.egg-info/SOURCES.txt'
+[0.294s] reading manifest file 'rover_core.egg-info/SOURCES.txt'
+[0.296s] writing manifest file 'rover_core.egg-info/SOURCES.txt'
+[0.296s] running build_ext
+[0.297s] Creating /workspace/lunar_ops/rover_ws/install/rover_core/lib/python3.10/site-packages/rover-core.egg-link (link to .)
+[0.297s] Installing earth_node script to /workspace/lunar_ops/rover_ws/install/rover_core/bin
+[0.298s] Installing rover_node script to /workspace/lunar_ops/rover_ws/install/rover_core/bin
+[0.298s] 
+[0.299s] Installed /workspace/lunar_ops/rover_ws/build/rover_core
+[0.299s] running symlink_data
+[0.299s] creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index
+[0.301s] creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index
+[0.303s] creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index/packages
+[0.303s] symbolically linking /workspace/lunar_ops/rover_ws/build/rover_core/resource/rover_core -> /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index/packages
+[0.303s] symbolically linking /workspace/lunar_ops/rover_ws/build/rover_core/package.xml -> /workspace/lunar_ops/rover_ws/install/rover_core/share/rover_core
+[0.312s] Invoked command in '/workspace/lunar_ops/rover_ws/build/rover_core' returned '0': PYTHONPATH=/workspace/lunar_ops/rover_ws/build/rover_core/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/lunar_ops/rover_ws/install/rover_core/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/lunar_ops/rover_ws/build/rover_core/build --no-deps symlink_data

@@ -1,0 +1,23 @@
+running develop
+running egg_info
+creating rover_core.egg-info
+writing rover_core.egg-info/PKG-INFO
+writing dependency_links to rover_core.egg-info/dependency_links.txt
+writing entry points to rover_core.egg-info/entry_points.txt
+writing requirements to rover_core.egg-info/requires.txt
+writing top-level names to rover_core.egg-info/top_level.txt
+writing manifest file 'rover_core.egg-info/SOURCES.txt'
+reading manifest file 'rover_core.egg-info/SOURCES.txt'
+writing manifest file 'rover_core.egg-info/SOURCES.txt'
+running build_ext
+Creating /workspace/lunar_ops/rover_ws/install/rover_core/lib/python3.10/site-packages/rover-core.egg-link (link to .)
+Installing earth_node script to /workspace/lunar_ops/rover_ws/install/rover_core/bin
+Installing rover_node script to /workspace/lunar_ops/rover_ws/install/rover_core/bin
+
+Installed /workspace/lunar_ops/rover_ws/build/rover_core
+running symlink_data
+creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index
+creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index
+creating /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index/packages
+symbolically linking /workspace/lunar_ops/rover_ws/build/rover_core/resource/rover_core -> /workspace/lunar_ops/rover_ws/install/rover_core/share/ament_index/resource_index/packages
+symbolically linking /workspace/lunar_ops/rover_ws/build/rover_core/package.xml -> /workspace/lunar_ops/rover_ws/install/rover_core/share/rover_core
