@@ -1,4 +1,0 @@
-[console_scripts]
-earth_node = rover_core.earth_node:main
-rover_node = rover_core.rover_node:main
-

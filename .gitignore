@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════
+# LSOAS — .gitignore
+# ═══════════════════════════════════════════════
+
+# ─── Python ───
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+*.so
+
+# ─── ROS 2 / Colcon build artifacts ───
+lunar_ops/rover_ws/build/
+lunar_ops/rover_ws/install/
+lunar_ops/rover_ws/log/
+rover_ws/build/
+rover_ws/install/
+rover_ws/log/
+
+# ─── OS files ───
+.DS_Store
+Thumbs.db
+
+# ─── Editor / IDE ───
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Node (if web-sim ever uses npm) ───
+node_modules/

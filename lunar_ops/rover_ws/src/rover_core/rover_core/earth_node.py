@@ -3,81 +3,146 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import threading
 import json
+import time
 
 class EarthNode(Node):
-    """Earth station for sending commands to the rover"""
+    """Earth station - command interface with ACK tracking and retry logic"""
     
     def __init__(self):
         super().__init__('earth_node')
+        
+        # Command tracking
+        self.cmd_counter = 0
+        self.pending_commands = {}  # {cmd_id: {"sent_at": float, "cmd_type": str, "attempt": int, "cmd_json": str}}
+        
+        # Configuration
+        self.ack_timeout = 5.0  # seconds (accounts for ~2.6-3.4s RTT + processing)
+        self.max_retries = 3
 
+        # Publishers
         self.command_pub = self.create_publisher(
             String,
-            '/rover/command',
+            '/earth/uplink_cmd',
             10
         )
 
-        self.telemetry_sub = self.create_subscription(
+        # Subscribers
+        self.ack_sub = self.create_subscription(
             String,
-            '/rover/telemetry',
-            self.telemetry_callback,
+            '/earth/ack',
+            self.ack_callback,
             10
         )
         
-        self.get_logger().info("🌍 Earth station online")
+        # Timer for checking ACK timeouts
+        self.retry_timer = self.create_timer(1.0, self.check_timeouts)
+        
+        self.get_logger().info("🌍 Earth station online (Command Interface)")
         self.print_help()
 
-    def telemetry_callback(self, msg):
-        """Display telemetry from rover"""
+    def ack_callback(self, msg):
+        """Handle ACK responses from rover"""
         try:
             data = json.loads(msg.data)
+            ack_id = data['ack_id']
+            status = data['status']
+            reason = data.get('reason')
             
-            # Format timestamp
-            from datetime import datetime
-            ts = datetime.fromtimestamp(data['ts']).strftime('%H:%M:%S')
-            
-            # Color-code state
-            state = data['state']
-            state_icons = {
-                'IDLE': '🟢',
-                'EXECUTING': '🔵',
-                'SAFE_MODE': '🟡',
-                'ERROR': '🔴'
-            }
-            icon = state_icons.get(state, '⚪')
-            
-            # Format battery
-            battery = data['battery']
-            battery_pct = f"{int(battery * 100)}%"
-            if battery < 0.2:
-                battery_display = f"🔋❗{battery_pct}"
-            elif battery < 0.5:
-                battery_display = f"🔋⚠️ {battery_pct}"
+            # Check if we were tracking this command
+            if ack_id in self.pending_commands:
+                cmd_info = self.pending_commands[ack_id]
+                rtt = time.time() - cmd_info['sent_at']
+                
+                if status == 'ACCEPTED':
+                    print(f"✅ ACK {ack_id}: ACCEPTED (RTT: {rtt:.2f}s)")
+                else:
+                    reason_str = f" ({reason})" if reason else ""
+                    print(f"❌ ACK {ack_id}: REJECTED{reason_str}")
+                
+                # Remove from pending
+                del self.pending_commands[ack_id]
             else:
-                battery_display = f"🔋 {battery_pct}"
-            
-            # Build one-liner
-            parts = [f"{ts}", f"{icon} {state}", battery_display]
-            
-            if data['task_id']:
-                parts.append(f"📋 {data['task_id']}")
-            
-            if data['fault']:
-                parts.append(f"⚠️  {data['fault']}")
-            
-            telemetry_line = " | ".join(parts)
-            print(f"📡 {telemetry_line}")
-            
+                # ACK for unknown command (might be duplicate or late)
+                if status == 'ACCEPTED':
+                    print(f"✅ ACK {ack_id}: ACCEPTED")
+                else:
+                    reason_str = f" ({reason})" if reason else ""
+                    print(f"❌ ACK {ack_id}: REJECTED{reason_str}")
+                    
         except json.JSONDecodeError:
-            self.get_logger().warn(f"Failed to parse telemetry JSON: {msg.data}")
+            self.get_logger().warn(f"Failed to parse ACK JSON: {msg.data}")
         except Exception as e:
-            self.get_logger().error(f"Error processing telemetry: {e}")
+            self.get_logger().error(f"Error processing ACK: {e}")
     
-    def send_command(self, command):
-        """Send command to rover"""
+    def check_timeouts(self):
+        """Check for commands that haven't received ACKs and retry if needed"""
+        current_time = time.time()
+        timed_out = []
+        
+        for cmd_id, cmd_info in self.pending_commands.items():
+            elapsed = current_time - cmd_info['sent_at']
+            
+            if elapsed > self.ack_timeout:
+                timed_out.append(cmd_id)
+        
+        # Process timeouts
+        for cmd_id in timed_out:
+            cmd_info = self.pending_commands[cmd_id]
+            
+            if cmd_info['attempt'] < self.max_retries:
+                # Retry
+                attempt = cmd_info['attempt'] + 1
+                print(f"⏰ No ACK for {cmd_id}, retrying (attempt {attempt}/{self.max_retries})")
+                
+                # Resend command
+                msg = String()
+                msg.data = cmd_info['cmd_json']
+                self.command_pub.publish(msg)
+                
+                # Update tracking
+                cmd_info['sent_at'] = time.time()
+                cmd_info['attempt'] = attempt
+            else:
+                # Give up
+                print(f"❌ Command {cmd_id} failed after {self.max_retries} attempts")
+                del self.pending_commands[cmd_id]
+    
+    def send_command(self, cmd_type, task_id=None):
+        """Send command to rover with JSON format and tracking"""
+        # Generate command ID
+        self.cmd_counter += 1
+        cmd_id = f"c-{self.cmd_counter:05d}"
+        
+        # Build JSON command
+        cmd_data = {
+            "cmd_id": cmd_id,
+            "type": cmd_type,
+            "ts": time.time()
+        }
+        
+        if task_id:
+            cmd_data["task_id"] = task_id
+        
+        cmd_json = json.dumps(cmd_data)
+        
+        # Publish command
         msg = String()
-        msg.data = command
+        msg.data = cmd_json
         self.command_pub.publish(msg)
-        self.get_logger().info(f"📤 Sent command: {command}")
+        
+        # Track for ACK
+        self.pending_commands[cmd_id] = {
+            "sent_at": time.time(),
+            "cmd_type": cmd_type,
+            "attempt": 1,
+            "cmd_json": cmd_json
+        }
+        
+        # Display sent confirmation
+        if task_id:
+            print(f"📤 Sent {cmd_id}: {cmd_type} {task_id}")
+        else:
+            print(f"📤 Sent {cmd_id}: {cmd_type}")
     
     def print_help(self):
         """Print available commands"""
@@ -91,6 +156,9 @@ class EarthNode(Node):
         print("  reset            - Reset from safe mode to idle")
         print("  help             - Show this help")
         print("  quit             - Exit")
+        print("="*60)
+        print("Note: Telemetry display is in a separate terminal window")
+        print("      Run 'make test-telemetry' to view telemetry stream")
         print("="*60 + "\n")
 
 def command_loop(node):
@@ -116,7 +184,7 @@ def command_loop(node):
                     print("❌ Usage: start <task_id>")
                 else:
                     task_id = parts[1]
-                    node.send_command(f"START_TASK:{task_id}")
+                    node.send_command("START_TASK", task_id)
             elif cmd == "abort":
                 node.send_command("ABORT")
             elif cmd == "safe":
@@ -146,4 +214,8 @@ def main():
     # Run command loop in main thread
     command_loop(node)
     
+    node.destroy_node()
     rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

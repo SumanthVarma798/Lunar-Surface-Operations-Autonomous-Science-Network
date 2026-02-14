@@ -25,7 +25,13 @@ class RoverNode(Node):
 
         self.telemetry_pub = self.create_publisher(
             String,
-            '/rover/telemetry',
+            '/rover/downlink_telemetry',
+            10
+        )
+
+        self.ack_pub = self.create_publisher(
+            String,
+            '/rover/ack',
             10
         )
 
@@ -42,38 +48,58 @@ class RoverNode(Node):
         self.get_logger().info(f"🤖 Rover initialized in {self.state} state")
 
     def command_callback(self, msg):
-        """Process commands from Earth with autonomous decision-making"""
-        command = msg.data.strip()
-        self.get_logger().info(f"📡 Command received: {command}")
-        
-        # Parse command
-        if command.startswith("START_TASK:"):
-            task_id = command.split(":", 1)[1]
-            self.handle_start_task(task_id)
-        elif command == "ABORT":
-            self.handle_abort()
-        elif command == "GO_SAFE":
-            self.handle_go_safe()
-        elif command == "RESET":
-            self.handle_reset()
-        else:
-            self.get_logger().warn(f"⚠️  Unknown command: {command}")
+        """Process JSON commands from Earth with autonomous decision-making"""
+        try:
+            # Parse JSON command
+            cmd_data = json.loads(msg.data)
+            cmd_id = cmd_data.get('cmd_id', 'unknown')
+            cmd_type = cmd_data.get('type')
+            task_id = cmd_data.get('task_id')
+            
+            self.get_logger().info(f"📡 Command received [{cmd_id}]: {cmd_type}")
+            
+            # Process command and get result
+            if cmd_type == "START_TASK":
+                success, reason = self.handle_start_task(task_id)
+                self.send_ack(cmd_id, success, reason)
+            elif cmd_type == "ABORT":
+                success, reason = self.handle_abort()
+                self.send_ack(cmd_id, success, reason)
+            elif cmd_type == "GO_SAFE":
+                success, reason = self.handle_go_safe()
+                self.send_ack(cmd_id, success, reason)
+            elif cmd_type == "RESET":
+                success, reason = self.handle_reset()
+                self.send_ack(cmd_id, success, reason)
+            else:
+                self.get_logger().warn(f"⚠️  Unknown command type: {cmd_type}")
+                self.send_ack(cmd_id, False, f"Unknown command type: {cmd_type}")
+                
+        except json.JSONDecodeError as e:
+            self.get_logger().error(f"Failed to parse command JSON: {msg.data}")
+            self.send_ack('unknown', False, f"Invalid JSON: {e}")
+        except Exception as e:
+            self.get_logger().error(f"Error processing command: {e}")
+            self.send_ack(cmd_data.get('cmd_id', 'unknown'), False, f"Error: {e}")
 
     def handle_start_task(self, task_id):
         """Start a new task if conditions allow"""
         if self.state == self.STATE_SAFE_MODE:
-            self.get_logger().warn(f"❌ Cannot start task {task_id}: Rover in SAFE_MODE. Send RESET first.")
-            return
+            reason = "Cannot start task: Rover in SAFE_MODE. Send RESET first."
+            self.get_logger().warn(f"❌ {reason}")
+            return False, reason
         
         if self.state == self.STATE_EXECUTING:
-            self.get_logger().warn(f"❌ Cannot start task {task_id}: Already executing task {self.current_task_id}")
-            return
+            reason = f"Cannot start task: Already executing task {self.current_task_id}"
+            self.get_logger().warn(f"❌ {reason}")
+            return False, reason
         
         # Accept the task
         self.state = self.STATE_EXECUTING
         self.current_task_id = task_id
         self.task_counter = 0
         self.get_logger().info(f"✅ Started task: {task_id}")
+        return True, None
 
     def handle_abort(self):
         """Abort current task if executing"""
@@ -82,8 +108,10 @@ class RoverNode(Node):
             self.state = self.STATE_IDLE
             self.current_task_id = None
             self.task_counter = 0
+            return True, None
         else:
             self.get_logger().info(f"ℹ️  ABORT received but rover is {self.state}, no task to abort")
+            return True, None  # Still accepted, just no-op
 
     def handle_go_safe(self):
         """Enter safe mode immediately"""
@@ -94,6 +122,7 @@ class RoverNode(Node):
         if not self.last_fault:
             self.last_fault = "Commanded to SAFE_MODE"
         self.get_logger().warn(f"⚠️  Commanded to SAFE_MODE from {old_state}")
+        return True, None
 
     def handle_reset(self):
         """Reset from safe mode to idle"""
@@ -103,9 +132,26 @@ class RoverNode(Node):
             self.task_counter = 0
             self.last_fault = None  # Clear fault on reset
             self.get_logger().info(f"🔄 RESET: Leaving SAFE_MODE → IDLE")
+            return True, None
         else:
             self.get_logger().info(f"ℹ️  RESET received but rover is {self.state}, not in SAFE_MODE")
+            return True, None  # Still accepted, just no-op
 
+    def send_ack(self, cmd_id, success, reason=None):
+        """Send command acknowledgment to Earth"""
+        ack_data = {
+            "ack_id": cmd_id,
+            "status": "ACCEPTED" if success else "REJECTED",
+            "reason": reason,
+            "ts": time.time()
+        }
+        
+        msg = String()
+        msg.data = json.dumps(ack_data)
+        self.ack_pub.publish(msg)
+        
+        status_str = "✅ ACCEPTED" if success else f"❌ REJECTED ({reason})"
+        self.get_logger().info(f"📤 ACK sent [{cmd_id}]: {status_str}")
     def execute_task_step(self):
         """Simulate autonomous task execution with fault detection"""
         if self.state != self.STATE_EXECUTING:
