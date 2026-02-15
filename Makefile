@@ -55,7 +55,7 @@ build: setup
 	@docker exec -it ros-humble-dev bash -lc "\
 		source /opt/ros/humble/setup.bash && \
 		cd $(BUILD_DIR) && \
-		colcon build --symlink-install"
+		colcon build"
 	@echo "📋 Syncing install artifacts back to host..."
 	@rm -rf lunar_ops/rover_ws/install
 	@docker cp ros-humble-dev:$(BUILD_DIR)/install lunar_ops/rover_ws/install
