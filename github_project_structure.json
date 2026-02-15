@@ -1,0 +1,435 @@
+{
+  "project_config": {
+    "name": "LSOAS Mission Roadmap",
+    "description": "Professional development roadmap for Lunar Surface Operations Autonomous Science Network - From single rover to multi-asset space mission control system",
+    "columns": [
+      {
+        "name": "\ud83d\udccb Backlog",
+        "purpose": "Future work not yet prioritized"
+      },
+      {
+        "name": "\ud83d\udcc5 Ready",
+        "purpose": "Ready to start, prioritized"
+      },
+      {
+        "name": "\ud83d\udea7 In Progress",
+        "purpose": "Currently being worked on"
+      },
+      {
+        "name": "\ud83d\udc40 In Review",
+        "purpose": "Awaiting code review or testing"
+      },
+      {
+        "name": "\u2705 Done",
+        "purpose": "Completed and verified"
+      }
+    ]
+  },
+  "labels": [
+    {
+      "name": "phase-1",
+      "color": "0E8A16",
+      "description": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "name": "phase-2",
+      "color": "1D76DB",
+      "description": "Phase 2: Resource Management"
+    },
+    {
+      "name": "phase-3",
+      "color": "5319E7",
+      "description": "Phase 3: Ground Station Network"
+    },
+    {
+      "name": "phase-4",
+      "color": "E99695",
+      "description": "Phase 4: Mission Planning"
+    },
+    {
+      "name": "phase-5",
+      "color": "D93F0B",
+      "description": "Phase 5: Advanced Coordination"
+    },
+    {
+      "name": "complexity: low",
+      "color": "D4C5F9",
+      "description": "Low complexity task"
+    },
+    {
+      "name": "complexity: medium",
+      "color": "C2E0C6",
+      "description": "Medium complexity task"
+    },
+    {
+      "name": "complexity: high",
+      "color": "FBCA04",
+      "description": "High complexity task"
+    },
+    {
+      "name": "complexity: very-high",
+      "color": "D73A4A",
+      "description": "Very high complexity task"
+    },
+    {
+      "name": "category: ros",
+      "color": "006B75",
+      "description": "ROS 2 implementation work"
+    },
+    {
+      "name": "category: web-dashboard",
+      "color": "0075CA",
+      "description": "Web simulation dashboard"
+    },
+    {
+      "name": "category: documentation",
+      "color": "0E8A16",
+      "description": "Documentation updates"
+    },
+    {
+      "name": "category: testing",
+      "color": "D876E3",
+      "description": "Testing and verification"
+    },
+    {
+      "name": "category: architecture",
+      "color": "5319E7",
+      "description": "System architecture design"
+    },
+    {
+      "name": "priority: P0-critical",
+      "color": "B60205",
+      "description": "Blocking issue, must fix ASAP"
+    },
+    {
+      "name": "priority: P1-high",
+      "color": "D93F0B",
+      "description": "High priority"
+    },
+    {
+      "name": "priority: P2-medium",
+      "color": "FBCA04",
+      "description": "Medium priority"
+    },
+    {
+      "name": "priority: P3-low",
+      "color": "0E8A16",
+      "description": "Low priority, nice to have"
+    },
+    {
+      "name": "type: epic",
+      "color": "3E4B9E",
+      "description": "Large feature spanning multiple issues"
+    },
+    {
+      "name": "type: feature",
+      "color": "84B6EB",
+      "description": "New feature"
+    },
+    {
+      "name": "type: enhancement",
+      "color": "A2EEEF",
+      "description": "Enhancement to existing feature"
+    },
+    {
+      "name": "type: bug",
+      "color": "D73A4A",
+      "description": "Bug fix"
+    },
+    {
+      "name": "type: research",
+      "color": "D4C5F9",
+      "description": "Research and investigation"
+    },
+    {
+      "name": "duration: 1-3 days",
+      "color": "C5DEF5",
+      "description": "Estimated 1-3 days"
+    },
+    {
+      "name": "duration: 1 week",
+      "color": "BFD4F2",
+      "description": "Estimated 1 week"
+    },
+    {
+      "name": "duration: 2-3 weeks",
+      "color": "528BCE",
+      "description": "Estimated 2-3 weeks"
+    },
+    {
+      "name": "duration: 1+ month",
+      "color": "1E6DB7",
+      "description": "Estimated 1+ month"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "Phase 1: Multi-Rover Constellation",
+      "description": "Transform from single-rover to fleet management system with 3-5 rovers operating simultaneously",
+      "due_on": "2026-04-01T00:00:00Z"
+    },
+    {
+      "title": "Phase 2: Resource Management",
+      "description": "Implement power, thermal, communication budget, and consumables tracking",
+      "due_on": "2026-05-15T00:00:00Z"
+    },
+    {
+      "title": "Phase 3: Ground Station Network",
+      "description": "Multi-station coverage windows and handoff logic",
+      "due_on": "2026-06-30T00:00:00Z"
+    },
+    {
+      "title": "Phase 4: Mission Planning",
+      "description": "Command sequencing and autonomous mission planning",
+      "due_on": "2026-08-31T00:00:00Z"
+    },
+    {
+      "title": "Phase 5: Advanced Coordination",
+      "description": "Swarm behaviors, collision avoidance, and AI decision-making",
+      "due_on": "2026-11-30T00:00:00Z"
+    }
+  ],
+  "issues": [
+    {
+      "title": "[EPIC] Phase 1: Multi-Rover Constellation",
+      "body": "## Overview\nTransform LSOAS from single-rover to fleet management system supporting 3-5 simultaneous rovers.\n\n## Goals\n- Multi-rover ROS architecture with unique IDs\n- Fleet-level task assignment and orchestration  \n- Enhanced dashboard with fleet status grid\n- Rover-to-rover data relay capability\n\n## Success Criteria\n- [ ] 3-5 rovers operating simultaneously\n- [ ] Auto task assignment based on battery + state\n- [ ] Fleet dashboard showing all rovers\n- [ ] Manual rover selection override\n- [ ] All tests passing\n\n## Timeline\n4-6 weeks\n\n## Dependencies\nNone (foundation phase)\n\n## Resources\n- [Phase 1 Implementation Plan](../blob/main/docs/phase1_implementation_plan.md)\n",
+      "labels": [
+        "phase-1",
+        "type: epic",
+        "priority: P0-critical",
+        "complexity: medium"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Refactor rover_node.py for multi-rover support",
+      "body": "## Task\nUpdate `rover_node.py` to support multiple rover instances with unique IDs.\n\n## Changes Needed\n- Add `rover_id` parameter to constructor\n- Update topic names: `/rover/{id}/downlink_telemetry`, `/rover/{id}/command`, `/rover/{id}/ack`\n- Add telemetry fields: `rover_id`, `position` (lat/lon), `solar_exposure`, `data_buffer_size`\n\n## Acceptance Criteria\n- [ ] Rover accepts `rover_id` parameter\n- [ ] Topics include rover ID in namespace\n- [ ] Telemetry includes new fields\n- [ ] Multiple rovers can run simultaneously without conflicts\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/rover_node.py`\n",
+      "labels": [
+        "phase-1",
+        "category: ros",
+        "type: feature",
+        "priority: P0-critical",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Add fleet management to earth_node.py",
+      "body": "## Task\nImplement fleet registry and task assignment logic in `earth_node.py`.\n\n## Changes Needed\n- Add fleet registry tracking all rover states\n- Implement auto-assignment algorithm (select rover with highest battery + IDLE state)\n- Subscribe to telemetry from all rovers dynamically\n- Add `ASSIGN_TASK <rover_id> <task_id>` command with manual/auto modes\n\n## Acceptance Criteria\n- [ ] Earth node tracks all rover states\n- [ ] Auto-assignment selects optimal rover\n- [ ] Manual assignment works for specific rover\n- [ ] Rejects commands if no suitable rover available\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/earth_node.py`\n",
+      "labels": [
+        "phase-1",
+        "category: ros",
+        "type: feature",
+        "priority: P0-critical",
+        "complexity: medium",
+        "duration: 1 week"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Update space_link_node.py for multi-rover relay",
+      "body": "## Task\nEnable space link to relay messages for multiple rovers.\n\n## Changes Needed\n- Subscribe to `/rover/*/command` using wildcard patterns (or dynamic subscriptions)\n- Track relay statistics per rover\n- Handle bidirectional relay for all rovers\n\n## Acceptance Criteria\n- [ ] Relays commands to all rovers\n- [ ] Relays telemetry from all rovers\n- [ ] Per-rover statistics tracked\n- [ ] No message conflicts or drops\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/space_link_node.py`\n",
+      "labels": [
+        "phase-1",
+        "category: ros",
+        "type: enhancement",
+        "priority: P1-high",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Create fleet_manager.py node",
+      "body": "## Task\nCreate new ROS node for centralized fleet orchestration and monitoring.\n\n## Features\n- Subscribe to all rover telemetry streams\n- Aggregate fleet-level statistics (total rovers, state distribution, avg battery)\n- Auto-recovery logic (configurable)\n- Publish `/fleet/status` topic with fleet summary\n\n## Acceptance Criteria\n- [ ] Tracks all rover states in real-time\n- [ ] Fleet status topic published at 1 Hz\n- [ ] Auto-recovery can be enabled/disabled\n- [ ] Clean logging of fleet events\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/fleet_manager.py` (NEW)\n- `lunar_ops/rover_ws/src/rover_core/setup.py` (add entry point)\n",
+      "labels": [
+        "phase-1",
+        "category: ros",
+        "type: feature",
+        "priority: P1-high",
+        "complexity: medium",
+        "duration: 1 week"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Create ROS 2 launch file for fleet",
+      "body": "## Task\nCreate launch file to start all nodes for multi-rover configuration.\n\n## Features\n- Launch space link node\n- Launch 3 rover nodes with IDs (rover-1, rover-2, rover-3)\n- Launch fleet manager\n- Launch earth station\n- Launch telemetry monitor\n\n## Acceptance Criteria\n- [ ] Single command starts entire fleet\n- [ ] All nodes have proper namespacing\n- [ ] Parameters passed correctly\n- [ ] Can configure number of rovers\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/launch/fleet_launch.py` (NEW)\n",
+      "labels": [
+        "phase-1",
+        "category: ros",
+        "type: feature",
+        "priority: P2-medium",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Update simulation.js for multi-rover architecture",
+      "body": "## Task\nRefactor JavaScript simulation to support multiple rover instances.\n\n## Changes Needed\n- Instantiate 3 `RoverNode` objects with unique IDs\n- Update topic naming to match ROS changes\n- Modify `EarthNode` to track fleet state\n- Add rover selection logic\n\n## Acceptance Criteria\n- [ ] 3 rovers initialized by default\n- [ ] Each rover has unique ID and state\n- [ ] Earth node tracks all rovers\n- [ ] Topic events properly namespaced\n\n## Files\n- `web-sim/simulation.js`\n",
+      "labels": [
+        "phase-1",
+        "category: web-dashboard",
+        "type: feature",
+        "priority: P0-critical",
+        "complexity: medium",
+        "duration: 1 week"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Create fleet status grid in dashboard",
+      "body": "## Task\nReplace single rover status panel with grid layout showing all rovers.\n\n## UI Design\n```\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 ROVER-1 \u2502 ROVER-2 \u2502 ROVER-3 \u2502\n\u2502  IDLE   \u2502EXECUTING\u2502  SAFE   \u2502\n\u2502 \ud83d\udd0b 87%  \u2502 \ud83d\udd0b 45%  \u2502 \ud83d\udd0b 23%  \u2502\n\u2502 \u2600\ufe0f Sun  \u2502 \ud83c\udf11 Dark \u2502 \u2600\ufe0f Sun  \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n## Acceptance Criteria\n- [ ] Grid layout responsive (works on different screen sizes)\n- [ ] Each card shows: state, battery, solar exposure, position\n- [ ] State-based color coding\n- [ ] Real-time telemetry updates\n\n## Files\n- `web-sim/index.html`\n- `web-sim/index.css`\n- `web-sim/app.js`\n",
+      "labels": [
+        "phase-1",
+        "category: web-dashboard",
+        "type: feature",
+        "priority: P0-critical",
+        "complexity: medium",
+        "duration: 1 week"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Add rover selection dropdown to command panel",
+      "body": "## Task\nAdd UI control to select which rover receives commands.\n\n## Features\n- Dropdown: Auto-Select, Rover-1, Rover-2, Rover-3\n- Auto-select mode uses assignment algorithm\n- Manual mode sends to specific rover\n- Display selected rover in command log\n\n## Acceptance Criteria\n- [ ] Dropdown populated with rover IDs\n- [ ] Auto-select works correctly\n- [ ] Manual selection overrides auto logic\n- [ ] Command log shows target rover\n\n## Files\n- `web-sim/index.html`\n- `web-sim/app.js`\n",
+      "labels": [
+        "phase-1",
+        "category: web-dashboard",
+        "type: feature",
+        "priority: P1-high",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Add fleet summary banner",
+      "body": "## Task\nDisplay aggregate fleet statistics at top of dashboard.\n\n## Content\n- Total rovers count\n- State distribution (X IDLE, Y EXECUTING, Z SAFE_MODE)\n- Average battery level\n- Recent commands count\n\n## Acceptance Criteria\n- [ ] Banner always visible\n- [ ] Updates in real-time\n- [ ] Styling matches design system\n- [ ] Dark/light theme support\n\n## Files\n- `web-sim/index.html`\n- `web-sim/index.css`\n- `web-sim/app.js`\n",
+      "labels": [
+        "phase-1",
+        "category: web-dashboard",
+        "type: feature",
+        "priority: P2-medium",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Write unit tests for task assignment algorithm",
+      "body": "## Task\nTest suite for fleet task assignment logic.\n\n## Test Cases\n- Selects rover with highest battery when multiple IDLE\n- Rejects if all rovers are EXECUTING or SAFE_MODE\n- Considers solar exposure in scoring\n- Manual assignment overrides auto logic\n- Handles edge cases (single rover, all low battery)\n\n## Acceptance Criteria\n- [ ] All test cases implemented\n- [ ] Tests pass consistently\n- [ ] Code coverage > 80% for assignment logic\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/test/test_task_assignment.py` (NEW)\n",
+      "labels": [
+        "phase-1",
+        "category: testing",
+        "type: feature",
+        "priority: P1-high",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Integration test: Multi-rover command flow",
+      "body": "## Task\nEnd-to-end test for multi-rover operations.\n\n## Test Scenario\n1. Launch 3 rovers + space link + earth\n2. Send START_TASK with auto-assignment\n3. Verify exactly 1 rover executes\n4. Verify ACK received with correct rover_id\n5. Send second task while first is running\n6. Verify assigned to different rover\n\n## Acceptance Criteria\n- [ ] Test launches full fleet\n- [ ] Verifies correct rover selection\n- [ ] Checks ACK routing\n- [ ] Teardown cleans up properly\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/test/test_fleet_integration.py` (NEW)\n",
+      "labels": [
+        "phase-1",
+        "category: testing",
+        "type: feature",
+        "priority: P1-high",
+        "complexity: medium",
+        "duration: 1 week"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Manual testing scenarios for web dashboard",
+      "body": "## Task\nDocument and execute manual test scenarios for fleet dashboard.\n\n## Scenarios\n1. Basic fleet operations (auto task assignment)\n2. Manual rover selection\n3. Safe mode handling across fleet\n4. Battery-based selection verification\n5. Telemetry load test (5 rovers at 0.5 Hz)\n\n## Deliverable\nChecklist in phase1_implementation_plan.md with results\n\n## Acceptance Criteria\n- [ ] All scenarios tested\n- [ ] Results documented\n- [ ] Screenshots captured\n- [ ] Bugs filed for any issues\n\n## Files\n- `docs/phase1_testing_results.md` (NEW)\n",
+      "labels": [
+        "phase-1",
+        "category: testing",
+        "type: feature",
+        "priority: P2-medium",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Update README with multi-rover instructions",
+      "body": "## Task\nUpdate main README to document multi-rover capabilities.\n\n## Changes\n- Update architecture diagram\n- Add fleet management description\n- Update quick start for multi-rover launch\n- Add fleet command examples\n- Update screenshots\n\n## Acceptance Criteria\n- [ ] README accurately describes fleet system\n- [ ] Launch commands tested\n- [ ] Screenshots current\n- [ ] Examples work as written\n\n## Files\n- `README.md`\n- `docs/screenshots/` (new fleet screenshots)\n",
+      "labels": [
+        "phase-1",
+        "category: documentation",
+        "type: enhancement",
+        "priority: P2-medium",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "Update Makefile for fleet operations",
+      "body": "## Task\nAdd Makefile targets for multi-rover launch and testing.\n\n## New Targets\n- `make fleet` - Launch 3-rover fleet\n- `make fleet-5` - Launch 5-rover fleet\n- `make test-fleet` - Run fleet integration tests\n\n## Acceptance Criteria\n- [ ] Targets work as documented\n- [ ] Help text updated\n- [ ] Dependencies correct\n\n## Files\n- `Makefile`\n",
+      "labels": [
+        "phase-1",
+        "category: documentation",
+        "type: enhancement",
+        "priority: P3-low",
+        "complexity: low",
+        "duration: 1-3 days"
+      ],
+      "milestone": "Phase 1: Multi-Rover Constellation"
+    },
+    {
+      "title": "[EPIC] Phase 2: Resource Management Systems",
+      "body": "## Overview\nImplement realistic resource constraints: power, thermal, communication bandwidth, consumables.\n\n## Components\n- Power system (solar panels, battery cycling, heaters)\n- Thermal management (component temps, RHUs, operational ranges)\n- Communication budget (data rate limits, prioritization, compression)\n- Consumables tracking (fuel, drill cycles, sample containers)\n\n## Timeline\n3-4 weeks\n\n## Dependencies\n- Phase 1 completion\n",
+      "labels": [
+        "phase-2",
+        "type: epic",
+        "priority: P1-high",
+        "complexity: medium",
+        "duration: 2-3 weeks"
+      ],
+      "milestone": "Phase 2: Resource Management"
+    },
+    {
+      "title": "[EPIC] Phase 3: Ground Station Network",
+      "body": "## Overview\nMulti-station coverage modeling with visibility windows and handoffs.\n\n## Components\n- 3-5 ground stations at global locations\n- Coverage window calculation (Earth rotation)\n- Handoff logic between stations\n- Antenna scheduling and conflicts\n- 3D visualization of coverage\n\n## Timeline\n2-3 weeks\n\n## Dependencies\n- Phase 1 completion\n",
+      "labels": [
+        "phase-3",
+        "type: epic",
+        "priority: P2-medium",
+        "complexity: medium",
+        "duration: 2-3 weeks"
+      ],
+      "milestone": "Phase 3: Ground Station Network"
+    },
+    {
+      "title": "[EPIC] Phase 4: Autonomous Mission Planning",
+      "body": "## Overview\nCommand sequencing, activity timeline planning, and autonomous replanning.\n\n## Components\n- Command sequence upload (24-hour timelines)\n- Conditional logic (\"if battery > 50%, then...\")\n- Gantt chart timeline editor\n- Science campaign manager\n- Autonomous re-planning on failures\n\n## Timeline\n4-5 weeks\n\n## Dependencies\n- Phase 2 completion (need resource constraints)\n",
+      "labels": [
+        "phase-4",
+        "type: epic",
+        "priority: P2-medium",
+        "complexity: high",
+        "duration: 1+ month"
+      ],
+      "milestone": "Phase 4: Mission Planning"
+    },
+    {
+      "title": "[EPIC] Phase 5: Advanced Fleet Coordination & AI",
+      "body": "## Overview\nCutting-edge multi-agent coordination and AI decision-making.\n\n## Components\n- Swarm behaviors (formation flying, leader-follower)\n- Collision avoidance (predict close approaches)\n- Optical inter-rover links (mesh network)\n- Reinforcement learning for path planning\n- Anomaly detection and predictive maintenance\n- Autonomous science prioritization\n\n## Timeline\n6-8 weeks\n\n## Dependencies\n- Phase 3 completion\n- Phase 4 recommended\n",
+      "labels": [
+        "phase-5",
+        "type: epic",
+        "priority: P3-low",
+        "complexity: very-high",
+        "duration: 1+ month"
+      ],
+      "milestone": "Phase 5: Advanced Coordination"
+    }
+  ]
+}
