@@ -24,6 +24,7 @@ setup(
             'earth_node = rover_core.earth_node:main',
             'space_link_node = rover_core.space_link_node:main',
             'telemetry_monitor = rover_core.telemetry_monitor:main',
+            'fleet_manager = rover_core.fleet_manager:main',
         ],
     },
 )
