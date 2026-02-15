@@ -26,19 +26,38 @@
   const btnToggleLabel = $("#btn-3d-toggle-label");
   const btnClose = $("#btn-close-3d");
   const panelTelemetry = $("#panel-telemetry");
+  let panelLayoutTimer = null;
 
   function set3DPanel(open) {
-    floatingPanel.classList.toggle("panel-open", open);
-    floatingPanel.setAttribute("aria-hidden", open ? "false" : "true");
-    document.body.classList.toggle("three-panel-open", open);
-    if (panelTelemetry) {
-      panelTelemetry.classList.toggle("compact-log", open);
+    if (panelLayoutTimer) {
+      clearTimeout(panelLayoutTimer);
+      panelLayoutTimer = null;
     }
+
     if (btnToggle) {
       btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
     if (btnToggleLabel) {
       btnToggleLabel.textContent = open ? "Close 3D" : "3D View";
+    }
+
+    if (open) {
+      floatingPanel.setAttribute("aria-hidden", "false");
+      document.body.classList.add("three-panel-open");
+      if (panelTelemetry) panelTelemetry.classList.add("compact-log");
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          floatingPanel.classList.add("panel-open");
+        });
+      });
+    } else {
+      floatingPanel.classList.remove("panel-open");
+      floatingPanel.setAttribute("aria-hidden", "true");
+      panelLayoutTimer = setTimeout(() => {
+        document.body.classList.remove("three-panel-open");
+        if (panelTelemetry) panelTelemetry.classList.remove("compact-log");
+      }, 260);
     }
 
     // Trigger resize after transition allows renderer to catch up

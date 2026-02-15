@@ -96,27 +96,6 @@
       </div>
     </header>
 
-    <!-- ─── Floating 3D Panel ─── -->
-    <aside id="floating-panel" aria-hidden="true">
-      <div class="floating-panel-shell">
-        <div class="floating-panel-header">
-          <div class="floating-panel-title-wrap">
-            <span class="floating-panel-grab" aria-hidden="true"></span>
-            <h3>Lunar Surface View</h3>
-          </div>
-          <button
-            id="btn-close-3d"
-            class="btn-icon floating-close-btn"
-            title="Close 3D panel"
-            aria-label="Close 3D panel"
-          >
-            ✕
-          </button>
-        </div>
-        <div id="visualization-container"></div>
-      </div>
-    </aside>
-
     <!-- ─── Main Layout ─── -->
     <main id="main-grid">
       <!-- ━━━ LEFT: Node Topology ━━━ -->
@@ -237,6 +216,27 @@
           >
         </div>
       </section>
+
+      <!-- ─── Lunar 3D Panel ─── -->
+      <aside id="floating-panel" aria-hidden="true">
+        <div class="floating-panel-shell">
+          <div class="floating-panel-header">
+            <div class="floating-panel-title-wrap">
+              <span class="floating-panel-grab" aria-hidden="true"></span>
+              <h3>Lunar Surface View</h3>
+            </div>
+            <button
+              id="btn-close-3d"
+              class="btn-icon floating-close-btn"
+              title="Close 3D panel"
+              aria-label="Close 3D panel"
+            >
+              ✕
+            </button>
+          </div>
+          <div id="visualization-container"></div>
+        </div>
+      </aside>
 
       <!-- ━━━ RIGHT: Command Console ━━━ -->
       <section class="panel panel-command" id="panel-command">

@@ -95,7 +95,6 @@
   --header-height: 52px;
   --footer-height: 32px;
   --panel-gap: 12px;
-  --three-panel-height: min(56vh, 620px);
 }
 
 /* ─── Light Theme ─── */
@@ -294,19 +293,19 @@ h4 {
 #main-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
+  grid-template-columns: 280px minmax(420px, 1fr) 0px 320px;
   gap: var(--panel-gap);
   padding: var(--panel-gap);
   overflow: hidden;
   min-height: 0;
+  position: relative;
   transition:
     grid-template-columns var(--transition-smooth),
-    padding-bottom var(--transition-smooth);
+    gap var(--transition-smooth);
 }
 
 body.three-panel-open #main-grid {
-  grid-template-columns: 260px 220px minmax(340px, 1fr);
-  padding-bottom: calc(var(--panel-gap) + var(--three-panel-height));
+  grid-template-columns: 220px 190px minmax(360px, 1fr) 320px;
 }
 
 /* ─── Panel Base ─── */
@@ -388,6 +387,8 @@ body.three-panel-open #main-grid {
    ═══════════════════════════════════════════════════════ */
 .panel-topology {
   overflow: visible;
+  grid-column: 1;
+  transition: transform var(--transition-smooth);
 }
 
 .topology-visual {
@@ -413,25 +414,25 @@ body.three-panel-open #main-grid {
 
 /* ─── Floating 3D Panel ─── */
 #floating-panel {
-  position: fixed;
-  left: var(--panel-gap);
-  right: var(--panel-gap);
-  bottom: calc(var(--footer-height) + var(--panel-gap));
-  height: var(--three-panel-height);
-  z-index: 220;
-  max-height: 0;
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
   opacity: 0;
+  transform: translateX(-30px) scale(0.985);
   pointer-events: none;
-  overflow: hidden;
   transition:
-    max-height var(--transition-smooth),
-    opacity var(--transition-normal);
+    transform var(--transition-smooth),
+    opacity var(--transition-normal),
+    filter var(--transition-normal);
+  filter: saturate(82%);
 }
 
 #floating-panel.panel-open {
-  max-height: var(--three-panel-height);
   opacity: 1;
+  transform: translateX(0) scale(1);
   pointer-events: auto;
+  filter: none;
 }
 
 .floating-panel-shell {
@@ -458,6 +459,21 @@ body.three-panel-open #main-grid {
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
   box-shadow: 0 28px 52px rgba(0, 0, 0, 0.58);
+}
+
+.panel-telemetry {
+  grid-column: 2;
+  transition: transform var(--transition-smooth);
+}
+
+body.three-panel-open .panel-telemetry.compact-log {
+  transform: translateX(-8px);
+}
+
+.panel-command {
+  grid-column: 4;
+  width: 320px;
+  min-width: 320px;
 }
 
 .floating-panel-header {
@@ -1325,18 +1341,23 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
    ═══════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
   #main-grid {
-    grid-template-columns: 220px 1fr 280px;
+    grid-template-columns: 210px minmax(300px, 1fr) 0px 300px;
   }
 
   body.three-panel-open #main-grid {
-    grid-template-columns: 200px 180px 1fr;
+    grid-template-columns: 170px 150px minmax(280px, 1fr) 300px;
+  }
+
+  .panel-command {
+    width: 300px;
+    min-width: 300px;
   }
 }
 
 @media (max-width: 860px) {
   #main-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto minmax(280px, 1fr) auto;
     overflow-y: auto;
   }
 
@@ -1351,19 +1372,29 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
   }
 
   #floating-panel {
+    position: fixed;
+    z-index: 220;
     left: 0;
     right: 0;
     bottom: var(--footer-height);
+    max-height: 0;
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #floating-panel.panel-open {
+    max-height: min(62vh, 520px);
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .floating-panel-shell {
+    height: min(62vh, 520px);
     border-radius: 18px 18px 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
-  }
-
-  :root {
-    --three-panel-height: min(62vh, 520px);
   }
 }
