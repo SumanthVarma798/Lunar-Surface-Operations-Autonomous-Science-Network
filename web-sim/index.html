@@ -1,253 +1,394 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LSOAS — Lunar Mission Control</title>
-  <meta name="description" content="Lunar Surface Operations Autonomous Science Network — A school-level satellite communication simulation with NASA-inspired mission control interface." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="index.css" />
-</head>
-<body>
-  <!-- ─── Top Bar ─── -->
-  <header id="top-bar">
-    <div class="top-bar-left">
-      <div class="logo-mark" id="logo-mark">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-          <path d="M12 2 C17 7 17 17 12 22" stroke="currentColor" stroke-width="1"/>
-          <path d="M12 2 C7 7 7 17 12 22" stroke="currentColor" stroke-width="1"/>
-          <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1"/>
-        </svg>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LSOAS — Lunar Mission Control</title>
+    <meta
+      name="description"
+      content="Lunar Surface Operations Autonomous Science Network — A school-level satellite communication simulation with NASA-inspired mission control interface."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <!-- ─── Top Bar ─── -->
+    <header id="top-bar">
+      <div class="top-bar-left">
+        <div class="logo-mark" id="logo-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="1.5"
+            />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+            <path
+              d="M12 2 C17 7 17 17 12 22"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <path
+              d="M12 2 C7 7 7 17 12 22"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <line
+              x1="2"
+              y1="12"
+              x2="22"
+              y2="12"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+          </svg>
+        </div>
+        <span class="top-bar-title">LSOAS</span>
+        <span class="top-bar-subtitle">Lunar Surface Operations</span>
       </div>
-      <span class="top-bar-title">LSOAS</span>
-      <span class="top-bar-subtitle">Lunar Surface Operations</span>
-    </div>
-    <div class="top-bar-center">
-      <div class="sim-clock" id="sim-clock">
-        <span class="clock-label">MET</span>
-        <span class="clock-value" id="met-value">00:00:00</span>
+      <div class="top-bar-center">
+        <div class="sim-clock" id="sim-clock">
+          <span class="clock-label">MET</span>
+          <span class="clock-value" id="met-value">00:00:00</span>
+        </div>
       </div>
-    </div>
-    <div class="top-bar-right">
-      <div class="connection-indicator" id="connection-indicator">
-        <span class="conn-dot"></span>
-        <span class="conn-text">SIM ACTIVE</span>
+      <div class="top-bar-right">
+        <div class="connection-indicator" id="connection-indicator">
+          <span class="conn-dot"></span>
+          <span class="conn-text">SIM ACTIVE</span>
+        </div>
+        <button
+          class="cmd-btn-sm"
+          id="btn-3d-toggle"
+          title="Toggle 3D View"
+          aria-expanded="false"
+        >
+          <span class="btn-moon-icon">🌑</span>
+          <span id="btn-3d-toggle-label">3D View</span>
+        </button>
+        <button
+          class="btn-icon"
+          id="btn-theme"
+          title="Toggle theme"
+          aria-label="Toggle theme"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+            />
+          </svg>
+        </button>
       </div>
-      <button class="btn-icon" id="btn-theme" title="Toggle theme" aria-label="Toggle theme">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="5"/>
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-      </button>
-    </div>
-  </header>
+    </header>
 
-  <!-- ─── Main Layout ─── -->
-  <main id="main-grid">
-
-    <!-- ━━━ LEFT: Node Topology ━━━ -->
-    <section class="panel panel-topology" id="panel-topology">
-      <div class="panel-header">
-        <h2>Network Topology</h2>
-        <span class="badge badge-live" id="badge-nodes">4 Nodes</span>
-      </div>
-      <div class="topology-visual" id="topology-visual">
-        <!-- Topology Canvas (SVG-based connection lines) -->
-        <svg class="topology-lines" id="topology-lines" preserveAspectRatio="none"></svg>
-
-        <!-- Earth Node -->
-        <div class="topo-node" id="topo-earth" data-node="earth">
-          <div class="topo-node-ring">
-            <div class="topo-node-icon">🌍</div>
+    <!-- ─── Floating 3D Panel ─── -->
+    <aside id="floating-panel" aria-hidden="true">
+      <div class="floating-panel-shell">
+        <div class="floating-panel-header">
+          <div class="floating-panel-title-wrap">
+            <span class="floating-panel-grab" aria-hidden="true"></span>
+            <h3>Lunar Surface View</h3>
           </div>
-          <span class="topo-node-label">Earth Station</span>
-          <span class="topo-node-state" id="earth-state">ONLINE</span>
+          <button
+            id="btn-close-3d"
+            class="btn-icon floating-close-btn"
+            title="Close 3D panel"
+            aria-label="Close 3D panel"
+          >
+            ✕
+          </button>
         </div>
-
-        <!-- Space Link Node -->
-        <div class="topo-node" id="topo-spacelink" data-node="spacelink">
-          <div class="topo-node-ring">
-            <div class="topo-node-icon">🛰️</div>
-          </div>
-          <span class="topo-node-label">Space Link</span>
-          <span class="topo-node-state" id="spacelink-state">RELAY</span>
-        </div>
-
-        <!-- Rover Node -->
-        <div class="topo-node" id="topo-rover" data-node="rover">
-          <div class="topo-node-ring">
-            <div class="topo-node-icon">🤖</div>
-          </div>
-          <span class="topo-node-label">Lunar Rover</span>
-          <span class="topo-node-state" id="rover-state">IDLE</span>
-        </div>
-
-        <!-- Telemetry Monitor -->
-        <div class="topo-node" id="topo-telemetry" data-node="telemetry">
-          <div class="topo-node-ring">
-            <div class="topo-node-icon">📡</div>
-          </div>
-          <span class="topo-node-label">Telemetry</span>
-          <span class="topo-node-state" id="telemetry-state">LISTENING</span>
-        </div>
+        <div id="visualization-container"></div>
       </div>
+    </aside>
 
-      <!-- Signal Flow Indicators -->
-      <div class="signal-legend">
-        <div class="signal-legend-item">
-          <span class="signal-arrow up">↑</span> Uplink (Cmd)
+    <!-- ─── Main Layout ─── -->
+    <main id="main-grid">
+      <!-- ━━━ LEFT: Node Topology ━━━ -->
+      <section class="panel panel-topology" id="panel-topology">
+        <div class="panel-header">
+          <h2>Network Topology</h2>
+          <span class="badge badge-live" id="badge-nodes">4 Nodes</span>
         </div>
-        <div class="signal-legend-item">
-          <span class="signal-arrow down">↓</span> Downlink (Tlm)
-        </div>
-      </div>
-    </section>
+        <div class="topology-visual" id="topology-visual">
+          <!-- Topology Canvas (SVG-based connection lines) -->
+          <svg
+            class="topology-lines"
+            id="topology-lines"
+            preserveAspectRatio="none"
+          ></svg>
 
-    <!-- ━━━ CENTER: Telemetry & Details ━━━ -->
-    <section class="panel panel-telemetry" id="panel-telemetry">
-      <div class="panel-header">
-        <h2>Telemetry Stream</h2>
-        <div class="panel-header-actions">
-          <button class="btn-sm" id="btn-clear-telemetry">Clear</button>
-        </div>
-      </div>
+          <!-- Nodes... -->
 
-      <!-- Rover Status Card -->
-      <div class="rover-status-card" id="rover-status-card">
-        <div class="status-row">
-          <div class="status-item" id="status-state">
-            <span class="status-label">State</span>
-            <span class="status-value state-idle">IDLE</span>
+          <!-- Earth Node -->
+          <div class="topo-node" id="topo-earth" data-node="earth">
+            <div class="topo-node-ring">
+              <div class="topo-node-icon">🌍</div>
+            </div>
+            <span class="topo-node-label">Earth Station</span>
+            <span class="topo-node-state" id="earth-state">ONLINE</span>
           </div>
-          <div class="status-item" id="status-battery">
-            <span class="status-label">Battery</span>
-            <div class="battery-visual">
-              <div class="battery-bar">
-                <div class="battery-fill" id="battery-fill" style="width:100%"></div>
+
+          <!-- Space Link Node -->
+          <div class="topo-node" id="topo-spacelink" data-node="spacelink">
+            <div class="topo-node-ring">
+              <div class="topo-node-icon">🛰️</div>
+            </div>
+            <span class="topo-node-label">Space Link</span>
+            <span class="topo-node-state" id="spacelink-state">RELAY</span>
+          </div>
+
+          <!-- Rover Node -->
+          <div class="topo-node" id="topo-rover" data-node="rover">
+            <div class="topo-node-ring">
+              <div class="topo-node-icon">🤖</div>
+            </div>
+            <span class="topo-node-label">Lunar Rover</span>
+            <span class="topo-node-state" id="rover-state">IDLE</span>
+          </div>
+
+          <!-- Telemetry Monitor -->
+          <div class="topo-node" id="topo-telemetry" data-node="telemetry">
+            <div class="topo-node-ring">
+              <div class="topo-node-icon">📡</div>
+            </div>
+            <span class="topo-node-label">Telemetry</span>
+            <span class="topo-node-state" id="telemetry-state">LISTENING</span>
+          </div>
+        </div>
+
+        <!-- Signal Flow Indicators -->
+        <div class="signal-legend">
+          <div class="signal-legend-item">
+            <span class="signal-arrow up">↑</span> Uplink (Cmd)
+          </div>
+          <div class="signal-legend-item">
+            <span class="signal-arrow down">↓</span> Downlink (Tlm)
+          </div>
+        </div>
+      </section>
+
+      <!-- ━━━ CENTER: Telemetry & Details ━━━ -->
+      <section class="panel panel-telemetry" id="panel-telemetry">
+        <div class="panel-header">
+          <h2>Telemetry Stream</h2>
+          <div class="panel-header-actions">
+            <button class="btn-sm" id="btn-clear-telemetry">Clear</button>
+          </div>
+        </div>
+
+        <!-- Rover Status Card -->
+        <div class="rover-status-card" id="rover-status-card">
+          <div class="status-row">
+            <div class="status-item" id="status-state">
+              <span class="status-label">State</span>
+              <span class="status-value state-idle">IDLE</span>
+            </div>
+            <div class="status-item" id="status-battery">
+              <span class="status-label">Battery</span>
+              <div class="battery-visual">
+                <div class="battery-bar">
+                  <div
+                    class="battery-fill"
+                    id="battery-fill"
+                    style="width: 100%"
+                  ></div>
+                </div>
+                <span class="battery-pct" id="battery-pct">100%</span>
               </div>
-              <span class="battery-pct" id="battery-pct">100%</span>
+            </div>
+            <div class="status-item" id="status-task">
+              <span class="status-label">Current Task</span>
+              <span class="status-value" id="task-value">—</span>
+            </div>
+            <div class="status-item" id="status-fault">
+              <span class="status-label">Fault</span>
+              <span class="status-value" id="fault-value">None</span>
             </div>
           </div>
-          <div class="status-item" id="status-task">
-            <span class="status-label">Current Task</span>
-            <span class="status-value" id="task-value">—</span>
-          </div>
-          <div class="status-item" id="status-fault">
-            <span class="status-label">Fault</span>
-            <span class="status-value" id="fault-value">None</span>
-          </div>
         </div>
-      </div>
 
-      <!-- Telemetry Feed -->
-      <div class="telemetry-feed" id="telemetry-feed">
-        <div class="feed-empty">
-          <span class="feed-empty-icon">📡</span>
-          <span>Awaiting telemetry…</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ━━━ RIGHT: Command Console ━━━ -->
-    <section class="panel panel-command" id="panel-command">
-      <div class="panel-header">
-        <h2>Command Console</h2>
-        <span class="badge badge-earth">Earth Station</span>
-      </div>
-
-      <!-- Quick Commands -->
-      <div class="command-section">
-        <h3>Quick Commands</h3>
-        <div class="command-grid">
-          <button class="cmd-btn cmd-start" id="cmd-start-task">
-            <span class="cmd-icon">▶</span>
-            <span class="cmd-label">Start Task</span>
-          </button>
-          <button class="cmd-btn cmd-abort" id="cmd-abort">
-            <span class="cmd-icon">⏹</span>
-            <span class="cmd-label">Abort</span>
-          </button>
-          <button class="cmd-btn cmd-safe" id="cmd-go-safe">
-            <span class="cmd-icon">🛡</span>
-            <span class="cmd-label">Safe Mode</span>
-          </button>
-          <button class="cmd-btn cmd-reset" id="cmd-reset">
-            <span class="cmd-icon">↻</span>
-            <span class="cmd-label">Reset</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Task ID Input -->
-      <div class="command-section">
-        <h3>Task Configuration</h3>
-        <div class="input-group">
-          <label for="task-id-input">Task ID</label>
-          <input type="text" id="task-id-input" class="input-field" placeholder="e.g. SAMPLE-001" value="SAMPLE-001" />
-        </div>
-      </div>
-
-      <!-- Space Link Config -->
-      <div class="command-section">
-        <h3>Space Link Parameters</h3>
-        <div class="input-group">
-          <label for="latency-slider">Base Latency <span class="param-value" id="latency-value">1.3s</span></label>
-          <input type="range" id="latency-slider" class="range-input" min="0" max="5" step="0.1" value="1.3" />
-        </div>
-        <div class="input-group">
-          <label for="jitter-slider">Jitter <span class="param-value" id="jitter-value">±0.2s</span></label>
-          <input type="range" id="jitter-slider" class="range-input" min="0" max="2" step="0.05" value="0.2" />
-        </div>
-        <div class="input-group">
-          <label for="drop-slider">Drop Rate <span class="param-value" id="drop-value">5%</span></label>
-          <input type="range" id="drop-slider" class="range-input" min="0" max="50" step="1" value="5" />
-        </div>
-        <div class="input-group">
-          <label for="fault-slider">Fault Probability <span class="param-value" id="fault-prob-value">10%</span></label>
-          <input type="range" id="fault-slider" class="range-input" min="0" max="100" step="1" value="10" />
-        </div>
-      </div>
-
-      <!-- Command Log -->
-      <div class="command-section">
-        <h3>Command Log</h3>
-        <div class="command-log" id="command-log">
+        <!-- Telemetry Feed -->
+        <div class="telemetry-feed" id="telemetry-feed">
           <div class="feed-empty">
-            <span>No commands sent yet</span>
+            <span class="feed-empty-icon">📡</span>
+            <span>Awaiting telemetry…</span>
           </div>
         </div>
-      </div>
-
-      <!-- Pending ACKs -->
-      <div class="command-section">
-        <h3>Pending ACKs <span class="pending-count" id="pending-count">0</span></h3>
-        <div class="pending-acks" id="pending-acks">
-          <span class="pending-none">No pending commands</span>
+        <div class="telemetry-last-line" id="telemetry-last-line">
+          <span class="telemetry-last-label">Last Log</span>
+          <span class="telemetry-last-value" id="telemetry-last-value"
+            >Awaiting telemetry…</span
+          >
         </div>
-      </div>
-    </section>
+      </section>
 
-  </main>
+      <!-- ━━━ RIGHT: Command Console ━━━ -->
+      <section class="panel panel-command" id="panel-command">
+        <div class="panel-header">
+          <h2>Command Console</h2>
+          <span class="badge badge-earth">Earth Station</span>
+        </div>
 
-  <!-- ─── Bottom Status Bar ─── -->
-  <footer id="bottom-bar">
-    <span class="footer-item">
-      <span class="footer-dot green"></span>
-      Simulation Engine: Running
-    </span>
-    <span class="footer-item" id="footer-packets">
-      Packets: <strong id="packets-sent">0</strong> sent · <strong id="packets-received">0</strong> received · <strong id="packets-dropped">0</strong> dropped
-    </span>
-    <span class="footer-item" id="footer-uptime">
-      Session: <span id="session-time">0s</span>
-    </span>
-  </footer>
+        <!-- Quick Commands -->
+        <div class="command-section">
+          <h3>Quick Commands</h3>
+          <div class="command-grid">
+            <button class="cmd-btn cmd-start" id="cmd-start-task">
+              <span class="cmd-icon">▶</span>
+              <span class="cmd-label">Start Task</span>
+            </button>
+            <button class="cmd-btn cmd-abort" id="cmd-abort">
+              <span class="cmd-icon">⏹</span>
+              <span class="cmd-label">Abort</span>
+            </button>
+            <button class="cmd-btn cmd-safe" id="cmd-go-safe">
+              <span class="cmd-icon">🛡</span>
+              <span class="cmd-label">Safe Mode</span>
+            </button>
+            <button class="cmd-btn cmd-reset" id="cmd-reset">
+              <span class="cmd-icon">↻</span>
+              <span class="cmd-label">Reset</span>
+            </button>
+          </div>
+        </div>
 
-  <script src="simulation.js"></script>
-  <script src="app.js"></script>
-</body>
+        <!-- Task ID Input -->
+        <div class="command-section">
+          <h3>Task Configuration</h3>
+          <div class="input-group">
+            <label for="task-id-input">Task ID</label>
+            <input
+              type="text"
+              id="task-id-input"
+              class="input-field"
+              placeholder="e.g. SAMPLE-001"
+              value="SAMPLE-001"
+            />
+          </div>
+        </div>
+
+        <!-- Space Link Config -->
+        <div class="command-section">
+          <h3>Space Link Parameters</h3>
+          <div class="input-group">
+            <label for="latency-slider"
+              >Base Latency
+              <span class="param-value" id="latency-value">1.3s</span></label
+            >
+            <input
+              type="range"
+              id="latency-slider"
+              class="range-input"
+              min="0"
+              max="5"
+              step="0.1"
+              value="1.3"
+            />
+          </div>
+          <div class="input-group">
+            <label for="jitter-slider"
+              >Jitter
+              <span class="param-value" id="jitter-value">±0.2s</span></label
+            >
+            <input
+              type="range"
+              id="jitter-slider"
+              class="range-input"
+              min="0"
+              max="2"
+              step="0.05"
+              value="0.2"
+            />
+          </div>
+          <div class="input-group">
+            <label for="drop-slider"
+              >Drop Rate
+              <span class="param-value" id="drop-value">5%</span></label
+            >
+            <input
+              type="range"
+              id="drop-slider"
+              class="range-input"
+              min="0"
+              max="50"
+              step="1"
+              value="5"
+            />
+          </div>
+          <div class="input-group">
+            <label for="fault-slider"
+              >Fault Probability
+              <span class="param-value" id="fault-prob-value">10%</span></label
+            >
+            <input
+              type="range"
+              id="fault-slider"
+              class="range-input"
+              min="0"
+              max="100"
+              step="1"
+              value="10"
+            />
+          </div>
+        </div>
+
+        <!-- Command Log -->
+        <div class="command-section">
+          <h3>Command Log</h3>
+          <div class="command-log" id="command-log">
+            <div class="feed-empty">
+              <span>No commands sent yet</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending ACKs -->
+        <div class="command-section">
+          <h3>
+            Pending ACKs <span class="pending-count" id="pending-count">0</span>
+          </h3>
+          <div class="pending-acks" id="pending-acks">
+            <span class="pending-none">No pending commands</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ─── Bottom Status Bar ─── -->
+    <footer id="bottom-bar">
+      <span class="footer-item">
+        <span class="footer-dot green"></span>
+        Simulation Engine: Running
+      </span>
+      <span class="footer-item" id="footer-packets">
+        Packets: <strong id="packets-sent">0</strong> sent ·
+        <strong id="packets-received">0</strong> received ·
+        <strong id="packets-dropped">0</strong> dropped
+      </span>
+      <span class="footer-item" id="footer-uptime">
+        Session: <span id="session-time">0s</span>
+      </span>
+    </footer>
+
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="lunar3d.js"></script>
+    <script src="simulation.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

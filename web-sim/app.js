@@ -6,13 +6,57 @@
 (function () {
   "use strict";
 
+  // ─── DOM References ───
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
   // ─── Boot ───
   const sim = new SimulationController();
   const bus = sim.bus;
 
-  // ─── DOM References ───
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => document.querySelectorAll(sel);
+  // ─── 3D Visualization ───
+  let viz = null;
+  if (window.THREE) {
+    viz = new VisualizationController(bus, "visualization-container");
+  }
+
+  // Toggle 3D Panel
+  const floatingPanel = $("#floating-panel");
+  const btnToggle = $("#btn-3d-toggle");
+  const btnToggleLabel = $("#btn-3d-toggle-label");
+  const btnClose = $("#btn-close-3d");
+  const panelTelemetry = $("#panel-telemetry");
+
+  function set3DPanel(open) {
+    floatingPanel.classList.toggle("panel-open", open);
+    floatingPanel.setAttribute("aria-hidden", open ? "false" : "true");
+    document.body.classList.toggle("three-panel-open", open);
+    if (panelTelemetry) {
+      panelTelemetry.classList.toggle("compact-log", open);
+    }
+    if (btnToggle) {
+      btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (btnToggleLabel) {
+      btnToggleLabel.textContent = open ? "Close 3D" : "3D View";
+    }
+
+    // Trigger resize after transition allows renderer to catch up
+    setTimeout(() => {
+      if (viz) viz.onResize();
+    }, 400); // slightly longer than CSS transition
+  }
+
+  function toggle3D() {
+    const shouldOpen = !floatingPanel.classList.contains("panel-open");
+    set3DPanel(shouldOpen);
+  }
+
+  if (btnToggle) btnToggle.addEventListener("click", toggle3D);
+  if (btnClose)
+    btnClose.addEventListener("click", () => {
+      set3DPanel(false);
+    });
 
   const dom = {
     metValue: $("#met-value"),
@@ -24,6 +68,7 @@
     taskValue: $("#task-value"),
     faultValue: $("#fault-value"),
     telemetryFeed: $("#telemetry-feed"),
+    telemetryLastValue: $("#telemetry-last-value"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -63,6 +108,9 @@
     line.innerHTML = `<span class="feed-ts">${ts}</span><span class="feed-tag tag-${tag}">[${tag.toUpperCase()}]</span> ${escapeHtml(text)}`;
 
     dom.telemetryFeed.appendChild(line);
+    if (dom.telemetryLastValue) {
+      dom.telemetryLastValue.textContent = `${ts} [${tag.toUpperCase()}] ${text}`;
+    }
 
     // Trim old lines
     while (dom.telemetryFeed.children.length > MAX_FEED_LINES) {
@@ -357,6 +405,9 @@
     dom.telemetryFeed.innerHTML =
       '<div class="feed-empty"><span class="feed-empty-icon">📡</span><span>Awaiting telemetry…</span></div>';
     feedInitialized = false;
+    if (dom.telemetryLastValue) {
+      dom.telemetryLastValue.textContent = "Awaiting telemetry…";
+    }
   });
 
   // ─── Slider Controls ───
@@ -433,6 +484,11 @@
   document.addEventListener("keydown", (e) => {
     // Don't capture if user is typing in an input
     if (e.target.tagName === "INPUT") return;
+
+    if (e.key === "Escape" && floatingPanel.classList.contains("panel-open")) {
+      set3DPanel(false);
+      return;
+    }
 
     switch (e.key.toLowerCase()) {
       case "s":

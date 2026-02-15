@@ -35,6 +35,8 @@ class RoverNode {
     this.taskCounter = 0;
     this.batteryLevel = 1.0;
     this.lastFault = null;
+    // Initial position (Near crater Tycho)
+    this.position = { lat: -43.3, lon: -11.2 };
 
     // Listen for commands arriving at rover
     this.bus.on("rover:command", (data) => this.commandCallback(data));
@@ -154,6 +156,10 @@ class RoverNode {
     this.taskCounter++;
     this.batteryLevel = Math.max(0.0, this.batteryLevel - 0.005);
 
+    // Simulate movement
+    this.position.lat += (Math.random() - 0.5) * 0.01;
+    this.position.lon += (Math.random() - 0.5) * 0.01;
+
     // Fault detection
     const faultProb = (this.config.faultProbability || 10) / 100;
     if (Math.random() < faultProb) {
@@ -195,6 +201,7 @@ class RoverNode {
       fault: this.lastFault,
       task_progress:
         this.state === RoverNode.STATE_EXECUTING ? this.taskCounter : null,
+      position: this.position,
     };
     this.bus.emit("rover:telemetry", telemetry);
   }
