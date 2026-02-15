@@ -195,12 +195,19 @@
 
         <!-- Fleet Status Grid -->
         <div class="fleet-grid-panel" id="fleet-grid-panel">
+          <div class="fleet-grid-toolbar">
+            <span class="fleet-grid-summary" id="fleet-grid-summary"
+              >Showing 0 of 0 rovers</span
+            >
+            <button class="btn-sm" id="btn-toggle-fleet-scope">Show All</button>
+          </div>
           <div class="fleet-grid" id="fleet-grid" aria-live="polite">
             <div class="feed-empty">
               <span class="feed-empty-icon">🤖</span>
               <span>Awaiting fleet telemetry…</span>
             </div>
           </div>
+          <div class="fleet-hover-card" id="fleet-hover-card" hidden></div>
         </div>
 
         <!-- Telemetry Feed -->
