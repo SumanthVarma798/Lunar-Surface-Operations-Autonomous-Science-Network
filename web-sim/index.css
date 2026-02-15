@@ -563,6 +563,13 @@ body.three-panel-open .panel-command {
   letter-spacing: 0.08em;
 }
 
+.floating-panel-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
 .floating-close-btn {
   flex-shrink: 0;
 }

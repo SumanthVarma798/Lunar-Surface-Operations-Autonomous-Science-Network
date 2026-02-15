@@ -88,6 +88,7 @@
     faultValue: $("#fault-value"),
     telemetryFeed: $("#telemetry-feed"),
     telemetryLastValue: $("#telemetry-last-value"),
+    lunarMeta: $("#lunar-meta"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -196,6 +197,12 @@
     if (data.fault) feedText += ` | ⚠️ ${data.fault}`;
 
     addFeedLine("tlm", feedText);
+
+    if (dom.lunarMeta && data.position) {
+      const lat = Number(data.position.lat || 0).toFixed(2);
+      const lon = Number(data.position.lon || 0).toFixed(2);
+      dom.lunarMeta.textContent = `Lat ${lat}, Lon ${lon}`;
+    }
   });
 
   // ─── Log events to feed ───

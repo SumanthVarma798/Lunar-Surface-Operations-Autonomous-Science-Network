@@ -13,9 +13,12 @@ class VisualizationController {
     this.scene = null;
     this.camera = null;
     this.renderer = null;
+    this.moonGroup = null;
     this.moon = null;
     this.roverMarker = null;
-    this.controls = null;
+    this.roverTrail = null;
+    this.roverTrailPoints = [];
+    this.maxTrailPoints = 140;
 
     this.init();
 
@@ -30,6 +33,8 @@ class VisualizationController {
     // 1. Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000); // Space black
+    this.moonGroup = new THREE.Group();
+    this.scene.add(this.moonGroup);
 
     // 2. Camera
     this.camera = new THREE.PerspectiveCamera(
@@ -38,8 +43,8 @@ class VisualizationController {
       0.1,
       1000,
     );
-    // Slightly tighter framing for a closer lunar view by default.
-    this.camera.position.set(0.15, 0.1, 2.75);
+    // Keep the globe centered while still slightly zoomed in.
+    this.camera.position.set(0, 0, 2.65);
 
     // 3. Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -91,7 +96,7 @@ class VisualizationController {
     });
 
     this.moon = new THREE.Mesh(geometry, material);
-    this.scene.add(this.moon);
+    this.moonGroup.add(this.moon);
   }
 
   createRover() {
@@ -101,7 +106,16 @@ class VisualizationController {
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Start green
 
     this.roverMarker = new THREE.Mesh(geometry, material);
-    this.scene.add(this.roverMarker);
+    this.moonGroup.add(this.roverMarker);
+
+    const trailMaterial = new THREE.LineBasicMaterial({
+      color: 0x22d3ee,
+      transparent: true,
+      opacity: 0.75,
+    });
+    const trailGeometry = new THREE.BufferGeometry().setFromPoints([]);
+    this.roverTrail = new THREE.Line(trailGeometry, trailMaterial);
+    this.moonGroup.add(this.roverTrail);
 
     // Initial position update
     this.setLatLon(0, 0); // Default, will update on first telemetry
@@ -131,7 +145,7 @@ class VisualizationController {
   setLatLon(lat, lon) {
     if (!this.roverMarker) return;
 
-    // Convert lat/lon to 3D position on sphere radius 1
+    // Convert lat/lon to 3D position on sphere radius 1.
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lon + 180) * (Math.PI / 180);
 
@@ -145,6 +159,22 @@ class VisualizationController {
 
     // Look away from center
     this.roverMarker.lookAt(new THREE.Vector3(x * 2, y * 2, z * 2));
+
+    this.appendTrailPoint(new THREE.Vector3(x * radius, y * radius, z * radius));
+  }
+
+  appendTrailPoint(point) {
+    if (!this.roverTrail) return;
+
+    const prev = this.roverTrailPoints[this.roverTrailPoints.length - 1];
+    if (prev && prev.distanceTo(point) < 0.0035) return;
+
+    this.roverTrailPoints.push(point.clone());
+    if (this.roverTrailPoints.length > this.maxTrailPoints) {
+      this.roverTrailPoints.shift();
+    }
+
+    this.roverTrail.geometry.setFromPoints(this.roverTrailPoints);
   }
 
   updateRover(data) {
@@ -181,9 +211,9 @@ class VisualizationController {
         };
 
         // Rotate moon
-        if (this.moon) {
-          this.moon.rotation.y += deltaMove.x * 0.005;
-          this.moon.rotation.x += deltaMove.y * 0.005;
+        if (this.moonGroup) {
+          this.moonGroup.rotation.y += deltaMove.x * 0.005;
+          this.moonGroup.rotation.x += deltaMove.y * 0.005;
         }
       }
       previousMousePosition = {
