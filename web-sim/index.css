@@ -287,6 +287,52 @@ h4 {
   color: var(--text-primary);
 }
 
+.theme-light #fleet-banner {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLEET BANNER
+   ═══════════════════════════════════════════════════════ */
+#fleet-banner {
+  margin: var(--panel-gap) var(--panel-gap) 0;
+  padding: var(--sp-sm) var(--sp-lg);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-md);
+  background: var(--bg-panel);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.fleet-banner-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fleet-banner-label {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.fleet-banner-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ═══════════════════════════════════════════════════════
    MAIN GRID
    ═══════════════════════════════════════════════════════ */
@@ -785,95 +831,119 @@ body.three-panel-open .panel-command {
    TELEMETRY PANEL (CENTER)
    ═══════════════════════════════════════════════════════ */
 
-/* ─── Rover Status Card ─── */
-.rover-status-card {
+/* ─── Fleet Grid ─── */
+.fleet-grid-panel {
   margin: 0 var(--sp-lg) var(--sp-md);
-  padding: var(--sp-lg);
+  padding: var(--sp-md);
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 
-.status-row {
+.fleet-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-lg);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--sp-sm);
 }
 
-.status-item {
+.fleet-card {
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-md);
+  display: grid;
+  gap: var(--sp-xs);
+  min-height: 124px;
+}
+
+.fleet-card-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-xxs);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
 }
 
-.status-label {
-  font-size: 10px;
-  font-weight: 500;
+.fleet-card-rover-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.fleet-card-state {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  padding: 2px 7px;
+}
+
+.fleet-card.state-idle .fleet-card-state {
+  color: var(--state-idle);
+  background: var(--state-idle-bg);
+}
+
+.fleet-card.state-executing .fleet-card-state {
+  color: var(--state-executing);
+  background: var(--state-executing-bg);
+}
+
+/* Issue requirement: SAFE_MODE should be red */
+.fleet-card.state-safe-mode .fleet-card-state {
+  color: var(--accent-red);
+  background: var(--accent-red-soft);
+}
+
+.fleet-card.state-error .fleet-card-state {
+  color: var(--state-error);
+  background: var(--state-error-bg);
+}
+
+.fleet-card-metrics {
+  display: grid;
+  gap: 4px;
+}
+
+.fleet-card-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.fleet-card-label {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 600;
 }
 
-.status-value {
+.fleet-card-value {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.status-value.state-idle {
-  color: var(--state-idle);
-}
-.status-value.state-executing {
-  color: var(--state-executing);
-}
-.status-value.state-safe-mode {
-  color: var(--state-safe);
-}
-.status-value.state-error {
-  color: var(--state-error);
+.fleet-card.state-idle {
+  border-color: rgba(52, 211, 153, 0.28);
 }
 
-/* Battery Visual */
-.battery-visual {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-sm);
+.fleet-card.state-executing {
+  border-color: rgba(59, 130, 246, 0.28);
 }
 
-.battery-bar {
-  flex: 1;
-  height: 8px;
-  background: var(--bg-input);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  max-width: 80px;
-}
-
-.battery-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  background: linear-gradient(90deg, var(--accent-green), #6ee7b7);
-  transition:
-    width var(--transition-smooth),
-    background var(--transition-normal);
-}
-
-.battery-fill.low {
-  background: linear-gradient(90deg, var(--accent-red), var(--accent-amber));
-}
-
-.battery-fill.medium {
-  background: linear-gradient(90deg, var(--accent-amber), #fde68a);
-}
-
-.battery-pct {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  min-width: 36px;
+.fleet-card.state-safe-mode,
+.fleet-card.state-error {
+  border-color: rgba(248, 113, 113, 0.28);
 }
 
 /* ─── Telemetry Feed ─── */
@@ -920,7 +990,7 @@ body.three-panel-open .panel-command {
   text-overflow: ellipsis;
 }
 
-body.three-panel-open .panel-telemetry.compact-log .rover-status-card {
+body.three-panel-open .panel-telemetry.compact-log .fleet-grid-panel {
   display: none;
 }
 
@@ -1183,6 +1253,22 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
   color: var(--text-tertiary);
 }
 
+.select-field {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 3px),
+    calc(100% - 10px) calc(50% - 3px);
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
 /* ─── Range Slider ─── */
 .range-input {
   -webkit-appearance: none;
@@ -1252,6 +1338,12 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 
 .cmd-log-entry .cmd-log-type {
   color: var(--text-primary);
+}
+
+.cmd-log-entry .cmd-log-target {
+  color: var(--accent-cyan);
+  margin-left: var(--sp-xs);
+  font-size: 10px;
 }
 
 .cmd-log-entry .cmd-log-status {
@@ -1402,6 +1494,10 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
    RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
+  #fleet-banner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   #main-grid {
     grid-template-columns: 210px minmax(300px, 1fr) 0px 300px;
   }
@@ -1417,6 +1513,12 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 }
 
 @media (max-width: 860px) {
+  #fleet-banner {
+    grid-template-columns: 1fr;
+    gap: var(--sp-sm);
+    margin-bottom: var(--panel-gap);
+  }
+
   #main-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(280px, 1fr) auto;

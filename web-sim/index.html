@@ -96,6 +96,28 @@
       </div>
     </header>
 
+    <!-- ─── Fleet Summary Banner ─── -->
+    <section id="fleet-banner" aria-label="Fleet Summary">
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Total Rovers</span>
+        <span class="fleet-banner-value" id="fleet-total-rovers">3</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">State Distribution</span>
+        <span class="fleet-banner-value" id="fleet-state-distribution"
+          >3 IDLE · 0 EXECUTING · 0 SAFE_MODE</span
+        >
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Average Battery</span>
+        <span class="fleet-banner-value" id="fleet-avg-battery">100%</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Commands / ACKs</span>
+        <span class="fleet-banner-value" id="fleet-command-ack">0 / 0</span>
+      </div>
+    </section>
+
     <!-- ─── Main Layout ─── -->
     <main id="main-grid">
       <!-- ━━━ LEFT: Node Topology ━━━ -->
@@ -171,33 +193,12 @@
           </div>
         </div>
 
-        <!-- Rover Status Card -->
-        <div class="rover-status-card" id="rover-status-card">
-          <div class="status-row">
-            <div class="status-item" id="status-state">
-              <span class="status-label">State</span>
-              <span class="status-value state-idle">IDLE</span>
-            </div>
-            <div class="status-item" id="status-battery">
-              <span class="status-label">Battery</span>
-              <div class="battery-visual">
-                <div class="battery-bar">
-                  <div
-                    class="battery-fill"
-                    id="battery-fill"
-                    style="width: 100%"
-                  ></div>
-                </div>
-                <span class="battery-pct" id="battery-pct">100%</span>
-              </div>
-            </div>
-            <div class="status-item" id="status-task">
-              <span class="status-label">Current Task</span>
-              <span class="status-value" id="task-value">—</span>
-            </div>
-            <div class="status-item" id="status-fault">
-              <span class="status-label">Fault</span>
-              <span class="status-value" id="fault-value">None</span>
+        <!-- Fleet Status Grid -->
+        <div class="fleet-grid-panel" id="fleet-grid-panel">
+          <div class="fleet-grid" id="fleet-grid" aria-live="polite">
+            <div class="feed-empty">
+              <span class="feed-empty-icon">🤖</span>
+              <span>Awaiting fleet telemetry…</span>
             </div>
           </div>
         </div>
@@ -274,6 +275,12 @@
         <!-- Task ID Input -->
         <div class="command-section">
           <h3>Task Configuration</h3>
+          <div class="input-group">
+            <label for="rover-target-select">Target Rover</label>
+            <select id="rover-target-select" class="input-field select-field">
+              <option value="auto">Auto-Select (Best Rover)</option>
+            </select>
+          </div>
           <div class="input-group">
             <label for="task-id-input">Task ID</label>
             <input
