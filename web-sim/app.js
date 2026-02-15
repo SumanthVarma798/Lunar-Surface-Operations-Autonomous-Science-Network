@@ -81,11 +81,12 @@
     metValue: $("#met-value"),
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
-    statusState: $("#status-state .status-value"),
-    batteryFill: $("#battery-fill"),
-    batteryPct: $("#battery-pct"),
-    taskValue: $("#task-value"),
-    faultValue: $("#fault-value"),
+    topoRoverLabel: $("#topo-rover .topo-node-label"),
+    fleetGrid: $("#fleet-grid"),
+    fleetTotalRovers: $("#fleet-total-rovers"),
+    fleetStateDistribution: $("#fleet-state-distribution"),
+    fleetAvgBattery: $("#fleet-avg-battery"),
+    fleetCommandAck: $("#fleet-command-ack"),
     telemetryFeed: $("#telemetry-feed"),
     telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
@@ -96,6 +97,7 @@
     packetsReceived: $("#packets-received"),
     packetsDropped: $("#packets-dropped"),
     taskIdInput: $("#task-id-input"),
+    roverTargetSelect: $("#rover-target-select"),
     latencySlider: $("#latency-slider"),
     latencyValue: $("#latency-value"),
     jitterSlider: $("#jitter-slider"),
@@ -106,6 +108,280 @@
     faultProbValue: $("#fault-prob-value"),
     topologyVisual: $("#topology-visual"),
   };
+
+  const AUTO_ROVER_MODE = "auto";
+  const roverIdCollator = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+  const fleetSnapshots = {};
+  const trafficCounters = {
+    commandsSent: 0,
+    acksReceived: 0,
+  };
+  let roverTargetMode = AUTO_ROVER_MODE;
+
+  function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  function normalizeState(rawState) {
+    return String(rawState || "UNKNOWN").toUpperCase();
+  }
+
+  function stateToClass(state) {
+    return `state-${normalizeState(state).toLowerCase().replace("_", "-")}`;
+  }
+
+  function formatRoverLabel(roverId) {
+    if (!roverId) return "Unknown";
+    return roverId.replace(/^rover-/i, "Rover-");
+  }
+
+  function inferSolarExposure(snapshot) {
+    if (Number.isFinite(snapshot?.solar_exposure)) {
+      return clamp01(snapshot.solar_exposure);
+    }
+
+    if (Number.isFinite(snapshot?.position?.lon)) {
+      const angle = (snapshot.position.lon * Math.PI) / 180;
+      return clamp01((Math.cos(angle) + 1) / 2);
+    }
+
+    return 0.5;
+  }
+
+  function upsertFleetSnapshot(roverId, incoming = {}) {
+    if (!roverId) return;
+
+    const previous = fleetSnapshots[roverId] || {
+      rover_id: roverId,
+      state: "IDLE",
+      battery: 1,
+      task_id: null,
+      task_progress: null,
+      position: null,
+      fault: null,
+      solar_exposure: 0.5,
+    };
+
+    const merged = {
+      ...previous,
+      ...incoming,
+      rover_id: roverId,
+    };
+
+    const batteryValue = Number(merged.battery);
+    merged.battery = Number.isFinite(batteryValue) ? clamp01(batteryValue) : 0;
+    merged.solar_exposure = inferSolarExposure(merged);
+
+    fleetSnapshots[roverId] = merged;
+  }
+
+  function getFleetEntries() {
+    return Object.values(fleetSnapshots).sort((a, b) =>
+      roverIdCollator.compare(a.rover_id || "", b.rover_id || ""),
+    );
+  }
+
+  function renderFleetGrid() {
+    if (!dom.fleetGrid) return;
+
+    const entries = getFleetEntries();
+    if (entries.length === 0) {
+      dom.fleetGrid.innerHTML =
+        '<div class="feed-empty"><span class="feed-empty-icon">🤖</span><span>Awaiting fleet telemetry…</span></div>';
+      return;
+    }
+
+    dom.fleetGrid.innerHTML = entries
+      .map((snapshot) => {
+        const state = normalizeState(snapshot.state);
+        const stateClass = stateToClass(state);
+        const batteryPct = Math.round((snapshot.battery || 0) * 100);
+        const solarExposure = snapshot.solar_exposure || 0;
+        const solarText = solarExposure >= 0.5 ? "☀ Sun" : "🌑 Dark";
+        const solarPct = Math.round(solarExposure * 100);
+        const taskText = snapshot.task_id
+          ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/10)` : ""}`
+          : "—";
+
+        return `
+          <article class="fleet-card ${stateClass}" data-rover-id="${snapshot.rover_id}">
+            <div class="fleet-card-header">
+              <span class="fleet-card-rover-id">${(snapshot.rover_id || "rover-?").toUpperCase()}</span>
+              <span class="fleet-card-state">${state}</span>
+            </div>
+            <div class="fleet-card-metrics">
+              <div class="fleet-card-metric">
+                <span class="fleet-card-label">Battery</span>
+                <span class="fleet-card-value">🔋 ${batteryPct}%</span>
+              </div>
+              <div class="fleet-card-metric">
+                <span class="fleet-card-label">Solar</span>
+                <span class="fleet-card-value">${solarText} (${solarPct}%)</span>
+              </div>
+              <div class="fleet-card-metric">
+                <span class="fleet-card-label">Task</span>
+                <span class="fleet-card-value">${taskText}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function updateFleetBanner() {
+    const entries = getFleetEntries();
+    const total = entries.length;
+    const counts = {
+      IDLE: 0,
+      EXECUTING: 0,
+      SAFE_MODE: 0,
+      ERROR: 0,
+      UNKNOWN: 0,
+    };
+
+    let batterySum = 0;
+    entries.forEach((snapshot) => {
+      const state = normalizeState(snapshot.state);
+      counts[state] = (counts[state] || 0) + 1;
+      batterySum += snapshot.battery || 0;
+    });
+
+    const avgBattery = total === 0 ? 0 : Math.round((batterySum / total) * 100);
+
+    if (dom.fleetTotalRovers) dom.fleetTotalRovers.textContent = String(total);
+    if (dom.fleetStateDistribution) {
+      dom.fleetStateDistribution.textContent =
+        `${counts.IDLE || 0} IDLE · ${counts.EXECUTING || 0} EXECUTING · ${counts.SAFE_MODE || 0} SAFE_MODE`;
+    }
+    if (dom.fleetAvgBattery) dom.fleetAvgBattery.textContent = `${avgBattery}%`;
+    if (dom.fleetCommandAck) {
+      dom.fleetCommandAck.textContent =
+        `${trafficCounters.commandsSent} / ${trafficCounters.acksReceived}`;
+    }
+  }
+
+  function refreshRoverSelectOptions() {
+    if (!dom.roverTargetSelect) return;
+
+    const currentValue = dom.roverTargetSelect.value || roverTargetMode;
+    const roverIds = getFleetEntries().map((entry) => entry.rover_id);
+
+    dom.roverTargetSelect.innerHTML =
+      '<option value="auto">Auto-Select (Best Rover)</option>';
+
+    roverIds.forEach((roverId) => {
+      const option = document.createElement("option");
+      option.value = roverId;
+      option.textContent = formatRoverLabel(roverId);
+      dom.roverTargetSelect.appendChild(option);
+    });
+
+    if (
+      currentValue &&
+      (currentValue === AUTO_ROVER_MODE || roverIds.includes(currentValue))
+    ) {
+      dom.roverTargetSelect.value = currentValue;
+    } else {
+      dom.roverTargetSelect.value = AUTO_ROVER_MODE;
+    }
+
+    roverTargetMode = dom.roverTargetSelect.value;
+  }
+
+  function updateFleetUi() {
+    renderFleetGrid();
+    updateFleetBanner();
+    refreshRoverSelectOptions();
+  }
+
+  function setSelectedRover(roverId) {
+    if (!roverId) return;
+    sim.setSelectedRover(roverId);
+    if (dom.topoRoverLabel) {
+      dom.topoRoverLabel.textContent = formatRoverLabel(roverId);
+    }
+  }
+
+  function scoreRover(snapshot) {
+    const battery = Number(snapshot.battery || 0);
+    const solar = Number(snapshot.solar_exposure || 0);
+    const progress = Number(snapshot.task_progress || 0) / 10;
+    return battery * 0.65 + solar * 0.25 + progress * 0.1;
+  }
+
+  function chooseAutoRover(commandType) {
+    const entries = getFleetEntries();
+    if (entries.length === 0) return null;
+
+    const idle = entries.filter((entry) => normalizeState(entry.state) === "IDLE");
+    const executing = entries.filter(
+      (entry) => normalizeState(entry.state) === "EXECUTING",
+    );
+    const safeMode = entries.filter(
+      (entry) => normalizeState(entry.state) === "SAFE_MODE",
+    );
+
+    const highestScore = (list) =>
+      [...list].sort((a, b) => scoreRover(b) - scoreRover(a))[0] || null;
+
+    if (commandType === "START_TASK") {
+      return (highestScore(idle) || highestScore(entries))?.rover_id || null;
+    }
+
+    if (commandType === "ABORT") {
+      const byProgress = [...executing].sort(
+        (a, b) => (b.task_progress || 0) - (a.task_progress || 0),
+      );
+      return (byProgress[0] || highestScore(entries))?.rover_id || null;
+    }
+
+    if (commandType === "GO_SAFE") {
+      return (highestScore(executing) || highestScore(entries))?.rover_id || null;
+    }
+
+    if (commandType === "RESET") {
+      const lowestBatterySafe = [...safeMode].sort(
+        (a, b) => (a.battery || 0) - (b.battery || 0),
+      );
+      return (lowestBatterySafe[0] || highestScore(entries))?.rover_id || null;
+    }
+
+    return highestScore(entries)?.rover_id || null;
+  }
+
+  function resolveTargetRover(commandType) {
+    if (roverTargetMode !== AUTO_ROVER_MODE) {
+      return roverTargetMode;
+    }
+    return chooseAutoRover(commandType);
+  }
+
+  function dispatchCommand(commandType, taskId = null) {
+    const roverId = resolveTargetRover(commandType);
+    if (!roverId) {
+      addFeedLine("ack-fail", "No rover available for command dispatch");
+      return null;
+    }
+
+    setSelectedRover(roverId);
+    const cmdId = sim.sendCommand(commandType, taskId, roverId);
+    if (roverTargetMode === AUTO_ROVER_MODE && cmdId) {
+      addFeedLine("system", `🎯 Auto-selected ${formatRoverLabel(roverId)} for ${commandType}`);
+    }
+    return cmdId;
+  }
+
+  // Initialize fleet cache from simulation startup state
+  const initialFleet = sim.getFleetState();
+  Object.keys(initialFleet).forEach((roverId) => {
+    upsertFleetSnapshot(roverId, initialFleet[roverId]);
+  });
+  setSelectedRover(sim.getSelectedRover());
+  updateFleetUi();
 
   // ─── Telemetry feed ───
   let feedInitialized = false;
@@ -149,36 +425,20 @@
 
   // ─── Telemetry Display ───
   bus.on("telemetry:display", (data) => {
-    // Update status card
-    const stateClass = `state-${data.state.toLowerCase().replace("_", "-")}`;
+    const roverId = data.rover_id || sim.getSelectedRover();
+    const stateClass = stateToClass(data.state);
 
-    dom.statusState.textContent = data.state;
-    dom.statusState.className = `status-value ${stateClass}`;
-
-    // Rover topo node state
-    dom.roverState.textContent = data.state;
-    dom.roverState.className = `topo-node-state ${stateClass}`;
-
-    // Battery
-    const batteryPct = Math.round(data.battery * 100);
-    dom.batteryFill.style.width = batteryPct + "%";
-    dom.batteryPct.textContent = batteryPct + "%";
-
-    dom.batteryFill.classList.remove("low", "medium");
-    if (data.battery < 0.2) dom.batteryFill.classList.add("low");
-    else if (data.battery < 0.5) dom.batteryFill.classList.add("medium");
-
-    // Task
-    dom.taskValue.textContent = data.task_id || "—";
-    if (data.task_progress !== null && data.task_progress !== undefined) {
-      dom.taskValue.textContent += ` (${data.task_progress}/10)`;
+    if (roverId) {
+      upsertFleetSnapshot(roverId, data);
+      updateFleetUi();
+      if (dom.topoRoverLabel) {
+        dom.topoRoverLabel.textContent = formatRoverLabel(roverId);
+      }
     }
 
-    // Fault
-    dom.faultValue.textContent = data.fault || "None";
-    dom.faultValue.style.color = data.fault
-      ? "var(--accent-amber)"
-      : "var(--text-tertiary)";
+    // Selected rover topo node state
+    dom.roverState.textContent = normalizeState(data.state);
+    dom.roverState.className = `topo-node-state ${stateClass}`;
 
     // Add telemetry to feed
     const stateIcons = {
@@ -187,11 +447,15 @@
       SAFE_MODE: "🟡",
       ERROR: "🔴",
     };
-    const icon = stateIcons[data.state] || "⚪";
-    const batteryIcon =
-      data.battery < 0.2 ? "🔋❗" : data.battery < 0.5 ? "🔋⚠️" : "🔋";
+    const normalizedState = normalizeState(data.state);
+    const icon = stateIcons[normalizedState] || "⚪";
+    const batteryValue = Number(data.battery || 0);
+    const batteryPct = Math.round(batteryValue * 100);
+    const batteryIcon = batteryValue < 0.2 ? "🔋❗" : batteryValue < 0.5 ? "🔋⚠️" : "🔋";
 
-    let feedText = `${icon} ${data.state} | ${batteryIcon} ${batteryPct}%`;
+    let feedText =
+      `${icon} ${normalizedState} | ${batteryIcon} ${batteryPct}%` +
+      `${roverId ? ` | 🤖 ${formatRoverLabel(roverId)}` : ""}`;
     if (data.task_id) feedText += ` | 📋 ${data.task_id}`;
     if (data.task_progress) feedText += ` (${data.task_progress}/10)`;
     if (data.fault) feedText += ` | ⚠️ ${data.fault}`;
@@ -205,6 +469,26 @@
     }
   });
 
+  bus.on("earth:telemetry", (data) => {
+    const roverId = data?.rover_id;
+    if (!roverId) return;
+    upsertFleetSnapshot(roverId, data);
+    updateFleetUi();
+  });
+
+  bus.on("fleet:update", (fleetData) => {
+    Object.keys(fleetData || {}).forEach((roverId) => {
+      upsertFleetSnapshot(roverId, fleetData[roverId]);
+    });
+    updateFleetUi();
+  });
+
+  bus.on("earth:selected-rover", (data) => {
+    if (data?.rover_id && dom.topoRoverLabel) {
+      dom.topoRoverLabel.textContent = formatRoverLabel(data.rover_id);
+    }
+  });
+
   // ─── Log events to feed ───
   bus.on("log", (data) => {
     addFeedLine(data.tag, data.text);
@@ -215,6 +499,9 @@
   const cmdEntries = {};
 
   bus.on("cmd:sent", (data) => {
+    trafficCounters.commandsSent++;
+    updateFleetBanner();
+
     if (!cmdLogInitialized) {
       dom.commandLog.innerHTML = "";
       cmdLogInitialized = true;
@@ -226,6 +513,7 @@
     entry.innerHTML = `
       <span class="cmd-log-id">${data.cmdId}</span>
       <span class="cmd-log-type">${data.cmdType}${data.taskId ? " " + data.taskId : ""}</span>
+      <span class="cmd-log-target">[${formatRoverLabel(data.roverId)}]</span>
       <span class="cmd-log-status pending">PENDING</span>
     `;
 
@@ -250,6 +538,11 @@
     }
   });
 
+  bus.on("earth:ack", () => {
+    trafficCounters.acksReceived++;
+    updateFleetBanner();
+  });
+
   // ─── Pending ACKs ───
   bus.on("pending:update", (pending) => {
     const keys = Object.keys(pending);
@@ -267,7 +560,7 @@
         const elapsed = (Date.now() / 1000 - info.sentAt).toFixed(1);
         return `<div class="pending-item">
         <span class="pending-id">${id}</span>
-        <span>${info.cmdType}</span>
+        <span>${info.cmdType} [${formatRoverLabel(info.roverId)}]</span>
         <span class="pending-timer">${elapsed}s</span>
       </div>`;
       })
@@ -398,24 +691,39 @@
   });
 
   // ─── Command Buttons ───
+  if (dom.roverTargetSelect) {
+    dom.roverTargetSelect.addEventListener("change", (e) => {
+      roverTargetMode = e.target.value;
+      if (roverTargetMode !== AUTO_ROVER_MODE) {
+        setSelectedRover(roverTargetMode);
+        addFeedLine(
+          "system",
+          `🎮 Manual rover selection: ${formatRoverLabel(roverTargetMode)}`,
+        );
+      } else {
+        addFeedLine("system", "🎯 Auto-select enabled for command routing");
+      }
+    });
+  }
+
   $("#cmd-start-task").addEventListener("click", () => {
     const taskId = dom.taskIdInput.value.trim() || "TASK-001";
-    sim.sendCommand("START_TASK", taskId);
+    dispatchCommand("START_TASK", taskId);
     pulseButton($("#cmd-start-task"));
   });
 
   $("#cmd-abort").addEventListener("click", () => {
-    sim.sendCommand("ABORT");
+    dispatchCommand("ABORT");
     pulseButton($("#cmd-abort"));
   });
 
   $("#cmd-go-safe").addEventListener("click", () => {
-    sim.sendCommand("GO_SAFE");
+    dispatchCommand("GO_SAFE");
     pulseButton($("#cmd-go-safe"));
   });
 
   $("#cmd-reset").addEventListener("click", () => {
-    sim.sendCommand("RESET");
+    dispatchCommand("RESET");
     pulseButton($("#cmd-reset"));
   });
 
@@ -509,7 +817,7 @@
   // ─── Keyboard Shortcuts ───
   document.addEventListener("keydown", (e) => {
     // Don't capture if user is typing in an input
-    if (e.target.tagName === "INPUT") return;
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
 
     if (e.key === "Escape" && floatingPanel.classList.contains("panel-open")) {
       set3DPanel(false);
@@ -519,20 +827,20 @@
     switch (e.key.toLowerCase()) {
       case "s":
         if (e.shiftKey) {
-          sim.sendCommand("GO_SAFE");
+          dispatchCommand("GO_SAFE");
           pulseButton($("#cmd-go-safe"));
         } else {
           const taskId = dom.taskIdInput.value.trim() || "TASK-001";
-          sim.sendCommand("START_TASK", taskId);
+          dispatchCommand("START_TASK", taskId);
           pulseButton($("#cmd-start-task"));
         }
         break;
       case "a":
-        sim.sendCommand("ABORT");
+        dispatchCommand("ABORT");
         pulseButton($("#cmd-abort"));
         break;
       case "r":
-        sim.sendCommand("RESET");
+        dispatchCommand("RESET");
         pulseButton($("#cmd-reset"));
         break;
     }
@@ -541,7 +849,7 @@
   // ─── Initial Log ───
   addFeedLine("system", "🌍 Earth Station online");
   addFeedLine("system", "🛰️ Space Link relay initialized");
-  addFeedLine("system", "🤖 Rover node active — awaiting commands");
+  addFeedLine("system", "🤖 Rover fleet active — awaiting commands");
   addFeedLine("system", "📡 Telemetry monitor listening");
   addFeedLine("system", "───────────────────────────────");
 
