@@ -45,6 +45,7 @@
       floatingPanel.setAttribute("aria-hidden", "false");
       document.body.classList.add("three-panel-open");
       if (panelTelemetry) panelTelemetry.classList.add("compact-log");
+      updateFleetUi();
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -54,9 +55,13 @@
     } else {
       floatingPanel.classList.remove("panel-open");
       floatingPanel.setAttribute("aria-hidden", "true");
+      hideFleetHoverCard();
       panelLayoutTimer = setTimeout(() => {
         document.body.classList.remove("three-panel-open");
-        if (panelTelemetry) panelTelemetry.classList.remove("compact-log");
+        if (panelTelemetry) {
+          panelTelemetry.classList.remove("compact-log");
+        }
+        updateFleetUi();
       }, 260);
     }
 
@@ -83,6 +88,9 @@
     roverState: $("#rover-state"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
     fleetGrid: $("#fleet-grid"),
+    fleetGridSummary: $("#fleet-grid-summary"),
+    fleetHoverCard: $("#fleet-hover-card"),
+    toggleFleetScopeBtn: $("#btn-toggle-fleet-scope"),
     fleetTotalRovers: $("#fleet-total-rovers"),
     fleetStateDistribution: $("#fleet-state-distribution"),
     fleetAvgBattery: $("#fleet-avg-battery"),
@@ -119,7 +127,10 @@
     commandsSent: 0,
     acksReceived: 0,
   };
+  const pinStorageKey = "lsoas:pinned-rovers";
+  const pinnedRoverIds = new Set();
   let roverTargetMode = AUTO_ROVER_MODE;
+  let showAllRovers = false;
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, value));
@@ -136,6 +147,37 @@
   function formatRoverLabel(roverId) {
     if (!roverId) return "Unknown";
     return roverId.replace(/^rover-/i, "Rover-");
+  }
+
+  function isCompactFleetMode() {
+    return panelTelemetry?.classList.contains("compact-log");
+  }
+
+  function loadPinnedRovers() {
+    try {
+      const raw = window.localStorage.getItem(pinStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      parsed.forEach((roverId) => {
+        if (typeof roverId === "string" && roverId.length > 0) {
+          pinnedRoverIds.add(roverId);
+        }
+      });
+    } catch (_err) {
+      // Ignore storage parse errors and continue with empty pins.
+    }
+  }
+
+  function persistPinnedRovers() {
+    try {
+      window.localStorage.setItem(
+        pinStorageKey,
+        JSON.stringify([...pinnedRoverIds]),
+      );
+    } catch (_err) {
+      // Ignore persistence failures (private mode / storage unavailable).
+    }
   }
 
   function inferSolarExposure(snapshot) {
@@ -184,6 +226,111 @@
     );
   }
 
+  function getAttentionScore(snapshot) {
+    const state = normalizeState(snapshot.state);
+    const battery = Number(snapshot.battery || 0);
+    const hasFault = Boolean(snapshot.fault);
+    const staleSeconds = snapshot.last_seen
+      ? Math.max(0, Date.now() / 1000 - snapshot.last_seen)
+      : 0;
+
+    let score = 0;
+    if (state === "ERROR") score += 120;
+    else if (state === "SAFE_MODE") score += 100;
+    else if (state === "EXECUTING") score += 35;
+
+    if (hasFault) score += 45;
+    if (battery < 0.2) score += 40;
+    else if (battery < 0.35) score += 24;
+    else if (battery < 0.5) score += 12;
+
+    if (staleSeconds > 8) score += 18;
+
+    return score + (1 - clamp01(battery)) * 5;
+  }
+
+  function getPriorityFleetEntries(entries) {
+    const ranked = [...entries].sort((a, b) => {
+      const diff = getAttentionScore(b) - getAttentionScore(a);
+      if (diff !== 0) return diff;
+      return roverIdCollator.compare(a.rover_id || "", b.rover_id || "");
+    });
+
+    const topAttention = ranked.slice(0, 3);
+    const pinned = ranked.filter((snapshot) =>
+      pinnedRoverIds.has(snapshot.rover_id),
+    );
+
+    const merged = [];
+    [...pinned, ...topAttention].forEach((snapshot) => {
+      if (!merged.some((item) => item.rover_id === snapshot.rover_id)) {
+        merged.push(snapshot);
+      }
+    });
+
+    return merged;
+  }
+
+  function buildFleetCardMarkup(snapshot, compactMode) {
+    const state = normalizeState(snapshot.state);
+    const stateClass = stateToClass(state);
+    const batteryPct = Math.round((snapshot.battery || 0) * 100);
+    const solarExposure = snapshot.solar_exposure || 0;
+    const solarText = solarExposure >= 0.5 ? "☀ Sun" : "🌑 Dark";
+    const solarPct = Math.round(solarExposure * 100);
+    const taskText = snapshot.task_id
+      ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/10)` : ""}`
+      : "—";
+    const pinClass = pinnedRoverIds.has(snapshot.rover_id) ? "pinned" : "";
+
+    return `
+      <article class="fleet-card ${stateClass} ${pinClass} ${compactMode ? "compact" : ""}" data-rover-id="${snapshot.rover_id}" tabindex="0">
+        <div class="fleet-card-header">
+          <span class="fleet-card-rover-id">${(snapshot.rover_id || "rover-?").toUpperCase()}</span>
+          <div class="fleet-card-actions">
+            <button type="button" class="fleet-pin-btn ${pinClass}" data-rover-id="${snapshot.rover_id}" title="${pinClass ? "Unpin rover" : "Pin rover"}">${pinClass ? "★" : "☆"}</button>
+          </div>
+          <span class="fleet-card-state">${state}</span>
+        </div>
+        <div class="fleet-card-metrics">
+          <div class="fleet-card-metric">
+            <span class="fleet-card-label">Battery</span>
+            <span class="fleet-card-value">🔋 ${batteryPct}%</span>
+          </div>
+          <div class="fleet-card-metric">
+            <span class="fleet-card-label">Solar</span>
+            <span class="fleet-card-value">${solarText} (${solarPct}%)</span>
+          </div>
+          <div class="fleet-card-metric">
+            <span class="fleet-card-label">Task</span>
+            <span class="fleet-card-value">${taskText}</span>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function hideFleetHoverCard() {
+    if (!dom.fleetHoverCard) return;
+    dom.fleetHoverCard.hidden = true;
+    dom.fleetHoverCard.innerHTML = "";
+  }
+
+  function showFleetHoverCard(roverId, anchorEl) {
+    if (!dom.fleetHoverCard || !isCompactFleetMode()) return;
+    const snapshot = fleetSnapshots[roverId];
+    if (!snapshot || !anchorEl) return;
+
+    dom.fleetHoverCard.innerHTML = buildFleetCardMarkup(snapshot, false);
+    dom.fleetHoverCard.hidden = false;
+
+    const rect = anchorEl.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 300, rect.right + 8);
+    const y = Math.min(window.innerHeight - 180, Math.max(8, rect.top));
+    dom.fleetHoverCard.style.left = `${Math.max(8, x)}px`;
+    dom.fleetHoverCard.style.top = `${Math.max(8, y)}px`;
+  }
+
   function renderFleetGrid() {
     if (!dom.fleetGrid) return;
 
@@ -191,45 +338,29 @@
     if (entries.length === 0) {
       dom.fleetGrid.innerHTML =
         '<div class="feed-empty"><span class="feed-empty-icon">🤖</span><span>Awaiting fleet telemetry…</span></div>';
+      if (dom.fleetGridSummary) {
+        dom.fleetGridSummary.textContent = "Showing 0 of 0 rovers";
+      }
       return;
     }
 
-    dom.fleetGrid.innerHTML = entries
-      .map((snapshot) => {
-        const state = normalizeState(snapshot.state);
-        const stateClass = stateToClass(state);
-        const batteryPct = Math.round((snapshot.battery || 0) * 100);
-        const solarExposure = snapshot.solar_exposure || 0;
-        const solarText = solarExposure >= 0.5 ? "☀ Sun" : "🌑 Dark";
-        const solarPct = Math.round(solarExposure * 100);
-        const taskText = snapshot.task_id
-          ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/10)` : ""}`
-          : "—";
+    const compactMode = isCompactFleetMode();
+    const visibleEntries = showAllRovers ? entries : getPriorityFleetEntries(entries);
 
-        return `
-          <article class="fleet-card ${stateClass}" data-rover-id="${snapshot.rover_id}">
-            <div class="fleet-card-header">
-              <span class="fleet-card-rover-id">${(snapshot.rover_id || "rover-?").toUpperCase()}</span>
-              <span class="fleet-card-state">${state}</span>
-            </div>
-            <div class="fleet-card-metrics">
-              <div class="fleet-card-metric">
-                <span class="fleet-card-label">Battery</span>
-                <span class="fleet-card-value">🔋 ${batteryPct}%</span>
-              </div>
-              <div class="fleet-card-metric">
-                <span class="fleet-card-label">Solar</span>
-                <span class="fleet-card-value">${solarText} (${solarPct}%)</span>
-              </div>
-              <div class="fleet-card-metric">
-                <span class="fleet-card-label">Task</span>
-                <span class="fleet-card-value">${taskText}</span>
-              </div>
-            </div>
-          </article>
-        `;
-      })
+    dom.fleetGrid.innerHTML = visibleEntries
+      .map((snapshot) => buildFleetCardMarkup(snapshot, compactMode))
       .join("");
+
+    if (dom.fleetGridSummary) {
+      const mode = showAllRovers ? "all" : "priority";
+      dom.fleetGridSummary.textContent =
+        `Showing ${visibleEntries.length} of ${entries.length} rovers (${mode})`;
+    }
+    if (dom.toggleFleetScopeBtn) {
+      dom.toggleFleetScopeBtn.textContent = showAllRovers
+        ? "Show Priority"
+        : "Show All";
+    }
   }
 
   function updateFleetBanner() {
@@ -296,6 +427,69 @@
     renderFleetGrid();
     updateFleetBanner();
     refreshRoverSelectOptions();
+    if (!isCompactFleetMode()) {
+      hideFleetHoverCard();
+    }
+  }
+
+  function togglePinnedRover(roverId) {
+    if (!roverId) return;
+    if (pinnedRoverIds.has(roverId)) pinnedRoverIds.delete(roverId);
+    else pinnedRoverIds.add(roverId);
+    persistPinnedRovers();
+    updateFleetUi();
+  }
+
+  function attachFleetInteractions() {
+    if (dom.toggleFleetScopeBtn) {
+      dom.toggleFleetScopeBtn.addEventListener("click", () => {
+        showAllRovers = !showAllRovers;
+        updateFleetUi();
+      });
+    }
+
+    if (!dom.fleetGrid) return;
+
+    dom.fleetGrid.addEventListener("click", (event) => {
+      const pinBtn = event.target.closest(".fleet-pin-btn");
+      if (pinBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        togglePinnedRover(pinBtn.dataset.roverId);
+        return;
+      }
+
+      const card = event.target.closest(".fleet-card");
+      if (!card) return;
+      const roverId = card.dataset.roverId;
+      if (roverId) setSelectedRover(roverId);
+    });
+
+    dom.fleetGrid.addEventListener("mouseover", (event) => {
+      if (!isCompactFleetMode()) return;
+      const card = event.target.closest(".fleet-card");
+      if (!card) return;
+      showFleetHoverCard(card.dataset.roverId, card);
+    });
+
+    dom.fleetGrid.addEventListener("focusin", (event) => {
+      if (!isCompactFleetMode()) return;
+      const card = event.target.closest(".fleet-card");
+      if (!card) return;
+      showFleetHoverCard(card.dataset.roverId, card);
+    });
+
+    dom.fleetGrid.addEventListener("mouseout", (event) => {
+      if (!isCompactFleetMode()) return;
+      const related = event.relatedTarget;
+      if (related && related.closest && related.closest(".fleet-card")) return;
+      hideFleetHoverCard();
+    });
+
+    dom.fleetGrid.addEventListener("focusout", () => {
+      if (!isCompactFleetMode()) return;
+      hideFleetHoverCard();
+    });
   }
 
   function setSelectedRover(roverId) {
@@ -375,13 +569,25 @@
     return cmdId;
   }
 
+  function syncFleetFromController() {
+    const fleet = sim.getFleetState();
+    Object.keys(fleet || {}).forEach((roverId) => {
+      upsertFleetSnapshot(roverId, fleet[roverId]);
+    });
+    updateFleetUi();
+  }
+
   // Initialize fleet cache from simulation startup state
+  loadPinnedRovers();
+  attachFleetInteractions();
+
   const initialFleet = sim.getFleetState();
   Object.keys(initialFleet).forEach((roverId) => {
     upsertFleetSnapshot(roverId, initialFleet[roverId]);
   });
   setSelectedRover(sim.getSelectedRover());
   updateFleetUi();
+  setInterval(syncFleetFromController, 1500);
 
   // ─── Telemetry feed ───
   let feedInitialized = false;
@@ -688,6 +894,7 @@
   setTimeout(drawTopologyLines, 100);
   window.addEventListener("resize", () => {
     requestAnimationFrame(drawTopologyLines);
+    hideFleetHoverCard();
   });
 
   // ─── Command Buttons ───
