@@ -95,6 +95,7 @@
   --header-height: 52px;
   --footer-height: 32px;
   --panel-gap: 12px;
+  --three-panel-height: min(56vh, 620px);
 }
 
 /* ─── Light Theme ─── */
@@ -298,10 +299,14 @@ h4 {
   padding: var(--panel-gap);
   overflow: hidden;
   min-height: 0;
+  transition:
+    grid-template-columns var(--transition-smooth),
+    padding-bottom var(--transition-smooth);
 }
 
 body.three-panel-open #main-grid {
-  grid-template-columns: 260px 320px minmax(340px, 1fr);
+  grid-template-columns: 260px 220px minmax(340px, 1fr);
+  padding-bottom: calc(var(--panel-gap) + var(--three-panel-height));
 }
 
 /* ─── Panel Base ─── */
@@ -412,18 +417,19 @@ body.three-panel-open #main-grid {
   left: var(--panel-gap);
   right: var(--panel-gap);
   bottom: calc(var(--footer-height) + var(--panel-gap));
-  height: min(58vh, 620px);
+  height: var(--three-panel-height);
   z-index: 220;
-  transform: translateY(calc(100% + 24px));
+  max-height: 0;
   opacity: 0;
   pointer-events: none;
+  overflow: hidden;
   transition:
-    transform var(--transition-smooth),
+    max-height var(--transition-smooth),
     opacity var(--transition-normal);
 }
 
 #floating-panel.panel-open {
-  transform: translateY(0);
+  max-height: var(--three-panel-height);
   opacity: 1;
   pointer-events: auto;
 }
@@ -840,12 +846,17 @@ body.three-panel-open .panel-telemetry.compact-log .rover-status-card {
   display: none;
 }
 
+body.three-panel-open .panel-telemetry.compact-log .panel-header-actions {
+  display: none;
+}
+
 body.three-panel-open .panel-telemetry.compact-log .telemetry-feed {
   display: none;
 }
 
 body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
   display: flex;
+  margin-top: auto;
 }
 
 .feed-empty {
@@ -1318,7 +1329,7 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
   }
 
   body.three-panel-open #main-grid {
-    grid-template-columns: 200px 280px 1fr;
+    grid-template-columns: 200px 180px 1fr;
   }
 }
 
@@ -1343,7 +1354,6 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
     left: 0;
     right: 0;
     bottom: var(--footer-height);
-    height: min(62vh, 520px);
   }
 
   .floating-panel-shell {
@@ -1351,5 +1361,9 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
     border-left: none;
     border-right: none;
     border-bottom: none;
+  }
+
+  :root {
+    --three-panel-height: min(62vh, 520px);
   }
 }
