@@ -9,6 +9,9 @@ class SpaceLinkNode(Node):
     """
     Space Link relay node - simulates realistic Moon↔Earth communication conditions.
     
+    Supports multi-rover constellations: accepts a 'rover_ids' parameter
+    (comma-separated list) and creates relay pairs for each rover.
+
     Introduces:
     - Latency (fixed + jitter)
     - Packet drops
@@ -24,6 +27,7 @@ class SpaceLinkNode(Node):
         self.declare_parameter('jitter', 0.2)  # ± seconds
         self.declare_parameter('drop_rate', 0.05)  # 5% packet loss
         self.declare_parameter('duplication_rate', 0.0)  # disabled by default
+        self.declare_parameter('rover_ids', 'rover_1')  # comma-separated rover IDs
         
         # Get parameter values
         self.base_latency = self.get_parameter('base_latency').value
@@ -31,50 +35,81 @@ class SpaceLinkNode(Node):
         self.drop_rate = self.get_parameter('drop_rate').value
         self.duplication_rate = self.get_parameter('duplication_rate').value
         
-        # Uplink: Earth → Rover
-        self.uplink_sub = self.create_subscription(
-            String,
-            '/earth/uplink_cmd',
-            self.uplink_callback,
-            10
-        )
-        self.uplink_pub = self.create_publisher(
-            String,
-            '/rover/command',
-            10
-        )
+        # Parse rover IDs
+        rover_ids_str = self.get_parameter('rover_ids').value
+        self.rover_ids = [rid.strip() for rid in rover_ids_str.split(',')]
         
-        # Downlink: Rover → Earth (telemetry)
-        self.downlink_telemetry_sub = self.create_subscription(
-            String,
-            '/rover/downlink_telemetry',
-            self.downlink_telemetry_callback,
-            10
-        )
-        self.downlink_telemetry_pub = self.create_publisher(
-            String,
-            '/earth/telemetry',
-            10
-        )
+        # Storage for dynamic subscribers/publishers
+        self._subs = []
+        self._pubs = {}
         
-        # Downlink: Rover → Earth (ACKs)
-        self.downlink_ack_sub = self.create_subscription(
-            String,
-            '/rover/ack',
-            self.downlink_ack_callback,
-            10
-        )
-        self.downlink_ack_pub = self.create_publisher(
-            String,
-            '/earth/ack',
-            10
-        )
+        # Create relay pairs for each rover
+        for rover_id in self.rover_ids:
+            self._setup_rover_relay(rover_id)
         
         self.get_logger().info(
             f"🛰️  Space Link relay initialized\n"
+            f"   Rovers: {', '.join(self.rover_ids)}\n"
             f"   Latency: {self.base_latency}s ± {self.jitter}s\n"
             f"   Drop rate: {self.drop_rate*100:.1f}%\n"
             f"   Duplication rate: {self.duplication_rate*100:.1f}%"
+        )
+
+    def _setup_rover_relay(self, rover_id):
+        """Create uplink/downlink relay pairs for a single rover."""
+        # --- Uplink: Earth → Rover ---
+        uplink_pub_topic = f'/rover/{rover_id}/command'
+        uplink_pub = self.create_publisher(String, uplink_pub_topic, 10)
+        self._pubs[f'uplink_{rover_id}'] = uplink_pub
+
+        uplink_sub_topic = f'/earth/uplink_cmd/{rover_id}'
+        uplink_sub = self.create_subscription(
+            String,
+            uplink_sub_topic,
+            lambda msg, pub=uplink_pub, rid=rover_id: self.relay_message(
+                msg, pub, f"UPLINK-{rid}"
+            ),
+            10
+        )
+        self._subs.append(uplink_sub)
+
+        # --- Downlink: Rover → Earth (telemetry) ---
+        dl_tlm_pub_topic = f'/earth/telemetry/{rover_id}'
+        dl_tlm_pub = self.create_publisher(String, dl_tlm_pub_topic, 10)
+        self._pubs[f'dl_tlm_{rover_id}'] = dl_tlm_pub
+
+        dl_tlm_sub_topic = f'/rover/{rover_id}/downlink_telemetry'
+        dl_tlm_sub = self.create_subscription(
+            String,
+            dl_tlm_sub_topic,
+            lambda msg, pub=dl_tlm_pub, rid=rover_id: self.relay_message(
+                msg, pub, f"DOWNLINK-TLM-{rid}"
+            ),
+            10
+        )
+        self._subs.append(dl_tlm_sub)
+
+        # --- Downlink: Rover → Earth (ACKs) ---
+        dl_ack_pub_topic = f'/earth/ack/{rover_id}'
+        dl_ack_pub = self.create_publisher(String, dl_ack_pub_topic, 10)
+        self._pubs[f'dl_ack_{rover_id}'] = dl_ack_pub
+
+        dl_ack_sub_topic = f'/rover/{rover_id}/ack'
+        dl_ack_sub = self.create_subscription(
+            String,
+            dl_ack_sub_topic,
+            lambda msg, pub=dl_ack_pub, rid=rover_id: self.relay_message(
+                msg, pub, f"DOWNLINK-ACK-{rid}"
+            ),
+            10
+        )
+        self._subs.append(dl_ack_sub)
+
+        self.get_logger().info(
+            f"   📡 Relay for [{rover_id}] — "
+            f"uplink: {uplink_sub_topic} → {uplink_pub_topic}, "
+            f"downlink-tlm: {dl_tlm_sub_topic} → {dl_tlm_pub_topic}, "
+            f"downlink-ack: {dl_ack_sub_topic} → {dl_ack_pub_topic}"
         )
     
     def simulate_delay(self):
@@ -98,7 +133,7 @@ class SpaceLinkNode(Node):
         Args:
             msg: The ROS message to relay
             publisher: The ROS publisher to use
-            direction: "UPLINK" or "DOWNLINK" for logging
+            direction: Label for logging (e.g. "UPLINK-rover_1")
         """
         # Check if dropped
         if self.should_drop():
@@ -142,18 +177,6 @@ class SpaceLinkNode(Node):
                 self.get_logger().debug(f"✅ {direction} DUPLICATE delivered")
         except Exception as e:
             self.get_logger().error(f"Error publishing {direction}: {e}")
-    
-    def uplink_callback(self, msg):
-        """Handle uplink: Earth → Rover"""
-        self.relay_message(msg, self.uplink_pub, "UPLINK")
-    
-    def downlink_telemetry_callback(self, msg):
-        """Handle downlink telemetry: Rover → Earth"""
-        self.relay_message(msg, self.downlink_telemetry_pub, "DOWNLINK-TLM")
-    
-    def downlink_ack_callback(self, msg):
-        """Handle downlink ACKs: Rover → Earth"""
-        self.relay_message(msg, self.downlink_ack_pub, "DOWNLINK-ACK")
 
 def main():
     rclpy.init()
