@@ -6,13 +6,76 @@
 (function () {
   "use strict";
 
+  // ─── DOM References ───
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
   // ─── Boot ───
   const sim = new SimulationController();
   const bus = sim.bus;
 
-  // ─── DOM References ───
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => document.querySelectorAll(sel);
+  // ─── 3D Visualization ───
+  let viz = null;
+  if (window.THREE) {
+    viz = new VisualizationController(bus, "visualization-container");
+  }
+
+  // Toggle 3D Panel
+  const floatingPanel = $("#floating-panel");
+  const btnToggle = $("#btn-3d-toggle");
+  const btnToggleLabel = $("#btn-3d-toggle-label");
+  const btnClose = $("#btn-close-3d");
+  const panelTelemetry = $("#panel-telemetry");
+  let panelLayoutTimer = null;
+
+  function set3DPanel(open) {
+    if (panelLayoutTimer) {
+      clearTimeout(panelLayoutTimer);
+      panelLayoutTimer = null;
+    }
+
+    if (btnToggle) {
+      btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (btnToggleLabel) {
+      btnToggleLabel.textContent = open ? "Close 3D" : "3D View";
+    }
+
+    if (open) {
+      floatingPanel.setAttribute("aria-hidden", "false");
+      document.body.classList.add("three-panel-open");
+      if (panelTelemetry) panelTelemetry.classList.add("compact-log");
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          floatingPanel.classList.add("panel-open");
+        });
+      });
+    } else {
+      floatingPanel.classList.remove("panel-open");
+      floatingPanel.setAttribute("aria-hidden", "true");
+      panelLayoutTimer = setTimeout(() => {
+        document.body.classList.remove("three-panel-open");
+        if (panelTelemetry) panelTelemetry.classList.remove("compact-log");
+      }, 260);
+    }
+
+    // Trigger resize after transition allows renderer to catch up
+    setTimeout(() => {
+      if (viz) viz.onResize();
+    }, 400); // slightly longer than CSS transition
+  }
+
+  function toggle3D() {
+    const shouldOpen = !floatingPanel.classList.contains("panel-open");
+    set3DPanel(shouldOpen);
+  }
+
+  if (btnToggle) btnToggle.addEventListener("click", toggle3D);
+  if (btnClose)
+    btnClose.addEventListener("click", () => {
+      set3DPanel(false);
+    });
 
   const dom = {
     metValue: $("#met-value"),
@@ -24,6 +87,8 @@
     taskValue: $("#task-value"),
     faultValue: $("#fault-value"),
     telemetryFeed: $("#telemetry-feed"),
+    telemetryLastValue: $("#telemetry-last-value"),
+    lunarMeta: $("#lunar-meta"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -63,6 +128,9 @@
     line.innerHTML = `<span class="feed-ts">${ts}</span><span class="feed-tag tag-${tag}">[${tag.toUpperCase()}]</span> ${escapeHtml(text)}`;
 
     dom.telemetryFeed.appendChild(line);
+    if (dom.telemetryLastValue) {
+      dom.telemetryLastValue.textContent = `${ts} [${tag.toUpperCase()}] ${text}`;
+    }
 
     // Trim old lines
     while (dom.telemetryFeed.children.length > MAX_FEED_LINES) {
@@ -129,6 +197,12 @@
     if (data.fault) feedText += ` | ⚠️ ${data.fault}`;
 
     addFeedLine("tlm", feedText);
+
+    if (dom.lunarMeta && data.position) {
+      const lat = Number(data.position.lat || 0).toFixed(2);
+      const lon = Number(data.position.lon || 0).toFixed(2);
+      dom.lunarMeta.textContent = `Lat ${lat}, Lon ${lon}`;
+    }
   });
 
   // ─── Log events to feed ───
@@ -357,6 +431,9 @@
     dom.telemetryFeed.innerHTML =
       '<div class="feed-empty"><span class="feed-empty-icon">📡</span><span>Awaiting telemetry…</span></div>';
     feedInitialized = false;
+    if (dom.telemetryLastValue) {
+      dom.telemetryLastValue.textContent = "Awaiting telemetry…";
+    }
   });
 
   // ─── Slider Controls ───
@@ -433,6 +510,11 @@
   document.addEventListener("keydown", (e) => {
     // Don't capture if user is typing in an input
     if (e.target.tagName === "INPUT") return;
+
+    if (e.key === "Escape" && floatingPanel.classList.contains("panel-open")) {
+      set3DPanel(false);
+      return;
+    }
 
     switch (e.key.toLowerCase()) {
       case "s":
