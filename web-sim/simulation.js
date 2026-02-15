@@ -3,6 +3,12 @@
    Ports all ROS node logic to in-browser JavaScript.
    ═══════════════════════════════════════════════════════ */
 
+const DEFAULT_ROVER_IDS = ["rover-1", "rover-2", "rover-3"];
+
+function roverTopic(roverId, channel) {
+  return `${roverId}:${channel}`;
+}
+
 class EventBus {
   constructor() {
     this._listeners = {};
@@ -27,19 +33,24 @@ class RoverNode {
   static STATE_SAFE_MODE = "SAFE_MODE";
   static STATE_ERROR = "ERROR";
 
-  constructor(bus, config) {
+  constructor(bus, config, roverId, startPosition = null) {
     this.bus = bus;
     this.config = config;
+    this.roverId = roverId;
     this.state = RoverNode.STATE_IDLE;
     this.currentTaskId = null;
     this.taskCounter = 0;
     this.batteryLevel = 1.0;
     this.lastFault = null;
-    // Initial position (Near crater Tycho)
-    this.position = { lat: -43.3, lon: -11.2 };
+    this.commandTopic = roverTopic(this.roverId, "command");
+    this.telemetryTopic = roverTopic(this.roverId, "telemetry");
+    this.ackTopic = roverTopic(this.roverId, "ack");
 
-    // Listen for commands arriving at rover
-    this.bus.on("rover:command", (data) => this.commandCallback(data));
+    // Initial position (Near crater Tycho, offset by rover)
+    this.position = startPosition || { lat: -43.3, lon: -11.2 };
+
+    this.commandListener = (data) => this.commandCallback(data);
+    this.bus.on(this.commandTopic, this.commandListener);
 
     // Start telemetry publishing (every 2s)
     this.telemetryInterval = setInterval(() => this.publishTelemetry(), 2000);
@@ -54,7 +65,7 @@ class RoverNode {
 
     this.bus.emit("log", {
       tag: "cmd",
-      text: `Rover received [${cmdId}]: ${cmdType}`,
+      text: `[${this.roverId}] received [${cmdId}]: ${cmdType}`,
     });
 
     let success, reason;
@@ -96,7 +107,10 @@ class RoverNode {
     this.state = RoverNode.STATE_EXECUTING;
     this.currentTaskId = taskId;
     this.taskCounter = 0;
-    this.bus.emit("log", { tag: "task", text: `✅ Started task: ${taskId}` });
+    this.bus.emit("log", {
+      tag: "task",
+      text: `✅ [${this.roverId}] Started task: ${taskId}`,
+    });
     return [true, null];
   }
 
@@ -104,7 +118,7 @@ class RoverNode {
     if (this.state === RoverNode.STATE_EXECUTING) {
       this.bus.emit("log", {
         tag: "system",
-        text: `⏹ Aborting task: ${this.currentTaskId}`,
+        text: `⏹ [${this.roverId}] Aborting task: ${this.currentTaskId}`,
       });
       this.state = RoverNode.STATE_IDLE;
       this.currentTaskId = null;
@@ -120,7 +134,7 @@ class RoverNode {
     if (!this.lastFault) this.lastFault = "Commanded to SAFE_MODE";
     this.bus.emit("log", {
       tag: "system",
-      text: `🛡 Rover entering SAFE_MODE`,
+      text: `🛡 [${this.roverId}] entering SAFE_MODE`,
     });
     return [true, null];
   }
@@ -133,7 +147,7 @@ class RoverNode {
       this.lastFault = null;
       this.bus.emit("log", {
         tag: "system",
-        text: `↻ RESET: SAFE_MODE → IDLE`,
+        text: `↻ [${this.roverId}] RESET: SAFE_MODE → IDLE`,
       });
     }
     return [true, null];
@@ -142,12 +156,12 @@ class RoverNode {
   sendAck(cmdId, success, reason = null) {
     const ackData = {
       ack_id: cmdId,
+      rover_id: this.roverId,
       status: success ? "ACCEPTED" : "REJECTED",
       reason,
       ts: Date.now() / 1000,
     };
-    // Emit to space link downlink
-    this.bus.emit("rover:ack", ackData);
+    this.bus.emit(this.ackTopic, ackData);
   }
 
   executeTaskStep() {
@@ -161,12 +175,12 @@ class RoverNode {
     this.position.lon += (Math.random() - 0.5) * 0.01;
 
     // Fault detection
-    const faultProb = (this.config.faultProbability || 10) / 100;
+    const faultProb = (this.config.faultProbability ?? 10) / 100;
     if (Math.random() < faultProb) {
       const faultMsg = `Fault during task execution (step ${this.taskCounter})`;
       this.bus.emit("log", {
         tag: "fault",
-        text: `🚨 FAULT DETECTED during task ${this.currentTaskId}!`,
+        text: `🚨 [${this.roverId}] FAULT DETECTED during task ${this.currentTaskId}!`,
       });
       this.state = RoverNode.STATE_SAFE_MODE;
       this.lastFault = faultMsg;
@@ -179,7 +193,7 @@ class RoverNode {
     if (this.taskCounter >= 10) {
       this.bus.emit("log", {
         tag: "task",
-        text: `✅ Task ${this.currentTaskId} completed!`,
+        text: `✅ [${this.roverId}] Task ${this.currentTaskId} completed!`,
       });
       this.state = RoverNode.STATE_IDLE;
       this.currentTaskId = null;
@@ -187,7 +201,7 @@ class RoverNode {
     } else {
       this.bus.emit("log", {
         tag: "task",
-        text: `⚙️ Executing ${this.currentTaskId}: step ${this.taskCounter}/10`,
+        text: `⚙️ [${this.roverId}] Executing ${this.currentTaskId}: step ${this.taskCounter}/10`,
       });
     }
   }
@@ -195,20 +209,22 @@ class RoverNode {
   publishTelemetry() {
     const telemetry = {
       ts: Date.now() / 1000,
+      rover_id: this.roverId,
       state: this.state,
       task_id: this.currentTaskId,
       battery: Math.round(this.batteryLevel * 100) / 100,
       fault: this.lastFault,
       task_progress:
         this.state === RoverNode.STATE_EXECUTING ? this.taskCounter : null,
-      position: this.position,
+      position: { lat: this.position.lat, lon: this.position.lon },
     };
-    this.bus.emit("rover:telemetry", telemetry);
+    this.bus.emit(this.telemetryTopic, telemetry);
   }
 
   destroy() {
     clearInterval(this.telemetryInterval);
     clearInterval(this.taskInterval);
+    this.bus.off(this.commandTopic, this.commandListener);
   }
 }
 
@@ -218,44 +234,77 @@ class SpaceLinkNode {
     this.bus = bus;
     this.config = config;
     this.stats = { sent: 0, received: 0, dropped: 0 };
+    this.defaultRoverId = (config.roverIds || [DEFAULT_ROVER_IDS[0]])[0];
+    this.subscribedRovers = new Set();
 
-    // Uplink: earth:uplink_cmd → (delay) → rover:command
+    // Uplink: earth:uplink_cmd → (delay) → <rover-id>:command
     this.bus.on("earth:uplink_cmd", (data) =>
-      this.relay(data, "rover:command", "UPLINK"),
+      this.relayCommand(data),
     );
 
-    // Downlink telemetry: rover:telemetry → (delay) → earth:telemetry
-    this.bus.on("rover:telemetry", (data) =>
-      this.relay(data, "earth:telemetry", "DOWNLINK-TLM"),
-    );
-
-    // Downlink ACKs: rover:ack → (delay) → earth:ack
-    this.bus.on("rover:ack", (data) =>
-      this.relay(data, "earth:ack", "DOWNLINK-ACK"),
+    (this.config.roverIds || [this.defaultRoverId]).forEach((roverId) =>
+      this.ensureRoverSubscriptions(roverId),
     );
   }
 
-  relay(data, targetEvent, direction) {
+  ensureRoverSubscriptions(roverId) {
+    if (this.subscribedRovers.has(roverId)) return;
+    this.subscribedRovers.add(roverId);
+
+    this.bus.on(roverTopic(roverId, "telemetry"), (data) =>
+      this.relay(
+        { ...data, rover_id: data.rover_id || roverId },
+        "earth:telemetry",
+        "DOWNLINK-TLM",
+        roverId,
+      ),
+    );
+
+    this.bus.on(roverTopic(roverId, "ack"), (data) =>
+      this.relay(
+        { ...data, rover_id: data.rover_id || roverId },
+        "earth:ack",
+        "DOWNLINK-ACK",
+        roverId,
+      ),
+    );
+  }
+
+  relayCommand(data) {
+    const roverId = data?.rover_id || this.defaultRoverId;
+    this.ensureRoverSubscriptions(roverId);
+    this.relay(
+      { ...data, rover_id: roverId },
+      roverTopic(roverId, "command"),
+      "UPLINK",
+      roverId,
+    );
+  }
+
+  relay(data, targetEvent, direction, roverId = null) {
     this.stats.sent++;
 
-    const dropRate = (this.config.dropRate || 5) / 100;
+    const dropRate = (this.config.dropRate ?? 5) / 100;
     if (Math.random() < dropRate) {
       this.stats.dropped++;
-      this.bus.emit("log", { tag: "drop", text: `❌ ${direction} DROPPED` });
+      this.bus.emit("log", {
+        tag: "drop",
+        text: `❌ ${direction}${roverId ? ` [${roverId}]` : ""} DROPPED`,
+      });
       this.bus.emit("stats:update", this.stats);
       return;
     }
 
-    const baseLatency = this.config.baseLatency || 1.3;
-    const jitter = this.config.jitter || 0.2;
+    const baseLatency = this.config.baseLatency ?? 1.3;
+    const jitter = this.config.jitter ?? 0.2;
     const jitterValue = (Math.random() * 2 - 1) * jitter;
     const delay = Math.max(0.05, baseLatency + jitterValue);
 
     this.bus.emit("log", {
       tag: "relay",
-      text: `📡 ${direction} relay (${delay.toFixed(2)}s delay)`,
+      text: `📡 ${direction}${roverId ? ` [${roverId}]` : ""} relay (${delay.toFixed(2)}s delay)`,
     });
-    this.bus.emit("signal:active", { direction, delay });
+    this.bus.emit("signal:active", { direction, delay, rover_id: roverId });
 
     setTimeout(() => {
       this.stats.received++;
@@ -270,22 +319,97 @@ class EarthNode {
   constructor(bus, config) {
     this.bus = bus;
     this.config = config;
+    this.roverIds =
+      Array.isArray(config.roverIds) && config.roverIds.length > 0
+        ? [...config.roverIds]
+        : [DEFAULT_ROVER_IDS[0]];
+    this.selectedRoverId = this.roverIds[0];
     this.cmdCounter = 0;
     this.pendingCommands = {};
+    this.fleetState = {};
     this.ackTimeout = 5.0;
     this.maxRetries = 3;
 
+    this.roverIds.forEach((roverId) => {
+      this.fleetState[roverId] = this.buildDefaultFleetEntry(roverId);
+    });
+
     // Listen for ACKs arriving at Earth
     this.bus.on("earth:ack", (data) => this.ackCallback(data));
+    this.bus.on("earth:telemetry", (data) => this.telemetryCallback(data));
 
     // Check for timeouts every 1s
     this.timeoutInterval = setInterval(() => this.checkTimeouts(), 1000);
+    this.bus.emit("fleet:update", this.getFleetState());
+  }
+
+  buildDefaultFleetEntry(roverId) {
+    return {
+      rover_id: roverId,
+      state: RoverNode.STATE_IDLE,
+      battery: 1.0,
+      task_id: null,
+      fault: null,
+      task_progress: null,
+      position: null,
+      ts: null,
+      last_seen: null,
+    };
+  }
+
+  telemetryCallback(data) {
+    const roverId = data.rover_id || this.selectedRoverId || this.roverIds[0];
+    if (!roverId) return;
+
+    if (!this.fleetState[roverId]) {
+      this.fleetState[roverId] = this.buildDefaultFleetEntry(roverId);
+      this.roverIds.push(roverId);
+    }
+
+    this.fleetState[roverId] = {
+      ...this.fleetState[roverId],
+      ...data,
+      rover_id: roverId,
+      last_seen: Date.now() / 1000,
+    };
+
+    this.bus.emit("fleet:update", this.getFleetState());
+  }
+
+  getFleetState() {
+    const snapshot = {};
+    Object.keys(this.fleetState).forEach((roverId) => {
+      snapshot[roverId] = { ...this.fleetState[roverId] };
+    });
+    return snapshot;
+  }
+
+  getSelectedRover() {
+    return this.selectedRoverId;
+  }
+
+  setSelectedRover(roverId) {
+    if (!roverId) return false;
+
+    if (!this.fleetState[roverId]) {
+      this.fleetState[roverId] = this.buildDefaultFleetEntry(roverId);
+      this.roverIds.push(roverId);
+    }
+
+    this.selectedRoverId = roverId;
+    this.bus.emit("earth:selected-rover", { rover_id: roverId });
+    this.bus.emit("log", {
+      tag: "system",
+      text: `🎯 Selected rover set to [${roverId}]`,
+    });
+    return true;
   }
 
   ackCallback(data) {
     const ackId = data.ack_id;
     const status = data.status;
     const reason = data.reason;
+    const roverId = data.rover_id || "unknown";
 
     if (this.pendingCommands[ackId]) {
       const cmdInfo = this.pendingCommands[ackId];
@@ -294,27 +418,33 @@ class EarthNode {
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
           tag: "ack",
-          text: `✅ ACK ${ackId}: ACCEPTED (RTT: ${rtt.toFixed(2)}s)`,
+          text: `✅ ACK ${ackId} [${roverId}]: ACCEPTED (RTT: ${rtt.toFixed(2)}s)`,
         });
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ ACK ${ackId}: REJECTED${reason ? ` (${reason})` : ""}`,
+          text: `❌ ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
         });
       }
 
-      this.bus.emit("ack:resolved", { cmdId: ackId, status, reason, rtt });
+      this.bus.emit("ack:resolved", {
+        cmdId: ackId,
+        status,
+        reason,
+        rtt,
+        roverId,
+      });
       delete this.pendingCommands[ackId];
     } else {
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
           tag: "ack",
-          text: `✅ ACK ${ackId}: ACCEPTED (late)`,
+          text: `✅ ACK ${ackId} [${roverId}]: ACCEPTED (late)`,
         });
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ ACK ${ackId}: REJECTED${reason ? ` (${reason})` : ""}`,
+          text: `❌ ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
         });
       }
     }
@@ -339,18 +469,19 @@ class EarthNode {
         info.sentAt = Date.now() / 1000;
         this.bus.emit("log", {
           tag: "system",
-          text: `⏰ No ACK for ${cmdId}, retrying (attempt ${info.attempt}/${this.maxRetries})`,
+          text: `⏰ No ACK for ${cmdId} [${info.roverId}], retrying (attempt ${info.attempt}/${this.maxRetries})`,
         });
         this.bus.emit("earth:uplink_cmd", info.cmdData);
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ Command ${cmdId} failed after ${this.maxRetries} attempts`,
+          text: `❌ Command ${cmdId} [${info.roverId}] failed after ${this.maxRetries} attempts`,
         });
         this.bus.emit("ack:resolved", {
           cmdId,
           status: "TIMEOUT",
           reason: "Max retries exceeded",
+          roverId: info.roverId,
         });
         delete this.pendingCommands[cmdId];
       }
@@ -359,12 +490,22 @@ class EarthNode {
     this.bus.emit("pending:update", this.pendingCommands);
   }
 
-  sendCommand(cmdType, taskId = null) {
+  sendCommand(cmdType, taskId = null, roverId = null) {
+    const targetRoverId = roverId || this.selectedRoverId || this.roverIds[0];
+    if (!targetRoverId) return null;
+
+    if (!this.fleetState[targetRoverId]) {
+      this.fleetState[targetRoverId] =
+        this.buildDefaultFleetEntry(targetRoverId);
+      this.roverIds.push(targetRoverId);
+    }
+
     this.cmdCounter++;
     const cmdId = `c-${String(this.cmdCounter).padStart(5, "0")}`;
 
     const cmdData = {
       cmd_id: cmdId,
+      rover_id: targetRoverId,
       type: cmdType,
       ts: Date.now() / 1000,
     };
@@ -377,15 +518,16 @@ class EarthNode {
       cmdType,
       attempt: 1,
       cmdData,
+      roverId: targetRoverId,
     };
 
     // Send to space link
     this.bus.emit("earth:uplink_cmd", cmdData);
     this.bus.emit("log", {
       tag: "cmd",
-      text: `📤 Sent ${cmdId}: ${cmdType}${taskId ? " " + taskId : ""}`,
+      text: `📤 Sent ${cmdId} -> [${targetRoverId}]: ${cmdType}${taskId ? " " + taskId : ""}`,
     });
-    this.bus.emit("cmd:sent", { cmdId, cmdType, taskId });
+    this.bus.emit("cmd:sent", { cmdId, cmdType, taskId, roverId: targetRoverId });
     this.bus.emit("pending:update", this.pendingCommands);
 
     return cmdId;
@@ -398,13 +540,31 @@ class EarthNode {
 
 // ─── Telemetry Monitor ───
 class TelemetryMonitor {
-  constructor(bus) {
+  constructor(bus, earthNode) {
     this.bus = bus;
+    this.earthNode = earthNode;
     this.latestTelemetry = null;
+    this.latestTelemetryByRover = {};
 
     this.bus.on("earth:telemetry", (data) => {
-      this.latestTelemetry = data;
-      this.bus.emit("telemetry:display", data);
+      const roverId = data.rover_id || this.earthNode.getSelectedRover();
+      if (!roverId) return;
+
+      this.latestTelemetryByRover[roverId] = data;
+      if (roverId === this.earthNode.getSelectedRover()) {
+        this.latestTelemetry = data;
+        this.bus.emit("telemetry:display", data);
+      }
+    });
+
+    this.bus.on("earth:selected-rover", (data) => {
+      const roverId = data?.rover_id;
+      if (!roverId) return;
+      const latest = this.latestTelemetryByRover[roverId];
+      if (latest) {
+        this.latestTelemetry = latest;
+        this.bus.emit("telemetry:display", latest);
+      }
     });
 
     this.bus.on("earth:ack", (data) => {
@@ -422,17 +582,49 @@ class SimulationController {
       jitter: 0.2,
       dropRate: 5,
       faultProbability: 10,
+      roverIds: [...DEFAULT_ROVER_IDS],
     };
 
     this.startTime = Date.now();
-    this.rover = new RoverNode(this.bus, this.config);
+    this.rovers = this.config.roverIds.map(
+      (roverId, index) =>
+        new RoverNode(
+          this.bus,
+          this.config,
+          roverId,
+          this.getInitialPositionForRover(index),
+        ),
+    );
     this.spaceLink = new SpaceLinkNode(this.bus, this.config);
     this.earth = new EarthNode(this.bus, this.config);
-    this.telemetryMonitor = new TelemetryMonitor(this.bus);
+    this.telemetryMonitor = new TelemetryMonitor(this.bus, this.earth);
   }
 
-  sendCommand(type, taskId) {
-    return this.earth.sendCommand(type, taskId);
+  getInitialPositionForRover(index) {
+    const base = { lat: -43.3, lon: -11.2 };
+    const offsets = [
+      { lat: 0.0, lon: 0.0 },
+      { lat: 0.08, lon: 0.06 },
+      { lat: -0.07, lon: -0.05 },
+    ];
+    const offset = offsets[index] || { lat: index * 0.03, lon: index * 0.03 };
+    return { lat: base.lat + offset.lat, lon: base.lon + offset.lon };
+  }
+
+  sendCommand(type, taskId, roverId = null) {
+    return this.earth.sendCommand(type, taskId, roverId);
+  }
+
+  setSelectedRover(roverId) {
+    return this.earth.setSelectedRover(roverId);
+  }
+
+  getSelectedRover() {
+    return this.earth.getSelectedRover();
+  }
+
+  getFleetState() {
+    return this.earth.getFleetState();
   }
 
   updateConfig(key, value) {
@@ -443,18 +635,23 @@ class SimulationController {
     return (Date.now() - this.startTime) / 1000;
   }
 
-  getRoverState() {
+  getRoverState(roverId = null) {
+    const targetRoverId = roverId || this.earth.getSelectedRover();
+    const rover = this.rovers.find((item) => item.roverId === targetRoverId);
+    if (!rover) return null;
+
     return {
-      state: this.rover.state,
-      battery: this.rover.batteryLevel,
-      taskId: this.rover.currentTaskId,
-      fault: this.rover.lastFault,
-      taskProgress: this.rover.taskCounter,
+      roverId: rover.roverId,
+      state: rover.state,
+      battery: rover.batteryLevel,
+      taskId: rover.currentTaskId,
+      fault: rover.lastFault,
+      taskProgress: rover.taskCounter,
     };
   }
 
   destroy() {
-    this.rover.destroy();
+    this.rovers.forEach((rover) => rover.destroy());
     this.earth.destroy();
   }
 }
