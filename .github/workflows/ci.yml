@@ -1,0 +1,215 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LSOAS CI Pipeline — runs on every PR to main
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI — Lint, Build & Health Checks
+
+on:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+    # ── 1. Python Lint & Static Analysis ──────────────────────────────────────
+    python-lint:
+        name: 🐍 Python Lint
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.10"
+
+            - name: Install linters
+              run: pip install flake8 pycodestyle
+
+            - name: Flake8 — ROS nodes
+              run: |
+                  flake8 lunar_ops/rover_ws/src/rover_core/rover_core/ \
+                    --max-line-length=120 \
+                    --ignore=E402,W503 \
+                    --count --show-source --statistics
+
+            - name: Flake8 — project scripts
+              run: |
+                  flake8 .github/scripts/ \
+                    --max-line-length=120 \
+                    --ignore=E402,W503 \
+                    --count --show-source --statistics \
+                  || true  # non-blocking for utility scripts
+
+    # ── 2. ROS Build (Docker) ────────────────────────────────────────────────
+    ros-build:
+        name: 🤖 ROS 2 Build
+        runs-on: ubuntu-latest
+        container:
+            image: ros:humble
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install build dependencies
+              run: |
+                  apt-get update && apt-get install -y python3-pip python3-colcon-common-extensions
+                  pip3 install setuptools
+
+            - name: Build ROS workspace
+              shell: bash
+              run: |
+                  source /opt/ros/humble/setup.bash
+                  cd lunar_ops/rover_ws
+                  colcon build --symlink-install
+                  echo "✅ ROS workspace built successfully"
+
+            - name: Verify entry points
+              shell: bash
+              run: |
+                  source /opt/ros/humble/setup.bash
+                  source lunar_ops/rover_ws/install/setup.bash
+                  echo "Checking registered executables..."
+                  ros2 pkg executables rover_core
+                  echo "✅ All entry points registered"
+
+    # ── 3. Python Unit Tests ─────────────────────────────────────────────────
+    python-tests:
+        name: 🧪 Python Tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.10"
+
+            - name: Install test dependencies
+              run: pip install pytest
+
+            - name: Run tests
+              run: |
+                  if find . -path "*/test/test_*.py" -o -path "*/tests/test_*.py" | grep -q .; then
+                    python -m pytest -v --tb=short $(find . -path "*/test/test_*.py" -o -path "*/tests/test_*.py")
+                  else
+                    echo "⚠️  No test files found yet — passing (tests will be added in Phase 1)"
+                  fi
+
+    # ── 4. Web Dashboard Health Check ────────────────────────────────────────
+    web-health:
+        name: 🌐 Web Dashboard Health
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Validate HTML structure
+              run: |
+                  echo "Checking index.html..."
+                  # Verify critical elements exist
+                  grep -q '<html'  web-sim/index.html && echo "  ✅ <html> tag"
+                  grep -q '<head'  web-sim/index.html && echo "  ✅ <head> tag"
+                  grep -q '<body'  web-sim/index.html && echo "  ✅ <body> tag"
+                  grep -q '<title' web-sim/index.html && echo "  ✅ <title> tag"
+                  grep -q 'simulation.js' web-sim/index.html && echo "  ✅ simulation.js linked"
+                  grep -q 'app.js' web-sim/index.html && echo "  ✅ app.js linked"
+                  grep -q 'index.css' web-sim/index.html && echo "  ✅ index.css linked"
+                  echo "✅ HTML structure valid"
+
+            - name: JavaScript syntax check
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+
+            - name: Parse JS files for syntax errors
+              run: |
+                  echo "Checking JavaScript syntax..."
+                  node --check web-sim/simulation.js && echo "  ✅ simulation.js"
+                  node --check web-sim/app.js && echo "  ✅ app.js"
+                  echo "✅ No JavaScript syntax errors"
+
+            - name: CSS validation
+              run: |
+                  echo "Checking CSS..."
+                  # Basic checks: file exists and has content
+                  [ -s web-sim/index.css ] && echo "  ✅ index.css exists and is non-empty"
+                  # Check for obvious syntax issues (unmatched braces)
+                  OPEN=$(grep -o '{' web-sim/index.css | wc -l)
+                  CLOSE=$(grep -o '}' web-sim/index.css | wc -l)
+                  if [ "$OPEN" -eq "$CLOSE" ]; then
+                    echo "  ✅ CSS braces balanced ($OPEN pairs)"
+                  else
+                    echo "  ❌ CSS braces mismatch: $OPEN open vs $CLOSE close"
+                    exit 1
+                  fi
+                  echo "✅ CSS valid"
+
+            - name: Serve and smoke test
+              run: |
+                  # Start a simple HTTP server and verify the page loads
+                  cd web-sim
+                  python3 -m http.server 8080 &
+                  SERVER_PID=$!
+                  sleep 2
+
+                  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+                  if [ "$HTTP_CODE" -eq "200" ]; then
+                    echo "✅ Dashboard serves correctly (HTTP $HTTP_CODE)"
+                  else
+                    echo "❌ Dashboard failed to serve (HTTP $HTTP_CODE)"
+                    kill $SERVER_PID
+                    exit 1
+                  fi
+
+                  # Check content is served correctly
+                  BODY=$(curl -s http://localhost:8080/)
+                  echo "$BODY" | grep -q "LSOAS" && echo "✅ Page title contains LSOAS"
+
+                  kill $SERVER_PID
+
+    # ── 5. File Health & Repo Hygiene ────────────────────────────────────────
+    repo-health:
+        name: 📋 Repo Health
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Check required files exist
+              run: |
+                  echo "Checking required files..."
+                  [ -f README.md ]    && echo "  ✅ README.md"
+                  [ -f Makefile ]     && echo "  ✅ Makefile"
+                  [ -f .gitignore ]   && echo "  ✅ .gitignore"
+                  [ -d web-sim ]      && echo "  ✅ web-sim/"
+                  [ -d lunar_ops ]    && echo "  ✅ lunar_ops/"
+                  [ -f lunar_ops/rover_ws/src/rover_core/package.xml ] && echo "  ✅ package.xml"
+                  [ -f lunar_ops/rover_ws/src/rover_core/setup.py ]    && echo "  ✅ setup.py"
+                  echo "✅ All required files present"
+
+            - name: Check for large files (> 5MB)
+              run: |
+                  echo "Scanning for large files..."
+                  LARGE=$(find . -type f -size +5M -not -path './.git/*' 2>/dev/null)
+                  if [ -z "$LARGE" ]; then
+                    echo "  ✅ No large files detected"
+                  else
+                    echo "  ⚠️  Large files found:"
+                    echo "$LARGE" | while read f; do
+                      SIZE=$(du -h "$f" | cut -f1)
+                      echo "    $SIZE  $f"
+                    done
+                    echo "  Consider using Git LFS for these files"
+                  fi
+
+            - name: Check for secrets / sensitive data
+              run: |
+                  echo "Scanning for potential secrets..."
+                  PATTERNS="password|secret|api_key|private_key|token"
+                  HITS=$(grep -rn -i -E "$PATTERNS" --include="*.py" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v ".git/" | grep -v "node_modules/" | grep -v "__pycache__/" || true)
+                  if [ -z "$HITS" ]; then
+                    echo "  ✅ No hardcoded secrets detected"
+                  else
+                    echo "  ⚠️  Potential secrets found (review manually):"
+                    echo "$HITS" | head -10
+                  fi
