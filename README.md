@@ -30,7 +30,7 @@
 
 ## 🖥️ Live Dashboard — What We've Built So Far
 
-A NASA-inspired web dashboard simulating Earth↔Moon communication with realistic latency, packet loss, and fault-tolerant command protocols. No Docker or ROS required — just open it in your browser.
+A NASA-inspired fleet dashboard simulating Earth↔Moon communication with realistic latency, packet loss, and fault-tolerant command protocols across multiple rovers. No Docker or ROS required — just open it in your browser.
 
 ### Dashboard States
 
@@ -150,27 +150,30 @@ A responsive status grid replacing the single-rover view:
 ## 🏗️ Current Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        MISSION CONTROL                              │
-│                                                                     │
-│   ┌──────────┐     ┌────────────┐     ┌──────────┐                 │
-│   │  EARTH   │────▶│ SPACE LINK │────▶│  ROVER   │                 │
-│   │ STATION  │◀────│   (RELAY)  │◀────│  (MOON)  │                 │
-│   └──────────┘     └────────────┘     └──────────┘                 │
-│        │                                    │                       │
-│        │           ┌────────────┐           │                       │
-│        └──────────▶│ TELEMETRY  │◀──────────┘                       │
-│                    │  MONITOR   │                                   │
-│                    └────────────┘                                   │
-└─────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                            MISSION CONTROL                                 │
+│                                                                            │
+│  ┌──────────────┐     ┌──────────────┐     ┌───────────────────────────┐   │
+│  │ EARTH STATION│────▶│  SPACE LINK  │────▶│  ROVER FLEET (N = 3..5+)  │   │
+│  │ (COMMAND UI) │◀────│   (RELAY)    │◀────│  R1  R2  R3  R4  R5 ...   │   │
+│  └──────────────┘     └──────────────┘     └───────────────────────────┘   │
+│         │                        │                         │                │
+│         │                        │                         │                │
+│         │                ACK + TELEMETRY STREAMS           │                │
+│         │                        ▼                         │                │
+│         │              ┌────────────────────┐              │                │
+│         └─────────────▶│ TELEMETRY MONITOR  │◀─────────────┘                │
+│                        │ + FLEET STATUS GRID│                               │
+│                        └────────────────────┘                               │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Node                     | Role                     | Key Behaviors                                                                  |
-| ------------------------ | ------------------------ | ------------------------------------------------------------------------------ |
-| **🌍 Earth Station**     | Ground command interface | JSON commands with unique IDs, ACK tracking, 8s retry timeout                  |
-| **📡 Space Link**        | Moon↔Earth relay         | 1.3s latency, ±0.2s jitter, 5% packet drop                                     |
-| **🤖 Lunar Rover**       | Autonomous rover         | State machine (IDLE→EXECUTING→SAFE_MODE→ERROR), fault detection, battery drain |
-| **📊 Telemetry Monitor** | Data display             | Subscribes to all telemetry and ACK streams                                    |
+| Node / Layer             | Role                         | Key Behaviors                                                                 |
+| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------- |
+| **🌍 Earth Station**     | Ground command interface     | Fleet-aware dispatch, ACK tracking, auto/manual target selection             |
+| **📡 Space Link**        | Moon↔Earth relay             | Configurable latency/jitter/drop simulation                                  |
+| **🤖 Rover Fleet**       | Autonomous rover constellation | Per-rover state machine (IDLE→EXECUTING→SAFE_MODE→ERROR), battery/task state |
+| **📊 Telemetry Monitor** | Fleet telemetry visualization | Per-rover feed aggregation, fleet summary banner, command/ACK counters       |
 
 ### Rover State Machine
 
@@ -210,6 +213,12 @@ cd web-sim && python3 -m http.server 8080
 
 Open **http://localhost:8080** and start sending commands! 🎉
 
+Fleet presets:
+
+- Default 3-rover run: `http://localhost:8080`
+- 5-rover load profile: `http://localhost:8080/?rovers=5`
+- Light theme preview: `http://localhost:8080/?theme=light`
+
 #### Keyboard Shortcuts
 
 | Key         | Command    |
@@ -226,7 +235,23 @@ Open **http://localhost:8080** and start sending commands! 🎉
 | Base Latency      | 1.3s    | 0.1 – 5.0s | One-way signal travel time |
 | Jitter            | ±0.2s   | 0 – 1.0s   | Random delay variation     |
 | Drop Rate         | 5%      | 0 – 50%    | Packet loss probability    |
-| Fault Probability | 10%     | 0 – 50%    | Fault chance per task step |
+| Fault Probability | 10%     | 0 – 100%   | Fault chance per task step |
+
+#### Fleet Command Routing
+
+Use **Target Rover** in the command panel:
+
+- `Auto-Select (Best Rover)`: routes based on live fleet conditions.
+- `Rover-n`: manual override to target a specific rover.
+
+Routing behavior in auto mode:
+
+- `START_TASK`: prefers highest-score `IDLE` rover.
+- `ABORT`: prefers currently executing rover with highest progress.
+- `GO_SAFE`: prefers active executing rover; falls back to highest-score rover.
+- `RESET`: prefers lowest-battery rover currently in `SAFE_MODE`.
+
+Reference manual test report: `docs/phase1_testing_results.md`
 
 ### Option 2: ROS 2 Simulation (Full Setup)
 
@@ -319,14 +344,14 @@ Every PR to `main` automatically runs:
 
 ## 🧪 Testing Scenarios
 
-| Scenario             | Steps                                   | What to Observe                                         |
-| -------------------- | --------------------------------------- | ------------------------------------------------------- |
-| **Happy path**       | START TASK → wait for completion        | 10 steps execute, battery drains, state returns to IDLE |
-| **Mid-task abort**   | START TASK → wait 3s → ABORT            | Task interrupted, rover returns to IDLE                 |
-| **Safe mode**        | START TASK → SAFE MODE during execution | Rover enters SAFE_MODE, ignores further tasks           |
-| **Recovery**         | SAFE MODE → RESET                       | Rover returns to IDLE                                   |
-| **High packet loss** | Set Drop Rate to 40% → START TASK       | Retries needed, telemetry gaps visible                  |
-| **High latency**     | Set Latency to 4s → START TASK          | Longer RTT, delayed ACKs                                |
+| Scenario                  | Steps                                                          | What to Observe                                            |
+| ------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Basic auto assignment** | Auto target → START TASK                                       | Exactly one rover enters `EXECUTING`, ACK resolves         |
+| **Manual selection**      | Select `Rover-2` → START TASK                                  | Command routes only to selected rover                      |
+| **Safe mode handling**    | START TASK → GO SAFE                                           | Rover transitions to `SAFE_MODE` and fleet counts update   |
+| **Battery priority**      | Set uneven batteries → Auto START TASK                         | Highest-battery eligible rover receives task               |
+| **5-rover load**          | Open `?rovers=5` and observe ~20s                              | Stable telemetry feed from rover-1..rover-5 at 0.5 Hz each |
+| **Network stress**        | Increase Drop/Latency sliders and dispatch commands            | Retries, delayed ACKs, and drop indicators in logs         |
 
 ---
 
