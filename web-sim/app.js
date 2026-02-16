@@ -17,7 +17,13 @@
   // ─── 3D Visualization ───
   let viz = null;
   if (window.THREE) {
-    viz = new VisualizationController(bus, "visualization-container");
+    try {
+      viz = new VisualizationController(bus, "visualization-container");
+    } catch (err) {
+      // Keep mission control usable even when WebGL is unavailable (e.g. headless test runs).
+      console.warn("3D visualization disabled:", err);
+      viz = null;
+    }
   }
 
   // Toggle 3D Panel
@@ -569,6 +575,91 @@
     return cmdId;
   }
 
+  function setRoverTargetMode(nextMode) {
+    if (!nextMode) return;
+
+    if (nextMode === AUTO_ROVER_MODE) {
+      roverTargetMode = AUTO_ROVER_MODE;
+      if (dom.roverTargetSelect) dom.roverTargetSelect.value = AUTO_ROVER_MODE;
+      addFeedLine("system", "🎯 Auto-select enabled for command routing");
+      return;
+    }
+
+    const fleet = sim.getFleetState();
+    if (!fleet[nextMode]) return;
+    roverTargetMode = nextMode;
+    if (dom.roverTargetSelect) dom.roverTargetSelect.value = nextMode;
+    setSelectedRover(nextMode);
+    addFeedLine("system", `🎮 Manual rover selection: ${formatRoverLabel(nextMode)}`);
+  }
+
+  function applyScenarioFromUrl() {
+    const params = new URLSearchParams(window.location.search || "");
+    const scenario = String(params.get("scenario") || "").toLowerCase();
+    const taskId = (params.get("task") || dom.taskIdInput?.value || "TASK-001").trim();
+    const delayMs = Math.max(
+      0,
+      Math.round(Number(params.get("delay_ms")) || 1800),
+    );
+
+    if (dom.taskIdInput && taskId) dom.taskIdInput.value = taskId;
+
+    const theme = String(params.get("theme") || "").toLowerCase();
+    if (theme === "light") {
+      isLight = true;
+      document.body.classList.add("theme-light");
+    } else if (theme === "dark") {
+      isLight = false;
+      document.body.classList.remove("theme-light");
+    }
+
+    const explicitTarget = params.get("target");
+    if (explicitTarget) {
+      setRoverTargetMode(
+        explicitTarget.toLowerCase() === AUTO_ROVER_MODE
+          ? AUTO_ROVER_MODE
+          : explicitTarget,
+      );
+    }
+
+    const autoStart = String(params.get("autostart") || "").toLowerCase();
+    if (autoStart === "1" || autoStart === "true" || autoStart === "start_task") {
+      setTimeout(() => dispatchCommand("START_TASK", taskId), delayMs);
+    }
+
+    if (params.get("go_safe") === "1") {
+      setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 2500);
+    }
+
+    if (params.get("reset") === "1") {
+      setTimeout(() => dispatchCommand("RESET"), delayMs + 5000);
+    }
+
+    switch (scenario) {
+      case "basic-auto":
+        setRoverTargetMode(AUTO_ROVER_MODE);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || "AUTO-001"), delayMs);
+        break;
+      case "manual-select": {
+        const manualRover = params.get("manual_rover") || "rover-2";
+        setRoverTargetMode(manualRover);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || "MANUAL-001"), delayMs);
+        break;
+      }
+      case "safe-mode":
+        setRoverTargetMode(AUTO_ROVER_MODE);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || "SAFE-001"), delayMs);
+        setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
+        break;
+      case "battery-select":
+        setRoverTargetMode(AUTO_ROVER_MODE);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || "BATT-001"), delayMs);
+        break;
+      default:
+        break;
+    }
+  }
+
   function syncFleetFromController() {
     const fleet = sim.getFleetState();
     Object.keys(fleet || {}).forEach((roverId) => {
@@ -1059,6 +1150,7 @@
   addFeedLine("system", "🤖 Rover fleet active — awaiting commands");
   addFeedLine("system", "📡 Telemetry monitor listening");
   addFeedLine("system", "───────────────────────────────");
+  applyScenarioFromUrl();
 
   console.log(
     "%c LSOAS Mission Control ",

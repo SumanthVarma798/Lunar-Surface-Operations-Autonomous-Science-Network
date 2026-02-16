@@ -4,6 +4,82 @@
    ═══════════════════════════════════════════════════════ */
 
 const DEFAULT_ROVER_IDS = ["rover-1", "rover-2", "rover-3"];
+const MIN_ROVER_COUNT = 1;
+const MAX_ROVER_COUNT = 8;
+
+function buildRoverIds(count) {
+  const roverCount = Math.max(
+    MIN_ROVER_COUNT,
+    Math.min(MAX_ROVER_COUNT, Number(count) || DEFAULT_ROVER_IDS.length),
+  );
+  return Array.from({ length: roverCount }, (_, idx) => `rover-${idx + 1}`);
+}
+
+function resolveRoverIds() {
+  const globalConfig = window.LSOAS_CONFIG || {};
+  const configuredIds = globalConfig.roverIds;
+  if (Array.isArray(configuredIds) && configuredIds.length > 0) {
+    return configuredIds
+      .map((id) => String(id || "").trim())
+      .filter((id) => id.length > 0);
+  }
+
+  const params = new URLSearchParams(window.location.search || "");
+  const roverCount = Number(params.get("rovers"));
+  if (Number.isFinite(roverCount)) {
+    return buildRoverIds(roverCount);
+  }
+
+  return [...DEFAULT_ROVER_IDS];
+}
+
+function parseBoundedNumber(rawValue, fallback, min, max) {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function parseRoverMap(rawValue, parser) {
+  if (!rawValue) return {};
+
+  const parsed = {};
+  rawValue
+    .split(",")
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0)
+    .forEach((chunk) => {
+      const [roverIdRaw, roverValueRaw] = chunk.split(":");
+      const roverId = String(roverIdRaw || "").trim();
+      if (!roverId) return;
+      const roverValue = parser(String(roverValueRaw || "").trim());
+      if (roverValue === null || roverValue === undefined) return;
+      parsed[roverId] = roverValue;
+    });
+
+  return parsed;
+}
+
+function resolveRuntimeOptions() {
+  const params = new URLSearchParams(window.location.search || "");
+
+  return {
+    baseLatency: parseBoundedNumber(params.get("latency"), 1.3, 0, 10),
+    jitter: parseBoundedNumber(params.get("jitter"), 0.2, 0, 5),
+    dropRate: parseBoundedNumber(params.get("drop"), 5, 0, 100),
+    faultProbability: parseBoundedNumber(params.get("fault"), 10, 0, 100),
+    batteryByRover: parseRoverMap(params.get("battery"), (raw) => {
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return null;
+      const normalized = value > 1 ? value / 100 : value;
+      return Math.max(0, Math.min(1, normalized));
+    }),
+    stateByRover: parseRoverMap(params.get("state"), (raw) =>
+      String(raw || "")
+        .trim()
+        .toUpperCase(),
+    ),
+  };
+}
 
 function roverTopic(roverId, channel) {
   return `${roverId}:${channel}`;
@@ -576,13 +652,15 @@ class TelemetryMonitor {
 // ─── Simulation Controller ───
 class SimulationController {
   constructor() {
+    const roverIds = resolveRoverIds();
+    const runtimeOptions = resolveRuntimeOptions();
     this.bus = new EventBus();
     this.config = {
-      baseLatency: 1.3,
-      jitter: 0.2,
-      dropRate: 5,
-      faultProbability: 10,
-      roverIds: [...DEFAULT_ROVER_IDS],
+      baseLatency: runtimeOptions.baseLatency,
+      jitter: runtimeOptions.jitter,
+      dropRate: runtimeOptions.dropRate,
+      faultProbability: runtimeOptions.faultProbability,
+      roverIds,
     };
 
     this.startTime = Date.now();
@@ -595,9 +673,49 @@ class SimulationController {
           this.getInitialPositionForRover(index),
         ),
     );
+    this.applyRoverRuntimeOverrides(runtimeOptions);
     this.spaceLink = new SpaceLinkNode(this.bus, this.config);
     this.earth = new EarthNode(this.bus, this.config);
     this.telemetryMonitor = new TelemetryMonitor(this.bus, this.earth);
+  }
+
+  applyRoverRuntimeOverrides(runtimeOptions) {
+    const roversById = new Map(this.rovers.map((rover) => [rover.roverId, rover]));
+    const validStates = new Set([
+      RoverNode.STATE_IDLE,
+      RoverNode.STATE_EXECUTING,
+      RoverNode.STATE_SAFE_MODE,
+      RoverNode.STATE_ERROR,
+    ]);
+
+    Object.entries(runtimeOptions.batteryByRover || {}).forEach(
+      ([roverId, batteryLevel]) => {
+        const rover = roversById.get(roverId);
+        if (!rover) return;
+        rover.batteryLevel = batteryLevel;
+      },
+    );
+
+    Object.entries(runtimeOptions.stateByRover || {}).forEach(
+      ([roverId, state]) => {
+        const rover = roversById.get(roverId);
+        if (!rover) return;
+        if (!validStates.has(state)) return;
+
+        rover.state = state;
+        rover.taskCounter = 0;
+        rover.currentTaskId =
+          state === RoverNode.STATE_EXECUTING
+            ? `PRESET-${roverId.toUpperCase()}`
+            : null;
+
+        if (state === RoverNode.STATE_SAFE_MODE || state === RoverNode.STATE_ERROR) {
+          if (!rover.lastFault) rover.lastFault = `Preset ${state}`;
+        } else {
+          rover.lastFault = null;
+        }
+      },
+    );
   }
 
   getInitialPositionForRover(index) {
