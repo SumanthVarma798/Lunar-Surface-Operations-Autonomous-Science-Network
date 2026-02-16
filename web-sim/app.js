@@ -104,6 +104,8 @@
     telemetryFeed: $("#telemetry-feed"),
     telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
+    viewOrbitalBtn: $("#btn-view-orbital"),
+    viewAstronautBtn: $("#btn-view-astronaut"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -137,6 +139,39 @@
   const pinnedRoverIds = new Set();
   let roverTargetMode = AUTO_ROVER_MODE;
   let showAllRovers = false;
+
+  function setViewModeButtonState(mode) {
+    const orbitalActive = mode === "orbital";
+    if (dom.viewOrbitalBtn) {
+      dom.viewOrbitalBtn.classList.toggle("active", orbitalActive);
+      dom.viewOrbitalBtn.setAttribute("aria-pressed", orbitalActive ? "true" : "false");
+    }
+    if (dom.viewAstronautBtn) {
+      dom.viewAstronautBtn.classList.toggle("active", !orbitalActive);
+      dom.viewAstronautBtn.setAttribute("aria-pressed", !orbitalActive ? "true" : "false");
+    }
+  }
+
+  function setVisualizationMode(mode) {
+    if (!viz || typeof viz.setViewMode !== "function") return;
+    viz.setViewMode(mode);
+  }
+
+  if (dom.viewOrbitalBtn) {
+    dom.viewOrbitalBtn.addEventListener("click", () => setVisualizationMode("orbital"));
+  }
+  if (dom.viewAstronautBtn) {
+    dom.viewAstronautBtn.addEventListener("click", () => setVisualizationMode("astronaut"));
+  }
+  setViewModeButtonState("orbital");
+  if (!viz) {
+    if (dom.viewOrbitalBtn) dom.viewOrbitalBtn.disabled = true;
+    if (dom.viewAstronautBtn) dom.viewAstronautBtn.disabled = true;
+  }
+
+  bus.on("viz:view-mode", (payload) => {
+    setViewModeButtonState(payload?.mode === "astronaut" ? "astronaut" : "orbital");
+  });
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, value));
@@ -597,12 +632,22 @@
     const params = new URLSearchParams(window.location.search || "");
     const scenario = String(params.get("scenario") || "").toLowerCase();
     const taskId = (params.get("task") || dom.taskIdInput?.value || "TASK-001").trim();
+    const requestedView = String(params.get("view") || "").toLowerCase();
+    const open3d = String(params.get("open3d") || "").toLowerCase();
     const delayMs = Math.max(
       0,
       Math.round(Number(params.get("delay_ms")) || 1800),
     );
 
     if (dom.taskIdInput && taskId) dom.taskIdInput.value = taskId;
+
+    if (open3d === "1" || open3d === "true" || open3d === "yes") {
+      setTimeout(() => set3DPanel(true), 80);
+    }
+
+    if (requestedView === "orbital" || requestedView === "astronaut") {
+      setTimeout(() => setVisualizationMode(requestedView), 120);
+    }
 
     const theme = String(params.get("theme") || "").toLowerCase();
     if (theme === "light") {
