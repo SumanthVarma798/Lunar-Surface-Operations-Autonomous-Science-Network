@@ -28,7 +28,9 @@ class VisualizationController {
 
     this.viewMode = "orbital";
     this.orbitalDistance = 8.4;
-    this.astronautPitch = 2.45;
+    this.astronautPitch = 0.09;
+    this.astronautHeight = 0.018;
+    this.astronautShoulderOffset = 0.009;
     this.lastFrameTs = performance.now();
 
     this.dragState = {
@@ -56,9 +58,13 @@ class VisualizationController {
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
     this.tmpVecC = new THREE.Vector3();
+    this.tmpVecD = new THREE.Vector3();
+    this.tmpVecE = new THREE.Vector3();
+    this.tmpQuatA = new THREE.Quaternion();
     this.tmpColor = new THREE.Color();
     this.worldUp = new THREE.Vector3(0, 1, 0);
-    this.earthAnchor = new THREE.Vector3(8.4, 3.2, 6.8);
+    this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
+    this.earthAnchor = this.earthAnchorOrbital.clone();
 
     this.init();
     this.bindBus();
@@ -75,7 +81,7 @@ class VisualizationController {
     this.camera = new THREE.PerspectiveCamera(
       42,
       this.width / this.height,
-      0.02,
+      0.003,
       100,
     );
 
@@ -131,26 +137,19 @@ class VisualizationController {
 
   createMoon() {
     const geometry = new THREE.SphereGeometry(this.MOON_RADIUS, 96, 96);
-    const textureLoader = new THREE.TextureLoader();
-    const colorMap = textureLoader.load(
-      "assets/nasa/moon-nasa.jpg",
-    );
-    colorMap.colorSpace = THREE.SRGBColorSpace;
-    colorMap.anisotropy = Math.min(
-      14,
-      this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
-    );
+    const colorMap = this.createProceduralMoonTexture();
 
     const material = new THREE.MeshStandardMaterial({
       map: colorMap,
       bumpMap: colorMap,
-      bumpScale: 0.084,
-      roughness: 0.96,
+      bumpScale: 0.03,
+      roughness: 0.94,
       metalness: 0.01,
     });
 
     this.moon = new THREE.Mesh(geometry, material);
     this.rootGroup.add(this.moon);
+    this.upgradeMoonTexture(material);
 
     const glow = new THREE.Mesh(
       new THREE.SphereGeometry(this.MOON_RADIUS * 1.045, 64, 64),
@@ -172,6 +171,79 @@ class VisualizationController {
       mesh: this.moon,
       mass: Infinity,
     });
+  }
+
+  createProceduralMoonTexture() {
+    const width = 2048;
+    const height = 1024;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+
+    const image = ctx.createImageData(width, height);
+    const data = image.data;
+    for (let y = 0; y < height; y += 1) {
+      const v = y / height;
+      for (let x = 0; x < width; x += 1) {
+        const i = (y * width + x) * 4;
+        const u = x / width;
+        const grain = 10 * (Math.sin(u * 85) + Math.cos(v * 51)) + 12 * Math.sin((u + v) * 41);
+        const shade = Math.round(112 + grain + Math.random() * 18);
+        data[i] = shade;
+        data[i + 1] = shade;
+        data[i + 2] = shade + 3;
+        data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+
+    for (let c = 0; c < 520; c += 1) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const r = 3 + Math.random() * 30;
+      const ring = ctx.createRadialGradient(x, y, 0, x, y, r);
+      ring.addColorStop(0, "rgba(235,235,235,0.16)");
+      ring.addColorStop(0.55, "rgba(170,170,170,0.14)");
+      ring.addColorStop(1, "rgba(70,70,70,0)");
+      ctx.fillStyle = ring;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(
+      14,
+      this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
+    );
+    return texture;
+  }
+
+  upgradeMoonTexture(material) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(
+      "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg",
+      (colorMap) => {
+        colorMap.colorSpace = THREE.SRGBColorSpace;
+        colorMap.anisotropy = Math.min(
+          14,
+          this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
+        );
+        material.map = colorMap;
+        material.bumpMap = colorMap;
+        material.bumpScale = 0.022;
+        material.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "⚠️ External moon texture unavailable, using procedural lunar albedo",
+        });
+      },
+    );
   }
 
   loadCuriosityModel() {
@@ -287,23 +359,33 @@ class VisualizationController {
   createEarthBase() {
     const baseGroup = new THREE.Group();
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 24, 24),
+      new THREE.SphereGeometry(0.18, 26, 26),
       new THREE.MeshStandardMaterial({
-        color: 0x7dd3fc,
-        emissive: 0x0b2f40,
-        emissiveIntensity: 0.6,
-        roughness: 0.4,
-        metalness: 0.2,
+        color: 0x93c5fd,
+        emissive: 0x1d4e89,
+        emissiveIntensity: 0.55,
+        roughness: 0.36,
+        metalness: 0.08,
       }),
     );
     baseGroup.add(core);
 
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 18, 18),
+    const cloudBand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.186, 20, 20),
       new THREE.MeshBasicMaterial({
-        color: 0x22d3ee,
+        color: 0xe0f2fe,
         transparent: true,
-        opacity: 0.24,
+        opacity: 0.17,
+      }),
+    );
+    baseGroup.add(cloudBand);
+
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.26, 18, 18),
+      new THREE.MeshBasicMaterial({
+        color: 0x67e8f9,
+        transparent: true,
+        opacity: 0.22,
         blending: THREE.AdditiveBlending,
       }),
     );
@@ -753,22 +835,90 @@ class VisualizationController {
     const next = mode === "astronaut" ? "astronaut" : "orbital";
     this.viewMode = next;
     this.container.classList.toggle("view-astronaut", next === "astronaut");
+    this.satellites.forEach((sat) => {
+      sat.orbitPath.visible = next === "orbital";
+    });
     this.updateCamera(true);
     this.updateMetaText();
     if (emitEvent) this.bus.emit("viz:view-mode", { mode: next });
+  }
+
+  getViewAnchorLocal() {
+    if (this.selectedRoverId && this.rovers.has(this.selectedRoverId)) {
+      return this.rovers.get(this.selectedRoverId).group.position;
+    }
+    if (this.rovers.size > 0) {
+      return this.rovers.values().next().value.group.position;
+    }
+    return null;
+  }
+
+  updateOrbitalCamera() {
+    this.camera.fov = 35;
+    this.camera.position.set(0, 0, this.orbitalDistance);
+    this.camera.lookAt(0, 0, 0);
+
+    if (!this.earthAnchor.equals(this.earthAnchorOrbital)) {
+      this.earthAnchor.copy(this.earthAnchorOrbital);
+      if (this.earthBase) this.earthBase.position.copy(this.earthAnchor);
+    }
+    if (this.earthBase) this.earthBase.scale.setScalar(1);
+  }
+
+  updateAstronautCamera() {
+    const anchorLocal = this.getViewAnchorLocal();
+    if (!anchorLocal) {
+      this.camera.fov = 40;
+      this.camera.position.set(0, 2.2, 4.2);
+      this.camera.lookAt(0, 0, 0);
+      return;
+    }
+
+    const rootQuat = this.rootGroup.quaternion;
+    const normalWorld = this.tmpVecA.copy(anchorLocal).applyQuaternion(rootQuat).normalize();
+    const surfaceWorld = this.tmpVecB.copy(normalWorld).multiplyScalar(this.MOON_RADIUS + this.ROVER_SURFACE_OFFSET);
+
+    const horizonRef = Math.abs(normalWorld.dot(this.worldUp)) > 0.94
+      ? this.tmpVecC.set(1, 0, 0)
+      : this.tmpVecC.copy(this.worldUp);
+    const rightWorld = this.tmpVecD.crossVectors(horizonRef, normalWorld).normalize();
+    const forwardWorld = this.tmpVecE.crossVectors(normalWorld, rightWorld).normalize();
+
+    const lookDir = forwardWorld.clone().applyAxisAngle(rightWorld, this.astronautPitch).normalize();
+    const eye = surfaceWorld
+      .clone()
+      .addScaledVector(normalWorld, this.astronautHeight)
+      .addScaledVector(rightWorld, this.astronautShoulderOffset);
+
+    this.camera.fov = 52;
+    this.camera.position.copy(eye);
+    this.camera.lookAt(eye.clone().addScaledVector(lookDir, 3.6));
+
+    this.updateEarthForAstronautView(normalWorld, rightWorld, forwardWorld);
+  }
+
+  updateEarthForAstronautView(normalWorld, rightWorld, forwardWorld) {
+    if (!this.earthBase) return;
+
+    const earthDirectionWorld = this.tmpVecA
+      .copy(forwardWorld)
+      .applyAxisAngle(rightWorld, 0.065)
+      .applyAxisAngle(normalWorld, -0.34)
+      .normalize();
+
+    this.tmpQuatA.copy(this.rootGroup.quaternion).invert();
+    this.earthAnchor.copy(earthDirectionWorld).applyQuaternion(this.tmpQuatA).multiplyScalar(10.4);
+    this.earthBase.position.copy(this.earthAnchor);
+    this.earthBase.scale.setScalar(1.22);
   }
 
   updateCamera(force = false) {
     if (!this.camera) return;
 
     if (this.viewMode === "orbital") {
-      this.camera.fov = 35;
-      this.camera.position.set(0, 0, this.orbitalDistance);
-      this.camera.lookAt(0, 0, 0);
+      this.updateOrbitalCamera();
     } else {
-      this.camera.fov = 34;
-      this.camera.position.set(0, 4.05, 4.9);
-      this.camera.lookAt(0, -this.astronautPitch, 0);
+      this.updateAstronautCamera();
     }
 
     if (force) this.camera.updateProjectionMatrix();
@@ -838,8 +988,8 @@ class VisualizationController {
         } else {
           this.astronautPitch = THREE.MathUtils.clamp(
             this.astronautPitch + e.deltaY * 0.0009,
-            1.55,
-            3.1,
+            -0.12,
+            0.38,
           );
         }
         this.updateCamera();
@@ -989,11 +1139,13 @@ class VisualizationController {
     }
 
     const linkStatus = { total: 0, clear: 0, blocked: 0 };
+    const hideVisualLinks = this.viewMode === "astronaut";
 
     this.satellites.forEach((sat) => {
       const satPos = sat.body.position;
       const earthBlocked = this.isLineOfSightBlocked(satPos, this.earthAnchor);
       this.updateBeam(sat.linkToEarth, satPos, this.earthAnchor, earthBlocked);
+      if (hideVisualLinks) sat.linkToEarth.visible = false;
       linkStatus.total += 1;
       if (earthBlocked) linkStatus.blocked += 1;
       else linkStatus.clear += 1;
@@ -1003,6 +1155,7 @@ class VisualizationController {
           allowEndSurfaceTouch: true,
         });
         this.updateBeam(sat.linkToRover, satPos, selectedPos, roverBlocked);
+        if (hideVisualLinks) sat.linkToRover.visible = false;
         linkStatus.total += 1;
         if (roverBlocked) linkStatus.blocked += 1;
         else linkStatus.clear += 1;
@@ -1017,6 +1170,7 @@ class VisualizationController {
       if (!satA || !satB) return;
       const blocked = this.isLineOfSightBlocked(satA.body.position, satB.body.position);
       this.updateBeam(link.beam, satA.body.position, satB.body.position, blocked);
+      if (hideVisualLinks) link.beam.visible = false;
       linkStatus.total += 1;
       if (blocked) linkStatus.blocked += 1;
       else linkStatus.clear += 1;
