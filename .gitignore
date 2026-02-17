@@ -31,3 +31,6 @@ Thumbs.db
 
 # ─── Node (if web-sim ever uses npm) ───
 node_modules/
+
+# ─── Agent local artifacts ───
+.agent/artifacts/

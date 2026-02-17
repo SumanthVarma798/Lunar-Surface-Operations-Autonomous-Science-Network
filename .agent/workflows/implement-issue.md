@@ -79,7 +79,9 @@ Prerequisite: run `gh auth login` once on your machine before using `gh` command
      --single-select-option-id <IN_REVIEW_OPTION_ID>
    ```
 
-10. **Create walkthrough artifact** with what changed, test evidence, and screenshots if UI changed.
+10. **Create walkthrough artifact** in `.agent/artifacts/` with what changed, test evidence, and screenshots if UI changed.
+    - Treat it as local working output unless maintainers explicitly ask to commit it.
+    - Put the key summary in the PR description/comment so reviewers do not depend on local files.
 
 11. **Release path**:
    - After issue PRs are merged into `dev`, promote via gated PR `dev -> staging`.

@@ -256,6 +256,16 @@ Deployment workflow file:
 
 ---
 
+## Agent Workflows
+
+This repository includes a committed agent playbook so local clones and forks behave consistently.
+
+- `AGENTS.md` is the repository-level entrypoint for coding agents.
+- `.agent/workflows/` contains the canonical branch/PR, implementation, and release runbooks.
+- `.agent/artifacts/` is local scratch space for generated plans/walkthrough notes and is intentionally not committed.
+
+---
+
 ## Roadmap Status
 
 ### Phase 1 (Complete)
