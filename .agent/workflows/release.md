@@ -33,6 +33,7 @@ Promotion chain is always:
 - No force pushes to `dev`, `staging`, or `main`
 - Branch protection enabled with required checks on `staging` and `main`
 - All PR merges should be non-interactive and traceable
+- `develop` is legacy and excluded from the release train
 - Treat `master` references as `main` in this repository
 
 ## 0. One-time branch setup (if missing)

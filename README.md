@@ -237,6 +237,8 @@ Environment mapping:
 - `staging` -> production replica and release gate
 - `main` -> production
 
+`develop` is now legacy for this repository and should not receive new feature PRs.
+
 CI triggers on `dev`, `staging`, and `main`.
 
 ---

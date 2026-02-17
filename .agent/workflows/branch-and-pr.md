@@ -13,6 +13,8 @@ Follow this process for every feature, fix, or docs change.
 - `main`: production branch (deploys to Prod)
 - `codex/*`: short-lived feature branches created from `dev`
 
+`develop` is legacy and should not receive new feature PRs.
+
 Normal feature work must not target `staging` or `main` directly.
 
 ## 1. Sync local branches
