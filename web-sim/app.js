@@ -200,19 +200,35 @@
 
   function syncAccordionLayoutMode(compact) {
     const leftBlocks = getAccordionBlocks("left-orbital");
-    if (leftBlocks.length === 0) return;
+    const telemetryBlocks = getAccordionBlocks("telemetry-orbital");
 
-    configureAccordionGroup("left-orbital", { singleOpen: compact });
-
-    if (compact) {
-      leftBlocks.forEach((block) => setAccordionBlockOpen(block, false));
-      return;
+    if (leftBlocks.length > 0) {
+      configureAccordionGroup("left-orbital", { singleOpen: compact });
+      if (compact) {
+        leftBlocks.forEach((block) => setAccordionBlockOpen(block, false));
+      } else {
+        leftBlocks.forEach((block) => {
+          const defaultOpen = block.dataset.defaultOpen !== "false";
+          setAccordionBlockOpen(block, defaultOpen);
+        });
+      }
     }
 
-    leftBlocks.forEach((block) => {
-      const defaultOpen = block.dataset.defaultOpen !== "false";
-      setAccordionBlockOpen(block, defaultOpen);
-    });
+    if (telemetryBlocks.length > 0) {
+      configureAccordionGroup("telemetry-orbital", { singleOpen: compact });
+      if (compact) {
+        telemetryBlocks.forEach((block) => setAccordionBlockOpen(block, false));
+        const preferred = telemetryBlocks.find(
+          (block) => block.id === "telemetry-stream-block",
+        );
+        setAccordionBlockOpen(preferred || telemetryBlocks[0], true);
+      } else {
+        telemetryBlocks.forEach((block) => {
+          const defaultOpen = block.dataset.defaultOpen !== "false";
+          setAccordionBlockOpen(block, defaultOpen);
+        });
+      }
+    }
   }
 
   function initializeAccordions() {
@@ -225,6 +241,7 @@
       setAccordionBlockOpen(block, isOpen);
     });
     configureAccordionGroup("right-controls", { singleOpen: false });
+    configureAccordionGroup("telemetry-orbital", { singleOpen: false });
     syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
   }
 
@@ -615,7 +632,10 @@
       .join("");
   }
 
-  function applyMissionStepToControls(step, { announce = false } = {}) {
+  function applyMissionStepToControls(
+    step,
+    { announce = false, forceTaskId = false } = {},
+  ) {
     if (!step) return;
 
     if (dom.taskTypeSelect && step.task_type && dom.taskTypeSelect.querySelector(`option[value="${step.task_type}"]`)) {
@@ -632,7 +652,12 @@
       dom.targetSiteInput.value = step.target_site || getActiveMissionPreset().default_target_site || "";
     }
     setMissionGuidePhase(step.mission_phase || getActiveMissionPreset().mission_phase);
-    syncTaskIdInput();
+    if (forceTaskId) {
+      taskIdDirty = false;
+      syncTaskIdInput({ force: true });
+    } else {
+      syncTaskIdInput();
+    }
     renderMissionStepList();
 
     if (announce) {
@@ -661,7 +686,10 @@
     setMissionGuidePhase(preset.mission_phase);
     renderMissionBrief();
     renderMissionStepList();
-    applyMissionStepToControls(getActiveMissionStep(), { announce: false });
+    applyMissionStepToControls(getActiveMissionStep(), {
+      announce: false,
+      forceTaskId: true,
+    });
 
     if (announce) {
       addFeedLine("system", `🛰️ Mission preset loaded: ${preset.title}`);
@@ -672,7 +700,10 @@
     const steps = getMissionStepList();
     if (steps.length === 0) return;
     missionGuideState.activeStepIndex = Math.max(0, Math.min(index, steps.length - 1));
-    applyMissionStepToControls(getActiveMissionStep(), { announce });
+    applyMissionStepToControls(getActiveMissionStep(), {
+      announce,
+      forceTaskId: true,
+    });
   }
 
   function moveMissionActiveStep(delta) {
@@ -700,7 +731,10 @@
     }
 
     missionGuideState.activeStepIndex = missionGuideState.completedCount;
-    applyMissionStepToControls(getActiveMissionStep(), { announce: false });
+    applyMissionStepToControls(getActiveMissionStep(), {
+      announce: false,
+      forceTaskId: true,
+    });
   }
 
   function ensureDispatchTaskId() {
@@ -1730,7 +1764,10 @@
 
   if (dom.missionApplyBtn) {
     dom.missionApplyBtn.addEventListener("click", () => {
-      applyMissionStepToControls(getActiveMissionStep(), { announce: true });
+      applyMissionStepToControls(getActiveMissionStep(), {
+        announce: true,
+        forceTaskId: true,
+      });
       pulseButton(dom.missionApplyBtn);
     });
   }
