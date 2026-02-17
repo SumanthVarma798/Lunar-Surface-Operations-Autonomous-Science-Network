@@ -1,84 +1,115 @@
 ---
-description: How to create a feature branch, commit changes, and raise a PR
+description: How to create a feature branch, commit changes, and raise a PR using main + develop
 ---
 
-# Feature Branch & PR Workflow
+# Feature Branch and PR Workflow
 
-Follow this process for **every new feature or change**.
+Follow this process for every feature, fix, or docs change.
 
-## 1. Start from latest main
+## Branch model
+
+- `main`: production/release branch
+- `develop`: integration branch for day-to-day work
+- `codex/*`: feature branches created from `develop`
+
+Do not open normal feature PRs directly into `main`.
+
+## 1. Sync local branches
 
 // turbo
 
 ```bash
-git checkout main && git pull origin main
+git fetch origin
+git checkout main
+git pull --ff-only origin main
 ```
 
-## 2. Create a feature branch
-
-Use the naming convention: `feature/<short-description>`, `fix/<short-description>`, or `chore/<short-description>`
+If `develop` does not exist locally, create it from `origin/main`:
 
 ```bash
-git checkout -b feature/<branch-name>
+git checkout -b develop origin/main
+git push -u origin develop
 ```
 
-## 3. Make changes
+If `develop` already exists, sync it with:
 
-Implement the feature, fix, or chore.
+```bash
+git checkout develop
+git pull --ff-only origin develop
+```
 
-## 4. Stage and commit changes
+## 2. Create a working branch from develop
 
-Use **conventional commit** messages:
+Use `codex/<short-kebab-description>`.
 
-- `feat:` for new features
-- `fix:` for bug fixes
-- `chore:` for maintenance/cleanup
-- `docs:` for documentation
-- `refactor:` for code restructuring
+```bash
+git checkout develop
+git pull --ff-only origin develop
+git checkout -b codex/<branch-name>
+```
+
+## 3. Implement and verify
+
+- Make the required changes.
+- Run relevant tests/lint checks before committing.
+- Keep commits atomic.
+
+## 4. Stage and commit
+
+Use conventional commits:
+
+- `feat:` new functionality
+- `fix:` bug fix
+- `docs:` documentation changes
+- `refactor:` internal restructuring
+- `chore:` maintenance
 
 ```bash
 git add <files>
-git commit -m "feat: short description of what changed"
+git commit -m "feat: short description"
 ```
 
-## 5. Push the branch
+## 5. Push branch
 
 ```bash
-git push -u origin feature/<branch-name>
+git push -u origin codex/<branch-name>
 ```
 
-## 6. Create a Pull Request
-
-If `gh` CLI is authenticated:
+## 6. Open PR to develop
 
 ```bash
-gh pr create --title "feat: Title" --body "Description" --base main
+export GH_CONFIG_DIR=/Users/varma/.gh_config
+
+gh pr create \
+  -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
+  --base develop \
+  --head codex/<branch-name> \
+  --title "feat: short PR title" \
+  --body "Summary of what changed and why"
 ```
 
-Otherwise, open the PR URL printed by git push:
-
-```
-https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/pull/new/<branch-name>
-```
-
-## 7. After PR is merged
+## 7. After merge
 
 // turbo
 
 ```bash
-git checkout main && git pull origin main
+git checkout develop
+git pull --ff-only origin develop
+git checkout main
+git pull --ff-only origin main
+git branch -d codex/<branch-name>
 ```
 
-Then delete the local branch:
-// turbo
+## 8. Release promotion
 
-```bash
-git branch -d feature/<branch-name>
-```
+When a release is ready, open `develop -> main` release PR.
+
+Use:
+
+- `.agent/workflows/release.md`
 
 ## Notes
 
-- Always commit working code — don't commit broken states
-- Keep commits atomic — one logical change per commit
-- Write descriptive PR bodies explaining what changed and why
-- Build/install/log artifacts are gitignored and should never be committed
+- Never force-push to `main` or `develop`.
+- Never commit directly to `main` unless doing an approved hotfix.
+- If a hotfix goes to `main`, merge it back into `develop` immediately.
