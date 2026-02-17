@@ -695,13 +695,14 @@ body.three-panel-open .panel-telemetry.compact-log {
   transform: none;
   grid-column: 1;
   grid-row: 2;
-  align-self: start;
+  align-self: stretch;
   min-height: 0;
 }
 
 body.three-panel-open .telemetry-dropdown-stack {
   gap: 6px;
   padding: 0 var(--sp-sm) var(--sp-sm);
+  height: 100%;
 }
 
 body.three-panel-open .telemetry-dropdown-stack .dropdown-toggle {
@@ -719,6 +720,15 @@ body.three-panel-open .telemetry-dropdown-stack .dropdown-meta {
 body.three-panel-open .telemetry-dropdown-stack .dropdown-content {
   max-height: none;
   padding: 0 6px 6px;
+}
+
+body.three-panel-open #telemetry-stream-block .dropdown-content:not([hidden]) {
+  overflow: hidden;
+}
+
+body.three-panel-open #telemetry-stream-block .telemetry-feed {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 body.three-panel-open .panel-topology {
