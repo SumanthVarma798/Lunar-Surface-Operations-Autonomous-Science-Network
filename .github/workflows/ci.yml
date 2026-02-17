@@ -1,13 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# LSOAS CI Pipeline — runs on PRs/pushes to main and develop
+# LSOAS CI Pipeline — runs on PRs/pushes to dev, staging, and main
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI — Lint, Build & Health Checks
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, staging, dev]
   push:
-    branches: [main, develop]
+    branches: [main, staging, dev]
 
 concurrency:
   group: ci-${{ github.ref }}

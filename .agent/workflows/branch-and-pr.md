@@ -1,84 +1,112 @@
 ---
-description: How to create a feature branch, commit changes, and raise a PR
+description: How to create a feature branch, commit changes, and raise PRs with dev, staging, and production branches
 ---
 
-# Feature Branch & PR Workflow
+# Feature Branch and PR Workflow
 
-Follow this process for **every new feature or change**.
+Follow this process for every feature, fix, or docs change.
 
-## 1. Start from latest main
+## Branch and environment model
+
+- `dev`: integration branch for daily development (deploys to Dev environment)
+- `staging`: production replica and release gate (deploys to Staging)
+- `main`: production branch (deploys to Prod)
+- `codex/*`: short-lived feature branches created from `dev`
+
+`develop` is legacy and should not receive new feature PRs.
+
+Normal feature work must not target `staging` or `main` directly.
+
+## 1. Sync local branches
 
 // turbo
 
 ```bash
-git checkout main && git pull origin main
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git checkout staging || git checkout -b staging origin/main
+git push -u origin staging || true
+git pull --ff-only origin staging
+git checkout dev || git checkout -b dev origin/staging || git checkout -b dev staging
+git push -u origin dev || true
+git pull --ff-only origin dev
 ```
 
-## 2. Create a feature branch
+## 2. Create a working branch from dev
 
-Use the naming convention: `feature/<short-description>`, `fix/<short-description>`, or `chore/<short-description>`
+Use `codex/<short-kebab-description>`.
 
 ```bash
-git checkout -b feature/<branch-name>
+git checkout dev
+git pull --ff-only origin dev
+git checkout -b codex/<branch-name>
 ```
 
-## 3. Make changes
+## 3. Implement and verify
 
-Implement the feature, fix, or chore.
+- Make required changes.
+- Run relevant tests/lint checks before committing.
+- Keep commits small and reviewable.
 
-## 4. Stage and commit changes
+## 4. Stage and commit
 
-Use **conventional commit** messages:
+Use conventional commits:
 
-- `feat:` for new features
-- `fix:` for bug fixes
-- `chore:` for maintenance/cleanup
-- `docs:` for documentation
-- `refactor:` for code restructuring
+- `feat:` new functionality
+- `fix:` bug fix
+- `docs:` documentation changes
+- `refactor:` internal restructuring
+- `chore:` maintenance
 
 ```bash
 git add <files>
-git commit -m "feat: short description of what changed"
+git commit -m "feat: short description"
 ```
 
-## 5. Push the branch
+## 5. Push branch
 
 ```bash
-git push -u origin feature/<branch-name>
+git push -u origin codex/<branch-name>
 ```
 
-## 6. Create a Pull Request
-
-If `gh` CLI is authenticated:
+## 6. Open PR to dev
 
 ```bash
-gh pr create --title "feat: Title" --body "Description" --base main
+export GH_CONFIG_DIR=/Users/varma/.gh_config
+
+gh pr create \
+  -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
+  --base dev \
+  --head codex/<branch-name> \
+  --title "feat: short PR title" \
+  --body "Summary of what changed and why"
 ```
 
-Otherwise, open the PR URL printed by git push:
+## 7. Promotion flow
 
-```
-https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/pull/new/<branch-name>
-```
+- Merge approved feature PRs into `dev`.
+- Batch and gate releases with PR `dev -> staging`.
+- Promote only validated staging builds with PR `staging -> main`.
 
-## 7. After PR is merged
+Use `.agent/workflows/release.md` for full release steps.
+
+## 8. After merge
 
 // turbo
 
 ```bash
-git checkout main && git pull origin main
-```
-
-Then delete the local branch:
-// turbo
-
-```bash
-git branch -d feature/<branch-name>
+git checkout dev
+git pull --ff-only origin dev
+git checkout staging
+git pull --ff-only origin staging
+git checkout main
+git pull --ff-only origin main
+git branch -d codex/<branch-name>
 ```
 
 ## Notes
 
-- Always commit working code — don't commit broken states
-- Keep commits atomic — one logical change per commit
-- Write descriptive PR bodies explaining what changed and why
-- Build/install/log artifacts are gitignored and should never be committed
+- Never force-push to `dev`, `staging`, or `main`.
+- Never commit directly to `main` for normal work.
+- If a hotfix lands on `main`, forward-merge it into `staging` and then `dev` immediately.
