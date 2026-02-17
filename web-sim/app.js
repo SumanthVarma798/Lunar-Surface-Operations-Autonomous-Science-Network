@@ -104,7 +104,6 @@
     telemetryFeed: $("#telemetry-feed"),
     telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
-    viewOrbitalBtn: $("#btn-view-orbital"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -139,30 +138,11 @@
   let roverTargetMode = AUTO_ROVER_MODE;
   let showAllRovers = false;
 
-  function setViewModeButtonState(mode) {
-    const orbitalActive = mode === "orbital";
-    if (dom.viewOrbitalBtn) {
-      dom.viewOrbitalBtn.classList.toggle("active", orbitalActive);
-      dom.viewOrbitalBtn.setAttribute("aria-pressed", orbitalActive ? "true" : "false");
-    }
-  }
-
-  function setVisualizationMode(mode) {
+  function setVisualizationMode() {
     if (!viz || typeof viz.setViewMode !== "function") return;
     viz.setViewMode("orbital");
   }
-
-  if (dom.viewOrbitalBtn) {
-    dom.viewOrbitalBtn.addEventListener("click", () => setVisualizationMode("orbital"));
-  }
-  setViewModeButtonState("orbital");
-  if (!viz) {
-    if (dom.viewOrbitalBtn) dom.viewOrbitalBtn.disabled = true;
-  }
-
-  bus.on("viz:view-mode", () => {
-    setViewModeButtonState("orbital");
-  });
+  setVisualizationMode();
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, value));
@@ -637,7 +617,7 @@
     }
 
     if (requestedView === "orbital") {
-      setTimeout(() => setVisualizationMode(requestedView), 120);
+      setTimeout(() => setVisualizationMode(), 120);
     }
 
     const theme = String(params.get("theme") || "").toLowerCase();

@@ -877,23 +877,74 @@ class VisualizationController {
 
   updateMetaText() {
     const metaEl = document.getElementById("lunar-meta");
-    if (!metaEl) return;
+    const roverValueEl = document.getElementById("lunar-kpi-rover");
+    const losValueEl = document.getElementById("lunar-kpi-los");
+    const linksValueEl = document.getElementById("lunar-kpi-links");
+    const zoomValueEl = document.getElementById("lunar-kpi-zoom");
+    const fleetValueEl = document.getElementById("lunar-kpi-fleet");
+    const losCardEl = document.getElementById("lunar-kpi-los-card");
+    const linksCardEl = document.getElementById("lunar-kpi-links-card");
+    const roverCardEl = document.getElementById("lunar-kpi-rover-card");
 
-    const modeLabel = "Orbital";
-    const selectedLabel = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
-      ? this.selectedRoverId.toUpperCase()
-      : "ROVER --";
+    const setCardState = (cardEl, state) => {
+      if (!cardEl) return;
+      cardEl.classList.remove("is-good", "is-alert");
+      if (state === "good") cardEl.classList.add("is-good");
+      else if (state === "alert") cardEl.classList.add("is-alert");
+    };
 
-    if (this.linkStatus.total <= 0) {
-      metaEl.classList.remove("warning");
-      metaEl.textContent = `${modeLabel} | ${selectedLabel} | LOS pending`;
+    const selectedRover = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+      ? this.rovers.get(this.selectedRoverId)
+      : null;
+    const selectedLabel = selectedRover ? selectedRover.id.toUpperCase() : "ROVER --";
+    const roverCount = this.rovers.size;
+    const total = this.linkStatus.total;
+    const clear = this.linkStatus.clear;
+    const blocked = this.linkStatus.blocked;
+    const zoomFactor = (8.4 / Math.max(this.orbitalDistance, 0.2)).toFixed(1);
+
+    if (roverValueEl) roverValueEl.textContent = selectedLabel;
+    if (linksValueEl) linksValueEl.textContent = total > 0 ? `${clear} / ${total}` : "0 / 0";
+    if (zoomValueEl) zoomValueEl.textContent = `${zoomFactor}x`;
+    if (fleetValueEl) fleetValueEl.textContent = String(roverCount);
+
+    if (total <= 0) {
+      if (losValueEl) losValueEl.textContent = "Pending";
+      setCardState(losCardEl, null);
+      setCardState(linksCardEl, null);
+      if (metaEl) {
+        metaEl.classList.remove("warning");
+        metaEl.textContent = "Awaiting stable comm links · Drag to rotate · Scroll to zoom";
+      }
       return;
     }
 
-    const blocked = this.linkStatus.blocked;
-    const clear = this.linkStatus.clear;
-    metaEl.classList.toggle("warning", blocked > 0);
-    metaEl.textContent = `${modeLabel} | ${selectedLabel} | LOS ${clear}/${this.linkStatus.total} clear${blocked > 0 ? ` (${blocked} blocked)` : ""}`;
+    if (blocked > 0) {
+      if (losValueEl) losValueEl.textContent = `${blocked} Blocked`;
+      setCardState(losCardEl, "alert");
+      setCardState(linksCardEl, "alert");
+      if (metaEl) {
+        metaEl.classList.add("warning");
+        metaEl.textContent = "Link degradation detected · Check LOS and relay geometry";
+      }
+    } else {
+      if (losValueEl) losValueEl.textContent = "All Clear";
+      setCardState(losCardEl, "good");
+      setCardState(linksCardEl, "good");
+      if (metaEl) {
+        metaEl.classList.remove("warning");
+        metaEl.textContent = "Nominal network geometry · Drag to inspect orbit lanes";
+      }
+    }
+
+    if (selectedRover && metaEl) {
+      const lat = Number(selectedRover.lat).toFixed(2);
+      const lon = Number(selectedRover.lon).toFixed(2);
+      metaEl.textContent += ` · Focus ${selectedLabel} (${lat}, ${lon})`;
+      setCardState(roverCardEl, "good");
+    } else {
+      setCardState(roverCardEl, null);
+    }
   }
 
   setupInteraction() {
@@ -936,6 +987,7 @@ class VisualizationController {
           16.0,
         );
         this.updateCamera();
+        this.updateMetaText();
       },
       { passive: false },
     );

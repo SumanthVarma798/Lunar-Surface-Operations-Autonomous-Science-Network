@@ -229,22 +229,34 @@
       <aside id="floating-panel" aria-hidden="true">
         <div class="floating-panel-shell">
           <div class="floating-panel-header">
-          <div class="floating-panel-title-wrap">
-            <span class="floating-panel-grab" aria-hidden="true"></span>
-            <h3>Lunar Surface View</h3>
-            <span class="floating-panel-meta" id="lunar-meta"
-              >Lat --.--, Lon --.--</span
-            >
-          </div>
-            <div class="floating-view-controls" role="group" aria-label="3D View Mode">
-              <button
-                id="btn-view-orbital"
-                class="btn-sm view-mode-btn active"
-                type="button"
-                title="Orbital view"
+            <div class="floating-panel-title-wrap">
+              <span class="floating-panel-grab" aria-hidden="true"></span>
+              <h3>Orbital Mission View</h3>
+              <span class="floating-panel-meta" id="lunar-meta"
+                >Drag to rotate · Scroll to zoom</span
               >
-                Orbital
-              </button>
+            </div>
+            <div class="floating-panel-kpis" id="lunar-panel-kpis">
+              <div class="lunar-kpi" id="lunar-kpi-rover-card">
+                <span class="lunar-kpi-label">Selected</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-rover">--</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-los-card">
+                <span class="lunar-kpi-label">LOS</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-los">Pending</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-links-card">
+                <span class="lunar-kpi-label">Links</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-links">0 / 0</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Zoom</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-zoom">--</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Fleet</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-fleet">0</span>
+              </div>
             </div>
             <button
               id="btn-close-3d"
