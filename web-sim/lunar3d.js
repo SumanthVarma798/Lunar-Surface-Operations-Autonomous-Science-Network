@@ -45,7 +45,22 @@ class VisualizationController {
     this.rovers = new Map();
     this.selectedRoverId = null;
     this.collisionCounter = 0;
-    this.linkStatus = { total: 0, clear: 0, blocked: 0 };
+    this.linkStatus = {
+      total: 0,
+      clear: 0,
+      blocked: 0,
+      earthTotal: 0,
+      earthClear: 0,
+      earthBlocked: 0,
+      roverTotal: 0,
+      roverClear: 0,
+      roverBlocked: 0,
+      interTotal: 0,
+      interClear: 0,
+      interBlocked: 0,
+      hasIssue: false,
+      issueReason: "",
+    };
     this.curiosityGeometry = null;
     this.curiosityModelReady = false;
     this.curiosityModelFailed = false;
@@ -899,12 +914,19 @@ class VisualizationController {
     const selectedLabel = selectedRover ? selectedRover.id.toUpperCase() : "ROVER --";
     const roverCount = this.rovers.size;
     const total = this.linkStatus.total;
-    const clear = this.linkStatus.clear;
-    const blocked = this.linkStatus.blocked;
+    const earthTotal = this.linkStatus.earthTotal;
+    const earthClear = this.linkStatus.earthClear;
+    const roverTotal = this.linkStatus.roverTotal;
+    const roverClear = this.linkStatus.roverClear;
+    const hasIssue = Boolean(this.linkStatus.hasIssue);
     const zoomFactor = (8.4 / Math.max(this.orbitalDistance, 0.2)).toFixed(1);
 
     if (roverValueEl) roverValueEl.textContent = selectedLabel;
-    if (linksValueEl) linksValueEl.textContent = total > 0 ? `${clear} / ${total}` : "0 / 0";
+    if (linksValueEl) {
+      linksValueEl.textContent = total > 0
+        ? `E ${earthClear}/${earthTotal} · R ${roverClear}/${roverTotal}`
+        : "E 0/0 · R 0/0";
+    }
     if (zoomValueEl) zoomValueEl.textContent = `${zoomFactor}x`;
     if (fleetValueEl) fleetValueEl.textContent = String(roverCount);
 
@@ -919,21 +941,22 @@ class VisualizationController {
       return;
     }
 
-    if (blocked > 0) {
-      if (losValueEl) losValueEl.textContent = `${blocked} Blocked`;
+    if (hasIssue) {
+      if (losValueEl) losValueEl.textContent = "Issue";
       setCardState(losCardEl, "alert");
       setCardState(linksCardEl, "alert");
       if (metaEl) {
         metaEl.classList.add("warning");
-        metaEl.textContent = "Link degradation detected · Check LOS and relay geometry";
+        metaEl.textContent = this.linkStatus.issueReason || "Issue detected · Check relay geometry";
       }
     } else {
-      if (losValueEl) losValueEl.textContent = "All Clear";
+      if (losValueEl) losValueEl.textContent = "Nominal";
       setCardState(losCardEl, "good");
       setCardState(linksCardEl, "good");
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent = "Nominal network geometry · Drag to inspect orbit lanes";
+        metaEl.textContent =
+          `Nominal network geometry · Earth ${earthClear}/${earthTotal} · Rover ${roverClear}/${roverTotal}`;
       }
     }
 
@@ -1133,15 +1156,36 @@ class VisualizationController {
       selectedPos = this.rovers.values().next().value.group.position;
     }
 
-    const linkStatus = { total: 0, clear: 0, blocked: 0 };
+    const linkStatus = {
+      total: 0,
+      clear: 0,
+      blocked: 0,
+      earthTotal: 0,
+      earthClear: 0,
+      earthBlocked: 0,
+      roverTotal: 0,
+      roverClear: 0,
+      roverBlocked: 0,
+      interTotal: 0,
+      interClear: 0,
+      interBlocked: 0,
+      hasIssue: false,
+      issueReason: "",
+    };
 
     this.satellites.forEach((sat) => {
       const satPos = sat.body.position;
       const earthBlocked = this.isLineOfSightBlocked(satPos, this.earthAnchor);
       this.updateBeam(sat.linkToEarth, satPos, this.earthAnchor, earthBlocked);
       linkStatus.total += 1;
-      if (earthBlocked) linkStatus.blocked += 1;
-      else linkStatus.clear += 1;
+      linkStatus.earthTotal += 1;
+      if (earthBlocked) {
+        linkStatus.blocked += 1;
+        linkStatus.earthBlocked += 1;
+      } else {
+        linkStatus.clear += 1;
+        linkStatus.earthClear += 1;
+      }
 
       if (selectedPos) {
         const roverBlocked = this.isLineOfSightBlocked(satPos, selectedPos, {
@@ -1149,8 +1193,14 @@ class VisualizationController {
         });
         this.updateBeam(sat.linkToRover, satPos, selectedPos, roverBlocked);
         linkStatus.total += 1;
-        if (roverBlocked) linkStatus.blocked += 1;
-        else linkStatus.clear += 1;
+        linkStatus.roverTotal += 1;
+        if (roverBlocked) {
+          linkStatus.blocked += 1;
+          linkStatus.roverBlocked += 1;
+        } else {
+          linkStatus.clear += 1;
+          linkStatus.roverClear += 1;
+        }
       } else {
         sat.linkToRover.visible = false;
       }
@@ -1163,20 +1213,31 @@ class VisualizationController {
       const blocked = this.isLineOfSightBlocked(satA.body.position, satB.body.position);
       this.updateBeam(link.beam, satA.body.position, satB.body.position, blocked);
       linkStatus.total += 1;
-      if (blocked) linkStatus.blocked += 1;
-      else linkStatus.clear += 1;
+      linkStatus.interTotal += 1;
+      if (blocked) {
+        linkStatus.blocked += 1;
+        linkStatus.interBlocked += 1;
+      } else {
+        linkStatus.clear += 1;
+        linkStatus.interClear += 1;
+      }
     });
 
-    if (
-      linkStatus.total !== this.linkStatus.total
-      || linkStatus.clear !== this.linkStatus.clear
-      || linkStatus.blocked !== this.linkStatus.blocked
-    ) {
-      this.linkStatus = linkStatus;
-      this.updateMetaText();
-    } else {
-      this.linkStatus = linkStatus;
+    const earthIssue = linkStatus.earthBlocked > 2;
+    const roverIssue = linkStatus.roverTotal > 0 && linkStatus.roverClear === 0;
+    linkStatus.hasIssue = earthIssue || roverIssue;
+    if (earthIssue && roverIssue) {
+      linkStatus.issueReason = "Issue: Earth relays degraded (>2 lost) and rover unreachable";
+    } else if (earthIssue) {
+      linkStatus.issueReason = "Issue: More than 2 satellites lost Earth LOS";
+    } else if (roverIssue) {
+      linkStatus.issueReason = "Issue: Rover unreachable from all satellites";
     }
+
+    const prev = this.linkStatus;
+    const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
+    this.linkStatus = linkStatus;
+    if (changed) this.updateMetaText();
   }
 
   onResize() {
