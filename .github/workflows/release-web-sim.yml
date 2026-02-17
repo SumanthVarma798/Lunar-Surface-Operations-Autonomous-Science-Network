@@ -1,0 +1,92 @@
+name: Release - Deploy Web Simulation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (branch, tag, or SHA)"
+        required: false
+        default: "main"
+        type: string
+      deploy_target:
+        description: "Where to deploy web-sim"
+        required: true
+        default: "both"
+        type: choice
+        options:
+          - github-pages
+          - cloudflare
+          - both
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-web-sim-${{ github.event.release.tag_name || github.ref_name || 'manual' }}
+  cancel-in-progress: true
+
+env:
+  WEB_SIM_DIR: web-sim
+
+jobs:
+  prepare-artifact:
+    name: Prepare web-sim artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.ref || 'main' }}
+
+      - name: Validate static app files
+        run: |
+          test -f "${WEB_SIM_DIR}/index.html"
+          test -f "${WEB_SIM_DIR}/app.js"
+          test -f "${WEB_SIM_DIR}/simulation.js"
+          test -f "${WEB_SIM_DIR}/index.css"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.WEB_SIM_DIR }}
+
+  deploy-github-pages:
+    name: Deploy to GitHub Pages
+    if: >
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.deploy_target == 'github-pages' || inputs.deploy_target == 'both'))
+    needs: prepare-artifact
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-cloudflare-pages:
+    name: Deploy to Cloudflare Pages
+    if: >
+      (github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.deploy_target == 'cloudflare' || inputs.deploy_target == 'both')))
+      && secrets.CLOUDFLARE_API_TOKEN != ''
+      && secrets.CLOUDFLARE_ACCOUNT_ID != ''
+      && secrets.CLOUDFLARE_PAGES_PROJECT != ''
+    needs: prepare-artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.ref || 'main' }}
+
+      - name: Deploy static site with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web-sim --project-name ${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch production

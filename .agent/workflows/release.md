@@ -253,6 +253,8 @@ gh release create <VERSION> \
   --notes-file /tmp/release_notes.md
 ```
 
+Publishing the GitHub release triggers `.github/workflows/release-web-sim.yml`, which refreshes hosted `web-sim/` deployments (GitHub Pages by default, plus Cloudflare Pages when configured).
+
 ## 10. Roadmap and milestone updates
 
 After production release:
