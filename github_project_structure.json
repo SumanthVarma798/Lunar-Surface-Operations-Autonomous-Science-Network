@@ -1,75 +1,51 @@
 {
+  "generated_at_utc": "2026-02-17T02:52:52.171399+00:00",
   "project_config": {
-    "name": "LSOAS Mission Roadmap",
-    "description": "Professional development roadmap for Lunar Surface Operations Autonomous Science Network - From single rover to multi-asset space mission control system",
+    "name": "LSOAS Chandrayaan Swarm v2 Roadmap",
+    "description": "Chandrayaan-themed autonomous lunar swarm roadmap: realistic mission operations plus future base-build extensions",
     "columns": [
       {
-        "name": "\ud83d\udccb Backlog",
+        "name": "Backlog",
         "purpose": "Future work not yet prioritized"
       },
       {
-        "name": "\ud83d\udcc5 Ready",
-        "purpose": "Ready to start, prioritized"
+        "name": "Ready",
+        "purpose": "Ready to start"
       },
       {
-        "name": "\ud83d\udea7 In Progress",
+        "name": "In Progress",
         "purpose": "Currently being worked on"
       },
       {
-        "name": "\ud83d\udc40 In Review",
-        "purpose": "Awaiting code review or testing"
+        "name": "In Review",
+        "purpose": "Awaiting review and validation"
       },
       {
-        "name": "\u2705 Done",
+        "name": "Done",
         "purpose": "Completed and verified"
       }
     ]
   },
   "labels": [
     {
-      "name": "phase-1",
+      "name": "phase-v2-core",
       "color": "0E8A16",
-      "description": "Phase 1: Multi-Rover Constellation"
+      "description": "Chandrayaan v2 core architecture"
     },
     {
-      "name": "phase-2",
+      "name": "phase-v2-sim",
       "color": "1D76DB",
-      "description": "Phase 2: Resource Management"
+      "description": "Web simulation and UX"
     },
     {
-      "name": "phase-3",
+      "name": "phase-v2-docs",
       "color": "5319E7",
-      "description": "Phase 3: Ground Station Network"
+      "description": "Documentation and migration"
     },
     {
-      "name": "phase-4",
+      "name": "phase-v2-validation",
       "color": "E99695",
-      "description": "Phase 4: Mission Planning"
-    },
-    {
-      "name": "phase-5",
-      "color": "D93F0B",
-      "description": "Phase 5: Advanced Coordination"
-    },
-    {
-      "name": "complexity: low",
-      "color": "D4C5F9",
-      "description": "Low complexity task"
-    },
-    {
-      "name": "complexity: medium",
-      "color": "C2E0C6",
-      "description": "Medium complexity task"
-    },
-    {
-      "name": "complexity: high",
-      "color": "FBCA04",
-      "description": "High complexity task"
-    },
-    {
-      "name": "complexity: very-high",
-      "color": "D73A4A",
-      "description": "Very high complexity task"
+      "description": "Validation and QA"
     },
     {
       "name": "category: ros",
@@ -97,6 +73,116 @@
       "description": "System architecture design"
     },
     {
+      "name": "task-type: movement",
+      "color": "0052CC",
+      "description": "Traverse and navigation operations"
+    },
+    {
+      "name": "task-type: science",
+      "color": "1D76DB",
+      "description": "In-situ science operations"
+    },
+    {
+      "name": "task-type: digging",
+      "color": "8B572A",
+      "description": "Digging and drilling operations"
+    },
+    {
+      "name": "task-type: pushing",
+      "color": "D93F0B",
+      "description": "Regolith push and transport operations"
+    },
+    {
+      "name": "task-type: photo",
+      "color": "5319E7",
+      "description": "Imaging and survey operations"
+    },
+    {
+      "name": "task-type: sample-handling",
+      "color": "FBCA04",
+      "description": "Sample transfer and handling"
+    },
+    {
+      "name": "difficulty: L1",
+      "color": "C2E0C6",
+      "description": "Difficulty level 1"
+    },
+    {
+      "name": "difficulty: L2",
+      "color": "BFDADC",
+      "description": "Difficulty level 2"
+    },
+    {
+      "name": "difficulty: L3",
+      "color": "FBCA04",
+      "description": "Difficulty level 3"
+    },
+    {
+      "name": "difficulty: L4",
+      "color": "F9A602",
+      "description": "Difficulty level 4"
+    },
+    {
+      "name": "difficulty: L5",
+      "color": "D73A4A",
+      "description": "Difficulty level 5"
+    },
+    {
+      "name": "mission-phase: CY3-ops",
+      "color": "0E8A16",
+      "description": "Chandrayaan-3 style surface operations"
+    },
+    {
+      "name": "mission-phase: CY4-sample-chain",
+      "color": "1D76DB",
+      "description": "Chandrayaan-4 sample-return chain"
+    },
+    {
+      "name": "mission-phase: LUPEX-prospecting",
+      "color": "5319E7",
+      "description": "LUPEX-style polar prospecting"
+    },
+    {
+      "name": "mission-phase: base-predeploy",
+      "color": "E99695",
+      "description": "Future base infrastructure pre-deployment"
+    },
+    {
+      "name": "mission-phase: base-build",
+      "color": "B60205",
+      "description": "Future base-build operations"
+    },
+    {
+      "name": "capability-class: mobility",
+      "color": "0052CC",
+      "description": "Mobility and hazard navigation"
+    },
+    {
+      "name": "capability-class: science",
+      "color": "1D76DB",
+      "description": "Science payload capability"
+    },
+    {
+      "name": "capability-class: excavation",
+      "color": "8B572A",
+      "description": "Excavation and drill capability"
+    },
+    {
+      "name": "capability-class: manipulation",
+      "color": "D93F0B",
+      "description": "Manipulation and push/transport capability"
+    },
+    {
+      "name": "capability-class: imaging",
+      "color": "5319E7",
+      "description": "Imaging and survey capability"
+    },
+    {
+      "name": "capability-class: sample-logistics",
+      "color": "FBCA04",
+      "description": "Sample handling and transfer capability"
+    },
+    {
       "name": "priority: P0-critical",
       "color": "B60205",
       "description": "Blocking issue, must fix ASAP"
@@ -114,7 +200,7 @@
     {
       "name": "priority: P3-low",
       "color": "0E8A16",
-      "description": "Low priority, nice to have"
+      "description": "Low priority"
     },
     {
       "name": "type: epic",
@@ -132,304 +218,225 @@
       "description": "Enhancement to existing feature"
     },
     {
-      "name": "type: bug",
-      "color": "D73A4A",
-      "description": "Bug fix"
-    },
-    {
       "name": "type: research",
       "color": "D4C5F9",
-      "description": "Research and investigation"
-    },
-    {
-      "name": "duration: 1-3 days",
-      "color": "C5DEF5",
-      "description": "Estimated 1-3 days"
-    },
-    {
-      "name": "duration: 1 week",
-      "color": "BFD4F2",
-      "description": "Estimated 1 week"
-    },
-    {
-      "name": "duration: 2-3 weeks",
-      "color": "528BCE",
-      "description": "Estimated 2-3 weeks"
-    },
-    {
-      "name": "duration: 1+ month",
-      "color": "1E6DB7",
-      "description": "Estimated 1+ month"
+      "description": "Research and validation"
     }
   ],
   "milestones": [
     {
-      "title": "Phase 1: Multi-Rover Constellation",
-      "description": "Transform from single-rover to fleet management system with 3-5 rovers operating simultaneously",
-      "due_on": "2026-04-01T00:00:00Z"
+      "title": "Chandrayaan v2 - Core Task Model",
+      "description": "Task catalog, difficulty model, and assignment scoring",
+      "due_on": "2026-03-25T00:00:00Z"
     },
     {
-      "title": "Phase 2: Resource Management",
-      "description": "Implement power, thermal, communication budget, and consumables tracking",
-      "due_on": "2026-05-15T00:00:00Z"
+      "title": "Chandrayaan v2 - Simulation and Telemetry",
+      "description": "Web simulation parity with ROS task semantics",
+      "due_on": "2026-04-20T00:00:00Z"
     },
     {
-      "title": "Phase 3: Ground Station Network",
-      "description": "Multi-station coverage windows and handoff logic",
-      "due_on": "2026-06-30T00:00:00Z"
-    },
-    {
-      "title": "Phase 4: Mission Planning",
-      "description": "Command sequencing and autonomous mission planning",
-      "due_on": "2026-08-31T00:00:00Z"
-    },
-    {
-      "title": "Phase 5: Advanced Coordination",
-      "description": "Swarm behaviors, collision avoidance, and AI decision-making",
-      "due_on": "2026-11-30T00:00:00Z"
+      "title": "Chandrayaan v2 - Documentation and Validation",
+      "description": "README, architecture docs, and test evidence",
+      "due_on": "2026-05-08T00:00:00Z"
     }
   ],
   "issues": [
     {
-      "title": "[EPIC] Phase 1: Multi-Rover Constellation",
-      "body": "## Overview\nTransform LSOAS from single-rover to fleet management system supporting 3-5 simultaneous rovers.\n\n## Goals\n- Multi-rover ROS architecture with unique IDs\n- Fleet-level task assignment and orchestration  \n- Enhanced dashboard with fleet status grid\n- Rover-to-rover data relay capability\n\n## Success Criteria\n- [ ] 3-5 rovers operating simultaneously\n- [ ] Auto task assignment based on battery + state\n- [ ] Fleet dashboard showing all rovers\n- [ ] Manual rover selection override\n- [ ] All tests passing\n\n## Timeline\n4-6 weeks\n\n## Dependencies\nNone (foundation phase)\n\n## Resources\n- [Phase 1 Implementation Plan](../blob/main/docs/phase1_implementation_plan.md)\n",
+      "title": "[EPIC] Chandrayaan v2: Context-aware swarm task orchestration",
+      "body": "## Overview\nRedesign task planning and rover assignment around Chandrayaan and LUPEX-inspired operations with a future Indian lunar base scenario.\n\n## Goals\n- Structured task taxonomy with six mission families\n- Difficulty levels L1-L5 with context-aware fault modeling\n- Capability-aware rover assignment with explainable scoring\n- Unified ROS + web-sim behavior using a shared task catalog\n\n## Success Criteria\n- [ ] Task catalog file is consumed by ROS and web-sim\n- [ ] Dynamic fault model replaces fixed per-step fault chance\n- [ ] Assignment returns score breakdown and reject reason when infeasible\n- [ ] New telemetry fields expose mission context and risk\n- [ ] Legacy open roadmap epics are superseded and linked\n",
       "labels": [
-        "phase-1",
+        "phase-v2-core",
         "type: epic",
         "priority: P0-critical",
-        "complexity: medium"
+        "category: architecture",
+        "mission-phase: base-predeploy"
       ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
+      "milestone": "Chandrayaan v2 - Core Task Model"
     },
     {
-      "title": "Refactor rover_node.py for multi-rover support",
-      "body": "## Task\nUpdate `rover_node.py` to support multiple rover instances with unique IDs.\n\n## Changes Needed\n- Add `rover_id` parameter to constructor\n- Update topic names: `/rover/{id}/downlink_telemetry`, `/rover/{id}/command`, `/rover/{id}/ack`\n- Add telemetry fields: `rover_id`, `position` (lat/lon), `solar_exposure`, `data_buffer_size`\n\n## Acceptance Criteria\n- [ ] Rover accepts `rover_id` parameter\n- [ ] Topics include rover ID in namespace\n- [ ] Telemetry includes new fields\n- [ ] Multiple rovers can run simultaneously without conflicts\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/rover_node.py`\n",
+      "title": "Create shared Chandrayaan TaskCatalog schema and loader",
+      "body": "## Task\nAdd a machine-readable TaskCatalog file and loader utilities for both ROS and web-sim.\n\n## Required fields\n- task_type\n- difficulty_level\n- base_fault_rate\n- duration_profile\n- required_capabilities\n\n## Acceptance Criteria\n- [ ] Catalog validates at startup\n- [ ] L1..L5 maps to 1/3/6/10/18 percent base fault rates\n- [ ] Catalog file is versioned and documented\n",
       "labels": [
-        "phase-1",
-        "category: ros",
+        "phase-v2-core",
         "type: feature",
         "priority: P0-critical",
-        "complexity: low",
-        "duration: 1-3 days"
+        "category: architecture",
+        "difficulty: L3",
+        "task-type: movement",
+        "task-type: science",
+        "task-type: digging",
+        "task-type: pushing",
+        "task-type: photo",
+        "task-type: sample-handling"
       ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
+      "milestone": "Chandrayaan v2 - Core Task Model"
     },
     {
-      "title": "Add fleet management to earth_node.py",
-      "body": "## Task\nImplement fleet registry and task assignment logic in `earth_node.py`.\n\n## Changes Needed\n- Add fleet registry tracking all rover states\n- Implement auto-assignment algorithm (select rover with highest battery + IDLE state)\n- Subscribe to telemetry from all rovers dynamically\n- Add `ASSIGN_TASK <rover_id> <task_id>` command with manual/auto modes\n\n## Acceptance Criteria\n- [ ] Earth node tracks all rover states\n- [ ] Auto-assignment selects optimal rover\n- [ ] Manual assignment works for specific rover\n- [ ] Rejects commands if no suitable rover available\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/earth_node.py`\n",
+      "title": "Implement dynamic fault-rate engine with lunar context modifiers",
+      "body": "## Task\nReplace flat fault chance with dynamic risk driven by mission context.\n\n## Context inputs\n- battery SOC\n- lunar day/night state\n- solar intensity\n- terrain difficulty\n- comm quality and latency\n- thermal stress\n\n## Acceptance Criteria\n- [ ] Output fault probability clamped to 0-60 percent\n- [ ] Same task yields different risk in day vs night and low vs high battery\n- [ ] Unit tests cover modifier behavior\n",
       "labels": [
-        "phase-1",
+        "phase-v2-core",
+        "type: feature",
+        "priority: P1-high",
         "category: ros",
+        "category: testing",
+        "difficulty: L4",
+        "mission-phase: LUPEX-prospecting"
+      ],
+      "milestone": "Chandrayaan v2 - Core Task Model"
+    },
+    {
+      "title": "Add capability-class rover profiles and explainable assignment output",
+      "body": "## Task\nImplement rover capability classes and assignment scoring with explanation.\n\n## Scoring factors\n- capability match\n- battery margin\n- solar margin\n- thermal margin\n- comm margin\n- distance and accessibility\n- predicted mission risk\n\n## Acceptance Criteria\n- [ ] Assignment returns selected_rover, score_breakdown, reject_reason\n- [ ] Assignment rejects infeasible tasks deterministically\n- [ ] Auto mode chooses different rover under changed mission context\n",
+      "labels": [
+        "phase-v2-core",
         "type: feature",
         "priority: P0-critical",
-        "complexity: medium",
-        "duration: 1 week"
+        "category: ros",
+        "difficulty: L4",
+        "capability-class: mobility",
+        "capability-class: science",
+        "capability-class: excavation",
+        "capability-class: manipulation",
+        "capability-class: imaging",
+        "capability-class: sample-logistics"
       ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
+      "milestone": "Chandrayaan v2 - Core Task Model"
     },
     {
-      "title": "Update space_link_node.py for multi-rover relay",
-      "body": "## Task\nEnable space link to relay messages for multiple rovers.\n\n## Changes Needed\n- Subscribe to `/rover/*/command` using wildcard patterns (or dynamic subscriptions)\n- Track relay statistics per rover\n- Handle bidirectional relay for all rovers\n\n## Acceptance Criteria\n- [ ] Relays commands to all rovers\n- [ ] Relays telemetry from all rovers\n- [ ] Per-rover statistics tracked\n- [ ] No message conflicts or drops\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/space_link_node.py`\n",
+      "title": "Update rover execution engine for variable duration and risk by task+difficulty",
+      "body": "## Task\nRemove fixed 10-step task execution and support catalog-driven duration profiles by task and difficulty.\n\n## Acceptance Criteria\n- [ ] L1 tasks complete faster than L5 for same family\n- [ ] Battery drain and risk reflect task profile\n- [ ] Telemetry includes active_task_type and active_task_difficulty\n",
       "labels": [
-        "phase-1",
-        "category: ros",
+        "phase-v2-core",
         "type: enhancement",
         "priority: P1-high",
-        "complexity: low",
-        "duration: 1-3 days"
+        "category: ros",
+        "difficulty: L3",
+        "mission-phase: CY3-ops"
       ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
+      "milestone": "Chandrayaan v2 - Core Task Model"
     },
     {
-      "title": "Create fleet_manager.py node",
-      "body": "## Task\nCreate new ROS node for centralized fleet orchestration and monitoring.\n\n## Features\n- Subscribe to all rover telemetry streams\n- Aggregate fleet-level statistics (total rovers, state distribution, avg battery)\n- Auto-recovery logic (configurable)\n- Publish `/fleet/status` topic with fleet summary\n\n## Acceptance Criteria\n- [ ] Tracks all rover states in real-time\n- [ ] Fleet status topic published at 1 Hz\n- [ ] Auto-recovery can be enabled/disabled\n- [ ] Clean logging of fleet events\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/rover_core/fleet_manager.py` (NEW)\n- `lunar_ops/rover_ws/src/rover_core/setup.py` (add entry point)\n",
+      "title": "Extend web-sim command panel with task type and difficulty controls",
+      "body": "## Task\nExpose task_type and difficulty_level controls in the dashboard and route them in command payloads.\n\n## Acceptance Criteria\n- [ ] Operator can set movement/science/digging/pushing/photo/sample-handling\n- [ ] Operator can set L1-L5\n- [ ] Auto assignment decisions are logged with score breakdown\n",
       "labels": [
-        "phase-1",
-        "category: ros",
+        "phase-v2-sim",
         "type: feature",
         "priority: P1-high",
-        "complexity: medium",
-        "duration: 1 week"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Create ROS 2 launch file for fleet",
-      "body": "## Task\nCreate launch file to start all nodes for multi-rover configuration.\n\n## Features\n- Launch space link node\n- Launch 3 rover nodes with IDs (rover-1, rover-2, rover-3)\n- Launch fleet manager\n- Launch earth station\n- Launch telemetry monitor\n\n## Acceptance Criteria\n- [ ] Single command starts entire fleet\n- [ ] All nodes have proper namespacing\n- [ ] Parameters passed correctly\n- [ ] Can configure number of rovers\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/launch/fleet_launch.py` (NEW)\n",
-      "labels": [
-        "phase-1",
-        "category: ros",
-        "type: feature",
-        "priority: P2-medium",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Update simulation.js for multi-rover architecture",
-      "body": "## Task\nRefactor JavaScript simulation to support multiple rover instances.\n\n## Changes Needed\n- Instantiate 3 `RoverNode` objects with unique IDs\n- Update topic naming to match ROS changes\n- Modify `EarthNode` to track fleet state\n- Add rover selection logic\n\n## Acceptance Criteria\n- [ ] 3 rovers initialized by default\n- [ ] Each rover has unique ID and state\n- [ ] Earth node tracks all rovers\n- [ ] Topic events properly namespaced\n\n## Files\n- `web-sim/simulation.js`\n",
-      "labels": [
-        "phase-1",
         "category: web-dashboard",
+        "difficulty: L2"
+      ],
+      "milestone": "Chandrayaan v2 - Simulation and Telemetry"
+    },
+    {
+      "title": "Publish expanded telemetry schema for mission-context observability",
+      "body": "## Task\nExtend rover and fleet telemetry with context and risk observability fields.\n\n## Required fields\n- active_task_type\n- active_task_difficulty\n- predicted_fault_probability\n- assignment_score_breakdown\n- lunar_time_state\n- solar_intensity\n\n## Acceptance Criteria\n- [ ] ROS and web-sim publish and consume these fields\n- [ ] Fleet display shows context-aware risk insights\n",
+      "labels": [
+        "phase-v2-sim",
+        "type: enhancement",
+        "priority: P1-high",
+        "category: web-dashboard",
+        "category: ros",
+        "difficulty: L3"
+      ],
+      "milestone": "Chandrayaan v2 - Simulation and Telemetry"
+    },
+    {
+      "title": "Validation suite for catalog parsing, risk engine, and assignment edge cases",
+      "body": "## Task\nExpand tests for task catalog validation, difficulty behavior, context modifiers, and assignment rejection paths.\n\n## Acceptance Criteria\n- [ ] Catalog parser tests\n- [ ] L1 vs L5 duration/risk behavior tests\n- [ ] Low battery + lunar night risk increase tests\n- [ ] No feasible rover deterministic rejection tests\n- [ ] Legacy START_TASK fallback behavior tests\n",
+      "labels": [
+        "phase-v2-validation",
         "type: feature",
         "priority: P0-critical",
-        "complexity: medium",
-        "duration: 1 week"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Create fleet status grid in dashboard",
-      "body": "## Task\nReplace single rover status panel with grid layout showing all rovers.\n\n## UI Design\n```\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 ROVER-1 \u2502 ROVER-2 \u2502 ROVER-3 \u2502\n\u2502  IDLE   \u2502EXECUTING\u2502  SAFE   \u2502\n\u2502 \ud83d\udd0b 87%  \u2502 \ud83d\udd0b 45%  \u2502 \ud83d\udd0b 23%  \u2502\n\u2502 \u2600\ufe0f Sun  \u2502 \ud83c\udf11 Dark \u2502 \u2600\ufe0f Sun  \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n## Acceptance Criteria\n- [ ] Grid layout responsive (works on different screen sizes)\n- [ ] Each card shows: state, battery, solar exposure, position\n- [ ] State-based color coding\n- [ ] Real-time telemetry updates\n\n## Files\n- `web-sim/index.html`\n- `web-sim/index.css`\n- `web-sim/app.js`\n",
-      "labels": [
-        "phase-1",
-        "category: web-dashboard",
-        "type: feature",
-        "priority: P0-critical",
-        "complexity: medium",
-        "duration: 1 week"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Add rover selection dropdown to command panel",
-      "body": "## Task\nAdd UI control to select which rover receives commands.\n\n## Features\n- Dropdown: Auto-Select, Rover-1, Rover-2, Rover-3\n- Auto-select mode uses assignment algorithm\n- Manual mode sends to specific rover\n- Display selected rover in command log\n\n## Acceptance Criteria\n- [ ] Dropdown populated with rover IDs\n- [ ] Auto-select works correctly\n- [ ] Manual selection overrides auto logic\n- [ ] Command log shows target rover\n\n## Files\n- `web-sim/index.html`\n- `web-sim/app.js`\n",
-      "labels": [
-        "phase-1",
-        "category: web-dashboard",
-        "type: feature",
-        "priority: P1-high",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Add fleet summary banner",
-      "body": "## Task\nDisplay aggregate fleet statistics at top of dashboard.\n\n## Content\n- Total rovers count\n- State distribution (X IDLE, Y EXECUTING, Z SAFE_MODE)\n- Average battery level\n- Recent commands count\n\n## Acceptance Criteria\n- [ ] Banner always visible\n- [ ] Updates in real-time\n- [ ] Styling matches design system\n- [ ] Dark/light theme support\n\n## Files\n- `web-sim/index.html`\n- `web-sim/index.css`\n- `web-sim/app.js`\n",
-      "labels": [
-        "phase-1",
-        "category: web-dashboard",
-        "type: feature",
-        "priority: P2-medium",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Write unit tests for task assignment algorithm",
-      "body": "## Task\nTest suite for fleet task assignment logic.\n\n## Test Cases\n- Selects rover with highest battery when multiple IDLE\n- Rejects if all rovers are EXECUTING or SAFE_MODE\n- Considers solar exposure in scoring\n- Manual assignment overrides auto logic\n- Handles edge cases (single rover, all low battery)\n\n## Acceptance Criteria\n- [ ] All test cases implemented\n- [ ] Tests pass consistently\n- [ ] Code coverage > 80% for assignment logic\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/test/test_task_assignment.py` (NEW)\n",
-      "labels": [
-        "phase-1",
         "category: testing",
-        "type: feature",
+        "difficulty: L3"
+      ],
+      "milestone": "Chandrayaan v2 - Documentation and Validation"
+    },
+    {
+      "title": "Rewrite README and architecture docs for Chandrayaan swarm-base narrative",
+      "body": "## Task\nUpdate public docs to Chandrayaan future mission framing while separating real mission basis from future extrapolation.\n\n## Acceptance Criteria\n- [ ] README includes Reality basis section (CY3/CY4/LUPEX)\n- [ ] Development workflow documents main->develop->feature->PR\n- [ ] Architecture docs describe task taxonomy and risk model\n",
+      "labels": [
+        "phase-v2-docs",
+        "type: enhancement",
         "priority: P1-high",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Integration test: Multi-rover command flow",
-      "body": "## Task\nEnd-to-end test for multi-rover operations.\n\n## Test Scenario\n1. Launch 3 rovers + space link + earth\n2. Send START_TASK with auto-assignment\n3. Verify exactly 1 rover executes\n4. Verify ACK received with correct rover_id\n5. Send second task while first is running\n6. Verify assigned to different rover\n\n## Acceptance Criteria\n- [ ] Test launches full fleet\n- [ ] Verifies correct rover selection\n- [ ] Checks ACK routing\n- [ ] Teardown cleans up properly\n\n## Files\n- `lunar_ops/rover_ws/src/rover_core/test/test_fleet_integration.py` (NEW)\n",
-      "labels": [
-        "phase-1",
-        "category: testing",
-        "type: feature",
-        "priority: P1-high",
-        "complexity: medium",
-        "duration: 1 week"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Manual testing scenarios for web dashboard",
-      "body": "## Task\nDocument and execute manual test scenarios for fleet dashboard.\n\n## Scenarios\n1. Basic fleet operations (auto task assignment)\n2. Manual rover selection\n3. Safe mode handling across fleet\n4. Battery-based selection verification\n5. Telemetry load test (5 rovers at 0.5 Hz)\n\n## Deliverable\nChecklist in phase1_implementation_plan.md with results\n\n## Acceptance Criteria\n- [ ] All scenarios tested\n- [ ] Results documented\n- [ ] Screenshots captured\n- [ ] Bugs filed for any issues\n\n## Files\n- `docs/phase1_testing_results.md` (NEW)\n",
-      "labels": [
-        "phase-1",
-        "category: testing",
-        "type: feature",
-        "priority: P2-medium",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Update README with multi-rover instructions",
-      "body": "## Task\nUpdate main README to document multi-rover capabilities.\n\n## Changes\n- Update architecture diagram\n- Add fleet management description\n- Update quick start for multi-rover launch\n- Add fleet command examples\n- Update screenshots\n\n## Acceptance Criteria\n- [ ] README accurately describes fleet system\n- [ ] Launch commands tested\n- [ ] Screenshots current\n- [ ] Examples work as written\n\n## Files\n- `README.md`\n- `docs/screenshots/` (new fleet screenshots)\n",
-      "labels": [
-        "phase-1",
         "category: documentation",
-        "type: enhancement",
-        "priority: P2-medium",
-        "complexity: low",
-        "duration: 1-3 days"
+        "difficulty: L2",
+        "mission-phase: CY4-sample-chain",
+        "mission-phase: base-build"
       ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "Update Makefile for fleet operations",
-      "body": "## Task\nAdd Makefile targets for multi-rover launch and testing.\n\n## New Targets\n- `make fleet` - Launch 3-rover fleet\n- `make fleet-5` - Launch 5-rover fleet\n- `make test-fleet` - Run fleet integration tests\n\n## Acceptance Criteria\n- [ ] Targets work as documented\n- [ ] Help text updated\n- [ ] Dependencies correct\n\n## Files\n- `Makefile`\n",
-      "labels": [
-        "phase-1",
-        "category: documentation",
-        "type: enhancement",
-        "priority: P3-low",
-        "complexity: low",
-        "duration: 1-3 days"
-      ],
-      "milestone": "Phase 1: Multi-Rover Constellation"
-    },
-    {
-      "title": "[EPIC] Phase 2: Resource Management Systems",
-      "body": "## Overview\nImplement realistic resource constraints: power, thermal, communication bandwidth, consumables.\n\n## Components\n- Power system (solar panels, battery cycling, heaters)\n- Thermal management (component temps, RHUs, operational ranges)\n- Communication budget (data rate limits, prioritization, compression)\n- Consumables tracking (fuel, drill cycles, sample containers)\n\n## Timeline\n3-4 weeks\n\n## Dependencies\n- Phase 1 completion\n",
-      "labels": [
-        "phase-2",
-        "type: epic",
-        "priority: P1-high",
-        "complexity: medium",
-        "duration: 2-3 weeks"
-      ],
-      "milestone": "Phase 2: Resource Management"
-    },
-    {
-      "title": "[EPIC] Phase 3: Ground Station Network",
-      "body": "## Overview\nMulti-station coverage modeling with visibility windows and handoffs.\n\n## Components\n- 3-5 ground stations at global locations\n- Coverage window calculation (Earth rotation)\n- Handoff logic between stations\n- Antenna scheduling and conflicts\n- 3D visualization of coverage\n\n## Timeline\n2-3 weeks\n\n## Dependencies\n- Phase 1 completion\n",
-      "labels": [
-        "phase-3",
-        "type: epic",
-        "priority: P2-medium",
-        "complexity: medium",
-        "duration: 2-3 weeks"
-      ],
-      "milestone": "Phase 3: Ground Station Network"
-    },
-    {
-      "title": "[EPIC] Phase 4: Autonomous Mission Planning",
-      "body": "## Overview\nCommand sequencing, activity timeline planning, and autonomous replanning.\n\n## Components\n- Command sequence upload (24-hour timelines)\n- Conditional logic (\"if battery > 50%, then...\")\n- Gantt chart timeline editor\n- Science campaign manager\n- Autonomous re-planning on failures\n\n## Timeline\n4-5 weeks\n\n## Dependencies\n- Phase 2 completion (need resource constraints)\n",
-      "labels": [
-        "phase-4",
-        "type: epic",
-        "priority: P2-medium",
-        "complexity: high",
-        "duration: 1+ month"
-      ],
-      "milestone": "Phase 4: Mission Planning"
-    },
-    {
-      "title": "[EPIC] Phase 5: Advanced Fleet Coordination & AI",
-      "body": "## Overview\nCutting-edge multi-agent coordination and AI decision-making.\n\n## Components\n- Swarm behaviors (formation flying, leader-follower)\n- Collision avoidance (predict close approaches)\n- Optical inter-rover links (mesh network)\n- Reinforcement learning for path planning\n- Anomaly detection and predictive maintenance\n- Autonomous science prioritization\n\n## Timeline\n6-8 weeks\n\n## Dependencies\n- Phase 3 completion\n- Phase 4 recommended\n",
-      "labels": [
-        "phase-5",
-        "type: epic",
-        "priority: P3-low",
-        "complexity: very-high",
-        "duration: 1+ month"
-      ],
-      "milestone": "Phase 5: Advanced Coordination"
+      "milestone": "Chandrayaan v2 - Documentation and Validation"
     }
+  ],
+  "superseded_legacy_issue_numbers": [
+    2,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "commands": [
+    "# Labels",
+    "gh label create \"phase-v2-core\" --color 0E8A16 --description \"Chandrayaan v2 core architecture\" || true",
+    "gh label create \"phase-v2-sim\" --color 1D76DB --description \"Web simulation and UX\" || true",
+    "gh label create \"phase-v2-docs\" --color 5319E7 --description \"Documentation and migration\" || true",
+    "gh label create \"phase-v2-validation\" --color E99695 --description \"Validation and QA\" || true",
+    "gh label create \"category: ros\" --color 006B75 --description \"ROS 2 implementation work\" || true",
+    "gh label create \"category: web-dashboard\" --color 0075CA --description \"Web simulation dashboard\" || true",
+    "gh label create \"category: documentation\" --color 0E8A16 --description \"Documentation updates\" || true",
+    "gh label create \"category: testing\" --color D876E3 --description \"Testing and verification\" || true",
+    "gh label create \"category: architecture\" --color 5319E7 --description \"System architecture design\" || true",
+    "gh label create \"task-type: movement\" --color 0052CC --description \"Traverse and navigation operations\" || true",
+    "gh label create \"task-type: science\" --color 1D76DB --description \"In-situ science operations\" || true",
+    "gh label create \"task-type: digging\" --color 8B572A --description \"Digging and drilling operations\" || true",
+    "gh label create \"task-type: pushing\" --color D93F0B --description \"Regolith push and transport operations\" || true",
+    "gh label create \"task-type: photo\" --color 5319E7 --description \"Imaging and survey operations\" || true",
+    "gh label create \"task-type: sample-handling\" --color FBCA04 --description \"Sample transfer and handling\" || true",
+    "gh label create \"difficulty: L1\" --color C2E0C6 --description \"Difficulty level 1\" || true",
+    "gh label create \"difficulty: L2\" --color BFDADC --description \"Difficulty level 2\" || true",
+    "gh label create \"difficulty: L3\" --color FBCA04 --description \"Difficulty level 3\" || true",
+    "gh label create \"difficulty: L4\" --color F9A602 --description \"Difficulty level 4\" || true",
+    "gh label create \"difficulty: L5\" --color D73A4A --description \"Difficulty level 5\" || true",
+    "gh label create \"mission-phase: CY3-ops\" --color 0E8A16 --description \"Chandrayaan-3 style surface operations\" || true",
+    "gh label create \"mission-phase: CY4-sample-chain\" --color 1D76DB --description \"Chandrayaan-4 sample-return chain\" || true",
+    "gh label create \"mission-phase: LUPEX-prospecting\" --color 5319E7 --description \"LUPEX-style polar prospecting\" || true",
+    "gh label create \"mission-phase: base-predeploy\" --color E99695 --description \"Future base infrastructure pre-deployment\" || true",
+    "gh label create \"mission-phase: base-build\" --color B60205 --description \"Future base-build operations\" || true",
+    "gh label create \"capability-class: mobility\" --color 0052CC --description \"Mobility and hazard navigation\" || true",
+    "gh label create \"capability-class: science\" --color 1D76DB --description \"Science payload capability\" || true",
+    "gh label create \"capability-class: excavation\" --color 8B572A --description \"Excavation and drill capability\" || true",
+    "gh label create \"capability-class: manipulation\" --color D93F0B --description \"Manipulation and push/transport capability\" || true",
+    "gh label create \"capability-class: imaging\" --color 5319E7 --description \"Imaging and survey capability\" || true",
+    "gh label create \"capability-class: sample-logistics\" --color FBCA04 --description \"Sample handling and transfer capability\" || true",
+    "gh label create \"priority: P0-critical\" --color B60205 --description \"Blocking issue, must fix ASAP\" || true",
+    "gh label create \"priority: P1-high\" --color D93F0B --description \"High priority\" || true",
+    "gh label create \"priority: P2-medium\" --color FBCA04 --description \"Medium priority\" || true",
+    "gh label create \"priority: P3-low\" --color 0E8A16 --description \"Low priority\" || true",
+    "gh label create \"type: epic\" --color 3E4B9E --description \"Large feature spanning multiple issues\" || true",
+    "gh label create \"type: feature\" --color 84B6EB --description \"New feature\" || true",
+    "gh label create \"type: enhancement\" --color A2EEEF --description \"Enhancement to existing feature\" || true",
+    "gh label create \"type: research\" --color D4C5F9 --description \"Research and validation\" || true",
+    "\n# Milestones",
+    "gh api repos/{owner}/{repo}/milestones -f title=\"Chandrayaan v2 - Core Task Model\" -f description=\"Task catalog, difficulty model, and assignment scoring\" -f due_on=\"2026-03-25T00:00:00Z\" || true",
+    "gh api repos/{owner}/{repo}/milestones -f title=\"Chandrayaan v2 - Simulation and Telemetry\" -f description=\"Web simulation parity with ROS task semantics\" -f due_on=\"2026-04-20T00:00:00Z\" || true",
+    "gh api repos/{owner}/{repo}/milestones -f title=\"Chandrayaan v2 - Documentation and Validation\" -f description=\"README, architecture docs, and test evidence\" -f due_on=\"2026-05-08T00:00:00Z\" || true",
+    "\n# Issues",
+    "gh issue create --title \"[EPIC] Chandrayaan v2: Context-aware swarm task orchestration\" --body \"## Overview\\nRedesign task planning and rover assignment around Chandrayaan and LUPEX-inspired operations with a future Indian lunar base scenario.\\n\\n## Goals\\n- Structured task taxonomy with six mission families\\n- Difficulty levels L1-L5 with context-aware fault modeling\\n- Capability-aware rover assignment with explainable scoring\\n- Unified ROS + web-sim behavior using a shared task catalog\\n\\n## Success Criteria\\n- [ ] Task catalog file is consumed by ROS and web-sim\\n- [ ] Dynamic fault model replaces fixed per-step fault chance\\n- [ ] Assignment returns score breakdown and reject reason when infeasible\\n- [ ] New telemetry fields expose mission context and risk\\n- [ ] Legacy open roadmap epics are superseded and linked\\n\" --label \"phase-v2-core,type: epic,priority: P0-critical,category: architecture,mission-phase: base-predeploy\" --milestone 1",
+    "gh issue create --title \"Create shared Chandrayaan TaskCatalog schema and loader\" --body \"## Task\\nAdd a machine-readable TaskCatalog file and loader utilities for both ROS and web-sim.\\n\\n## Required fields\\n- task_type\\n- difficulty_level\\n- base_fault_rate\\n- duration_profile\\n- required_capabilities\\n\\n## Acceptance Criteria\\n- [ ] Catalog validates at startup\\n- [ ] L1..L5 maps to 1/3/6/10/18 percent base fault rates\\n- [ ] Catalog file is versioned and documented\\n\" --label \"phase-v2-core,type: feature,priority: P0-critical,category: architecture,difficulty: L3,task-type: movement,task-type: science,task-type: digging,task-type: pushing,task-type: photo,task-type: sample-handling\" --milestone 1",
+    "gh issue create --title \"Implement dynamic fault-rate engine with lunar context modifiers\" --body \"## Task\\nReplace flat fault chance with dynamic risk driven by mission context.\\n\\n## Context inputs\\n- battery SOC\\n- lunar day/night state\\n- solar intensity\\n- terrain difficulty\\n- comm quality and latency\\n- thermal stress\\n\\n## Acceptance Criteria\\n- [ ] Output fault probability clamped to 0-60 percent\\n- [ ] Same task yields different risk in day vs night and low vs high battery\\n- [ ] Unit tests cover modifier behavior\\n\" --label \"phase-v2-core,type: feature,priority: P1-high,category: ros,category: testing,difficulty: L4,mission-phase: LUPEX-prospecting\" --milestone 1",
+    "gh issue create --title \"Add capability-class rover profiles and explainable assignment output\" --body \"## Task\\nImplement rover capability classes and assignment scoring with explanation.\\n\\n## Scoring factors\\n- capability match\\n- battery margin\\n- solar margin\\n- thermal margin\\n- comm margin\\n- distance and accessibility\\n- predicted mission risk\\n\\n## Acceptance Criteria\\n- [ ] Assignment returns selected_rover, score_breakdown, reject_reason\\n- [ ] Assignment rejects infeasible tasks deterministically\\n- [ ] Auto mode chooses different rover under changed mission context\\n\" --label \"phase-v2-core,type: feature,priority: P0-critical,category: ros,difficulty: L4,capability-class: mobility,capability-class: science,capability-class: excavation,capability-class: manipulation,capability-class: imaging,capability-class: sample-logistics\" --milestone 1",
+    "gh issue create --title \"Update rover execution engine for variable duration and risk by task+difficulty\" --body \"## Task\\nRemove fixed 10-step task execution and support catalog-driven duration profiles by task and difficulty.\\n\\n## Acceptance Criteria\\n- [ ] L1 tasks complete faster than L5 for same family\\n- [ ] Battery drain and risk reflect task profile\\n- [ ] Telemetry includes active_task_type and active_task_difficulty\\n\" --label \"phase-v2-core,type: enhancement,priority: P1-high,category: ros,difficulty: L3,mission-phase: CY3-ops\" --milestone 1",
+    "gh issue create --title \"Extend web-sim command panel with task type and difficulty controls\" --body \"## Task\\nExpose task_type and difficulty_level controls in the dashboard and route them in command payloads.\\n\\n## Acceptance Criteria\\n- [ ] Operator can set movement/science/digging/pushing/photo/sample-handling\\n- [ ] Operator can set L1-L5\\n- [ ] Auto assignment decisions are logged with score breakdown\\n\" --label \"phase-v2-sim,type: feature,priority: P1-high,category: web-dashboard,difficulty: L2\" --milestone 2",
+    "gh issue create --title \"Publish expanded telemetry schema for mission-context observability\" --body \"## Task\\nExtend rover and fleet telemetry with context and risk observability fields.\\n\\n## Required fields\\n- active_task_type\\n- active_task_difficulty\\n- predicted_fault_probability\\n- assignment_score_breakdown\\n- lunar_time_state\\n- solar_intensity\\n\\n## Acceptance Criteria\\n- [ ] ROS and web-sim publish and consume these fields\\n- [ ] Fleet display shows context-aware risk insights\\n\" --label \"phase-v2-sim,type: enhancement,priority: P1-high,category: web-dashboard,category: ros,difficulty: L3\" --milestone 2",
+    "gh issue create --title \"Validation suite for catalog parsing, risk engine, and assignment edge cases\" --body \"## Task\\nExpand tests for task catalog validation, difficulty behavior, context modifiers, and assignment rejection paths.\\n\\n## Acceptance Criteria\\n- [ ] Catalog parser tests\\n- [ ] L1 vs L5 duration/risk behavior tests\\n- [ ] Low battery + lunar night risk increase tests\\n- [ ] No feasible rover deterministic rejection tests\\n- [ ] Legacy START_TASK fallback behavior tests\\n\" --label \"phase-v2-validation,type: feature,priority: P0-critical,category: testing,difficulty: L3\" --milestone 3",
+    "gh issue create --title \"Rewrite README and architecture docs for Chandrayaan swarm-base narrative\" --body \"## Task\\nUpdate public docs to Chandrayaan future mission framing while separating real mission basis from future extrapolation.\\n\\n## Acceptance Criteria\\n- [ ] README includes Reality basis section (CY3/CY4/LUPEX)\\n- [ ] Development workflow documents main->develop->feature->PR\\n- [ ] Architecture docs describe task taxonomy and risk model\\n\" --label \"phase-v2-docs,type: enhancement,priority: P1-high,category: documentation,difficulty: L2,mission-phase: CY4-sample-chain,mission-phase: base-build\" --milestone 3",
+    "\n# Supersede legacy roadmap issues",
+    "gh issue close 2 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true",
+    "gh issue close 16 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true",
+    "gh issue close 17 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true",
+    "gh issue close 18 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true",
+    "gh issue close 19 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true",
+    "gh issue close 20 --comment \"Superseded by the Chandrayaan v2 roadmap refresh. See the new Chandrayaan v2 epic and linked child issues.\" || true"
   ]
 }
