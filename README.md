@@ -209,7 +209,7 @@ Telemetry and fleet status now include:
 
 ---
 
-## Development Workflow (main + develop)
+## Development Workflow (dev + staging + main)
 
 Use this branch flow for all feature work:
 
@@ -217,18 +217,27 @@ Use this branch flow for all feature work:
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-git checkout -B develop origin/main
-git push -u origin develop
+git checkout staging || git checkout -b staging origin/main
+git pull --ff-only origin staging
+git checkout dev || git checkout -b dev origin/staging
+git pull --ff-only origin dev
 
-# feature branch from develop
-git checkout -b codex/your-feature-name develop
+# feature branch from dev
+git checkout -b codex/your-feature-name dev
 # ... commits ...
 git push -u origin codex/your-feature-name
-# open PR -> develop
-# after integration: open release PR develop -> main
+# open PR -> dev
+# release gate 1: dev -> staging
+# release gate 2: staging -> main
 ```
 
-CI triggers on `main` and `pull_request` to `main`.
+Environment mapping:
+
+- `dev` -> playground/integration environment
+- `staging` -> production replica and release gate
+- `main` -> production
+
+CI triggers on `dev`, `staging`, and `main`.
 
 ---
 

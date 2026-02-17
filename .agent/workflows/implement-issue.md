@@ -1,5 +1,5 @@
 ---
-description: Implement a GitHub issue from the LSOAS roadmap using the main + develop model
+description: Implement a GitHub issue from the LSOAS roadmap using dev, staging, and production gates
 ---
 
 # Implement Issue
@@ -24,14 +24,16 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
    - Files to modify or create
    - Acceptance criteria checkboxes
 
-3. **Sync branches and create a feature branch from develop**:
+3. **Sync and branch from dev**:
 
    ```bash
    git fetch origin
    git checkout main
    git pull --ff-only origin main
-   git checkout develop || git checkout -b develop origin/main
-   git pull --ff-only origin develop
+   git checkout staging || git checkout -b staging origin/main
+   git pull --ff-only origin staging
+   git checkout dev || git checkout -b dev origin/staging
+   git pull --ff-only origin dev
    git checkout -b codex/issue-<ISSUE_NUMBER>-<short-kebab-title>
    ```
 
@@ -52,13 +54,13 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
    git push -u origin codex/issue-<ISSUE_NUMBER>-<short-kebab-title>
    ```
 
-8. **Create PR to develop**:
+8. **Create PR to dev**:
 
    ```bash
    export GH_CONFIG_DIR=/Users/varma/.gh_config
    gh pr create \
      -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
-     --base develop \
+     --base dev \
      --head codex/issue-<ISSUE_NUMBER>-<short-kebab-title> \
      --title "feat: <issue-title> (#<ISSUE_NUMBER>)" \
      --body "Closes #<ISSUE_NUMBER>"
@@ -78,5 +80,6 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
 10. **Create walkthrough artifact** with what changed, test evidence, and screenshots if UI changed.
 
 11. **Release path**:
-   - After feature PRs are merged into `develop`, promote via release PR `develop -> main`.
-   - Follow `.agent/workflows/release.md` for tagging and GitHub Release publishing.
+   - After issue PRs are merged into `dev`, promote via gated PR `dev -> staging`.
+   - Promote to production via PR `staging -> main` only after staging sign-off.
+   - Follow `.agent/workflows/release.md` for full release steps (tag + GitHub release).

@@ -1,18 +1,19 @@
 ---
-description: How to create a feature branch, commit changes, and raise a PR using main + develop
+description: How to create a feature branch, commit changes, and raise PRs with dev, staging, and production branches
 ---
 
 # Feature Branch and PR Workflow
 
 Follow this process for every feature, fix, or docs change.
 
-## Branch model
+## Branch and environment model
 
-- `main`: production/release branch
-- `develop`: integration branch for day-to-day work
-- `codex/*`: feature branches created from `develop`
+- `dev`: integration branch for daily development (deploys to Dev environment)
+- `staging`: production replica and release gate (deploys to Staging)
+- `main`: production branch (deploys to Prod)
+- `codex/*`: short-lived feature branches created from `dev`
 
-Do not open normal feature PRs directly into `main`.
+Normal feature work must not target `staging` or `main` directly.
 
 ## 1. Sync local branches
 
@@ -22,37 +23,34 @@ Do not open normal feature PRs directly into `main`.
 git fetch origin
 git checkout main
 git pull --ff-only origin main
+git checkout staging || git checkout -b staging origin/main
+git pull --ff-only origin staging
+git checkout dev || git checkout -b dev origin/staging
+git pull --ff-only origin dev
 ```
 
-If `develop` does not exist locally, create it from `origin/main`:
+If `dev` or `staging` is missing on remote for first-time setup:
 
 ```bash
-git checkout -b develop origin/main
-git push -u origin develop
+git push -u origin staging
+git push -u origin dev
 ```
 
-If `develop` already exists, sync it with:
-
-```bash
-git checkout develop
-git pull --ff-only origin develop
-```
-
-## 2. Create a working branch from develop
+## 2. Create a working branch from dev
 
 Use `codex/<short-kebab-description>`.
 
 ```bash
-git checkout develop
-git pull --ff-only origin develop
+git checkout dev
+git pull --ff-only origin dev
 git checkout -b codex/<branch-name>
 ```
 
 ## 3. Implement and verify
 
-- Make the required changes.
+- Make required changes.
 - Run relevant tests/lint checks before committing.
-- Keep commits atomic.
+- Keep commits small and reviewable.
 
 ## 4. Stage and commit
 
@@ -75,41 +73,43 @@ git commit -m "feat: short description"
 git push -u origin codex/<branch-name>
 ```
 
-## 6. Open PR to develop
+## 6. Open PR to dev
 
 ```bash
 export GH_CONFIG_DIR=/Users/varma/.gh_config
 
 gh pr create \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
-  --base develop \
+  --base dev \
   --head codex/<branch-name> \
   --title "feat: short PR title" \
   --body "Summary of what changed and why"
 ```
 
-## 7. After merge
+## 7. Promotion flow
+
+- Merge approved feature PRs into `dev`.
+- Batch and gate releases with PR `dev -> staging`.
+- Promote only validated staging builds with PR `staging -> main`.
+
+Use `.agent/workflows/release.md` for full release steps.
+
+## 8. After merge
 
 // turbo
 
 ```bash
-git checkout develop
-git pull --ff-only origin develop
+git checkout dev
+git pull --ff-only origin dev
+git checkout staging
+git pull --ff-only origin staging
 git checkout main
 git pull --ff-only origin main
 git branch -d codex/<branch-name>
 ```
 
-## 8. Release promotion
-
-When a release is ready, open `develop -> main` release PR.
-
-Use:
-
-- `.agent/workflows/release.md`
-
 ## Notes
 
-- Never force-push to `main` or `develop`.
-- Never commit directly to `main` unless doing an approved hotfix.
-- If a hotfix goes to `main`, merge it back into `develop` immediately.
+- Never force-push to `dev`, `staging`, or `main`.
+- Never commit directly to `main` for normal work.
+- If a hotfix lands on `main`, forward-merge it into `staging` and then `dev` immediately.

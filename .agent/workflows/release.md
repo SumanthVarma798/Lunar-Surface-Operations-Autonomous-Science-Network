@@ -1,31 +1,55 @@
 ---
-description: End-to-end release workflow for LSOAS using develop -> main, semantic tags, and GitHub Releases
+description: End-to-end release workflow using dev -> staging -> main(prod), semantic tags, and GitHub Releases
 ---
 
 # Release Workflow
 
 Use this workflow for every formal release (`vX.Y.Z`).
 
-## Release model
+## Environment and branch mapping
 
-- Integration branch: `develop`
-- Release branch: `main`
-- Promotion mechanism: PR from `develop` to `main`
-- Release artifact: annotated git tag + GitHub Release
+- `dev` branch -> Dev environment (playground/integration)
+- `staging` branch -> Staging environment (production replica)
+- `main` branch -> Production environment
+
+Promotion chain is always:
+
+1. `dev -> staging`
+2. `staging -> main`
+
+`prod` must always be a replica of what passed in `staging`.
 
 ## Inputs required
 
 - Release version (for example `v1.0.0`, `v1.1.0`, `v2.0.0`)
-- Release scope summary (features/fixes/docs)
-- Milestone/issues to close
-- Decision: merge strategy (`merge` default)
+- Scope summary (features/fixes/docs)
+- Target milestone and included issues
+- Go/no-go approvers for staging and prod gates
+- Release checklist file copied from `.agent/workflows/release-checklist-template.md`
 
-## Guardrails
+## Mandatory guardrails
 
-- Do not commit directly to `main` for normal work.
-- Do not force-push tags or release branches.
-- Use `--ff-only` pulls to avoid accidental local merge commits.
-- Treat `master` references as `main` in this repository.
+- No direct feature PRs to `staging` or `main`
+- No force pushes to `dev`, `staging`, or `main`
+- Branch protection enabled with required checks on `staging` and `main`
+- All PR merges should be non-interactive and traceable
+- Treat `master` references as `main` in this repository
+
+## 0. One-time branch setup (if missing)
+
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+
+git checkout -b staging origin/main
+git push -u origin staging
+
+git checkout -b dev origin/staging
+git push -u origin dev
+```
+
+If branches already exist, do not recreate them.
 
 ## 1. Pre-flight sync
 
@@ -33,16 +57,25 @@ Use this workflow for every formal release (`vX.Y.Z`).
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-git checkout develop
-git pull --ff-only origin develop
+git checkout staging
+git pull --ff-only origin staging
+git checkout dev
+git pull --ff-only origin dev
 ```
 
-## 2. Validate release readiness
+Initialize release checklist record:
 
-1. Ensure all planned feature PRs are merged into `develop`.
-2. Verify CI on latest `develop` is green.
-3. Confirm no critical open blockers in the release milestone.
-4. Confirm working tree is clean:
+```bash
+mkdir -p docs/releases
+cp .agent/workflows/release-checklist-template.md docs/releases/<VERSION>-checklist.md
+```
+
+## 2. Release readiness on dev
+
+- Confirm all intended feature PRs are merged into `dev`
+- Confirm `dev` CI is green
+- Confirm release milestone has no unresolved P0/P1 blockers
+- Confirm working tree clean:
 
 ```bash
 git status -sb
@@ -50,48 +83,114 @@ git status -sb
 
 ## 3. Build release scope notes
 
-Find the previous release tag and summarize changes since then:
-
 ```bash
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
-  git log --oneline "$LAST_TAG"..origin/develop
+  git log --oneline "$LAST_TAG"..origin/dev
 else
-  git log --oneline origin/develop -n 100
+  git log --oneline origin/dev -n 100
 fi
 ```
 
 Capture:
 
-- Key features
-- Key fixes
-- Docs/roadmap updates
-- Breaking changes (if any)
+- Highlights
+- Fixes
+- Docs/process changes
+- Breaking changes and migrations
 
-## 4. Open release PR (develop -> main)
+## 4. Gate 1 PR: dev -> staging
 
-Create a release PR body file:
+Prepare PR body:
 
 ```bash
-cat > /tmp/release_pr.md <<'PRBODY'
-## Problem
-<why this release is needed now>
+cat > /tmp/release_stage_pr.md <<'PRBODY'
+## Purpose
+Promote validated development work into staging for production-like verification.
 
-## What changed
-- <item 1>
-- <item 2>
+## Included scope
+- <feature/fix/docs summary>
 
-## Why this design
-- <reasoning>
+## Validation plan
+- [ ] CI green on staging PR
+- [ ] Manual smoke on staging environment
+- [ ] No blocker defects
 
-## Testing evidence
-- <CI/jobs/manual evidence>
+## Roll-forward / rollback
+- Roll-forward fixes land in dev and are re-promoted
+- Rollback by reverting staging merge if needed
+PRBODY
+```
 
-## Migration notes
-- <breaking changes or "none">
+Open PR:
 
-## Superseded issue mapping (old -> new)
-- <if applicable>
+```bash
+export GH_CONFIG_DIR=/Users/varma/.gh_config
+gh pr create \
+  -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
+  --base staging \
+  --head dev \
+  --title "release-candidate: <VERSION> to staging" \
+  --body-file /tmp/release_stage_pr.md
+```
+
+## 5. Staging validation gate
+
+On the `dev -> staging` PR:
+
+```bash
+export GH_CONFIG_DIR=/Users/varma/.gh_config
+gh pr view <STAGE_PR_NUMBER> \
+  -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
+  --json mergeable,mergeStateStatus,statusCheckRollup
+```
+
+Required to pass before merge:
+
+- CI checks green
+- Staging deploy successful
+- Manual smoke checklist signed off
+- No unresolved release blockers
+
+Merge gate PR:
+
+```bash
+export GH_CONFIG_DIR=/Users/varma/.gh_config
+gh pr merge <STAGE_PR_NUMBER> \
+  -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
+  --merge --delete-branch=false
+```
+
+## 6. Freeze release candidate from staging
+
+```bash
+git fetch origin
+git checkout staging
+git pull --ff-only origin staging
+STAGING_SHA=$(git rev-parse --short HEAD)
+echo "$STAGING_SHA"
+```
+
+Use this SHA as release candidate fingerprint.
+
+## 7. Gate 2 PR: staging -> main (production)
+
+Prepare prod PR body:
+
+```bash
+cat > /tmp/release_prod_pr.md <<'PRBODY'
+## Purpose
+Promote staging-validated release candidate to production.
+
+## Candidate
+- Staging SHA: <STAGING_SHA>
+- Version: <VERSION>
+
+## Production gate checklist
+- [ ] Staging validation completed
+- [ ] Required status checks green
+- [ ] Release notes prepared
+- [ ] Rollback owner assigned
 PRBODY
 ```
 
@@ -102,53 +201,37 @@ export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr create \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --base main \
-  --head develop \
-  --title "release: <VERSION>" \
-  --body-file /tmp/release_pr.md
+  --head staging \
+  --title "release: <VERSION> to production" \
+  --body-file /tmp/release_prod_pr.md
 ```
 
-## 5. Gate and merge release PR
-
-Check mergeability and status checks:
+Verify and merge:
 
 ```bash
 export GH_CONFIG_DIR=/Users/varma/.gh_config
-gh pr view <PR_NUMBER> \
+gh pr view <PROD_PR_NUMBER> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --json mergeable,mergeStateStatus,statusCheckRollup
-```
 
-When all required checks pass and approvals are done:
-
-```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
-gh pr merge <PR_NUMBER> \
+gh pr merge <PROD_PR_NUMBER> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --merge --delete-branch=false
 ```
 
-## 6. Sync local main to merged release
+## 8. Tag production release
 
 ```bash
 git fetch origin
 git checkout main
 git pull --ff-only origin main
 RELEASE_SHA=$(git rev-parse --short HEAD)
-echo "$RELEASE_SHA"
-```
 
-## 7. Create annotated release tag
-
-```bash
 git tag -a <VERSION> -m "LSOAS <VERSION> release" "$RELEASE_SHA"
 git push origin <VERSION>
 ```
 
-Tag naming convention: semantic version with `v` prefix.
-
-## 8. Publish GitHub Release
-
-Create release notes file:
+## 9. Publish GitHub release
 
 ```bash
 cat > /tmp/release_notes.md <<'NOTES'
@@ -161,14 +244,10 @@ cat > /tmp/release_notes.md <<'NOTES'
 ## Scope
 - <scope summary>
 
-## Roadmap status
-- <phase updates>
+## Deployment path
+- Promoted via dev -> staging -> main
 NOTES
-```
 
-Publish:
-
-```bash
 export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh release create <VERSION> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
@@ -177,39 +256,49 @@ gh release create <VERSION> \
   --notes-file /tmp/release_notes.md
 ```
 
-## 9. Update roadmap and milestones
+## 10. Roadmap and milestone updates
 
-1. Close delivered issues in the completed milestone.
-2. Close completed milestone(s).
-3. Create/activate next milestone and roadmap epic/issues.
-4. Update repository roadmap artifacts:
+After production release:
+
+1. Close delivered issues in completed milestone
+2. Close completed milestone(s)
+3. Create/activate next milestone and epic/issues
+4. Update repo artifacts:
    - `README.md`
    - `docs/roadmap.md`
    - `docs/chandrayaan_v2_migration.md`
    - `.github/scripts/generate_project_structure.py`
    - `github_project_structure.json`
 
-## 10. Post-release verification checklist
+## 11. Post-release verification checklist
 
-- [ ] `main` and `origin/main` are aligned
-- [ ] Release PR is merged
-- [ ] Tag exists locally and remotely
-- [ ] GitHub release page is published
-- [ ] Roadmap issues/milestones reflect new phase state
-- [ ] Docs mention latest release baseline
+- [ ] `main` equals released production state
+- [ ] `staging` equals the promoted release candidate
+- [ ] Tag exists locally and on remote
+- [ ] GitHub release published
+- [ ] Roadmap state reflects release closure and next phase
 
-## 11. Hotfix path (if required)
+## 12. Rollback strategy
 
-If urgent fix is required after release:
+If production issue is discovered:
 
-1. Create `codex/hotfix-<short-name>` from `main`.
-2. Open PR to `main`.
-3. After merge, cherry-pick or merge hotfix into `develop` immediately.
-4. Tag patch release (`vX.Y.(Z+1)`) and publish release notes.
+1. Revert the `staging -> main` merge commit on `main`
+2. Deploy reverted `main`
+3. Merge/cherry-pick the same revert into `staging` and `dev`
+4. Open follow-up fix issue and hotfix PR chain
+
+## 13. Hotfix path
+
+For urgent production fixes:
+
+1. Branch `codex/hotfix-<short-name>` from `main`
+2. PR to `main`, validate, and merge
+3. Forward-merge hotfix to `staging`, then to `dev`
+4. Tag patch release (`vX.Y.(Z+1)`) and publish release notes
 
 ## Example timeline
 
-- `develop` accumulates feature PRs.
-- Release PR `develop -> main` opened and reviewed.
-- Merge PR, tag `vX.Y.Z`, publish GitHub Release.
-- Close completed milestone; open next phase milestone.
+- Feature PRs: `codex/* -> dev`
+- Release candidate: `dev -> staging`
+- Production release: `staging -> main`
+- Tag + GitHub release + roadmap closure

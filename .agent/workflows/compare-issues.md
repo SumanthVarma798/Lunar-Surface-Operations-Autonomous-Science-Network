@@ -33,4 +33,4 @@ This workflow fetches two GitHub issues and provides a side-by-side comparison.
    - **Release impact**: Whether each issue targets current release baseline behavior or next release scope, and any migration risk
    - **Recommended order**: Which issue should be tackled first and why, considering dependencies, risk reduction, and learning curve
    - **Combined implementation notes**: If both could be done together in one branch, explain whether that's advisable or not and why
-   - **Branch/PR recommendation**: Suggested branch split and PR order using `codex/*` branches into `develop`
+   - **Branch/PR recommendation**: Suggested branch split and PR order using `codex/*` branches into `dev`, with promotion gates `dev -> staging -> main`
