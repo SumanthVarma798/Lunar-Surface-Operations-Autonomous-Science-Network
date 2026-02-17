@@ -99,6 +99,44 @@ Supporting docs:
 
 ---
 
+## Dashboard Screenshots
+
+### Main Mission Dashboard States
+
+Idle operations
+
+![LSOAS dashboard idle state](docs/screenshots/dashboard-idle.png)
+
+Executing task flow
+
+![LSOAS dashboard executing task state](docs/screenshots/dashboard-executing.png)
+
+Safe mode command flow
+
+![LSOAS dashboard safe mode state](docs/screenshots/dashboard-safe-mode.png)
+
+### Mission Setup and Selection Flows
+
+Battery-informed rover selection
+
+![Battery-informed rover selection](docs/screenshots/phase1-battery-selection.png)
+
+Manual rover selection
+
+![Manual rover selection](docs/screenshots/phase1-manual-selection.png)
+
+Telemetry-first mission stream
+
+![Telemetry stream focus](docs/screenshots/phase1-telemetry-load.png)
+
+### Visual Theme Variant
+
+Light theme reference
+
+![Light theme dashboard view](docs/screenshots/dashboard-light-theme.png)
+
+---
+
 ## Quick Start
 
 ### Web Simulation
