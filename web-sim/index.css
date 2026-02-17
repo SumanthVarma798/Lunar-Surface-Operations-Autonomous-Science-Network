@@ -560,6 +560,12 @@ body.three-panel-open #main-grid {
   flex: 1;
 }
 
+#left-command-log-block .dropdown-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .dropdown-content[hidden] {
   display: none;
 }
@@ -1929,7 +1935,10 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 }
 
 .command-log-left {
-  max-height: 188px;
+  max-height: none;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
 }
 
 .cmd-log-entry {
