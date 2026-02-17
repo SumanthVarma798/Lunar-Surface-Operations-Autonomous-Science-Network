@@ -1296,6 +1296,156 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
   margin-bottom: var(--sp-sm);
 }
 
+.mission-brief-card {
+  margin-bottom: var(--sp-sm);
+  padding: var(--sp-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background:
+    radial-gradient(
+      circle at 92% 12%,
+      rgba(34, 211, 238, 0.18),
+      transparent 36%
+    ),
+    var(--bg-card);
+}
+
+.mission-brief-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-xs);
+}
+
+.mission-brief-code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+}
+
+.mission-brief-phase {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.mission-brief-summary {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-bottom: var(--sp-sm);
+}
+
+.mission-brief-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mission-brief-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  background: rgba(34, 211, 238, 0.11);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mission-guide-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-xs);
+  margin-bottom: var(--sp-sm);
+}
+
+.mission-guide-toolbar .btn-sm {
+  padding: 5px 8px;
+  font-size: 10px;
+}
+
+.mission-step-list {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.mission-step-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-sm);
+  background: var(--bg-card);
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.mission-step-item:hover {
+  border-color: var(--border-strong);
+}
+
+.mission-step-item.is-complete {
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.mission-step-item.is-next {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.mission-step-item.is-applied {
+  border-color: rgba(34, 211, 238, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.2);
+}
+
+.mission-step-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-xs);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mission-step-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+.mission-step-meta {
+  display: flex;
+  gap: var(--sp-xs);
+}
+
+.mission-step-chip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+}
+
+.mission-step-note {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1.35;
+}
+
 /* ─── Command Buttons Grid ─── */
 .command-grid {
   display: grid;
@@ -1400,6 +1550,47 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 /* ─── Input Fields ─── */
 .input-group {
   margin-bottom: var(--sp-md);
+}
+
+.task-id-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-xs);
+}
+
+.task-id-regenerate-btn {
+  align-self: stretch;
+  white-space: nowrap;
+}
+
+.task-id-meta {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.task-id-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.task-id-toggle-label input {
+  accent-color: var(--accent-cyan);
+}
+
+.task-id-preview {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .input-group label {

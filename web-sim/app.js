@@ -123,9 +123,22 @@
     packetsSent: $("#packets-sent"),
     packetsReceived: $("#packets-received"),
     packetsDropped: $("#packets-dropped"),
+    missionPresetSelect: $("#mission-preset-select"),
+    missionBriefCode: $("#mission-brief-code"),
+    missionBriefPhase: $("#mission-brief-phase"),
+    missionBriefSummary: $("#mission-brief-summary"),
+    missionBriefTags: $("#mission-brief-tags"),
+    missionStepList: $("#mission-step-list"),
+    missionApplyBtn: $("#mission-apply-btn"),
+    missionNextStepBtn: $("#mission-next-step-btn"),
+    missionResetBtn: $("#mission-reset-btn"),
     taskIdInput: $("#task-id-input"),
+    taskIdAutoToggle: $("#task-id-auto-toggle"),
+    taskIdRegenerateBtn: $("#task-id-regenerate-btn"),
+    taskIdPreview: $("#task-id-preview"),
     taskTypeSelect: $("#task-type-select"),
     taskDifficultySelect: $("#task-difficulty-select"),
+    targetSiteInput: $("#target-site-input"),
     roverTargetSelect: $("#rover-target-select"),
     latencySlider: $("#latency-slider"),
     latencyValue: $("#latency-value"),
@@ -166,6 +179,460 @@
     }
   }
   hydrateTaskSelectorsFromCatalog();
+
+  const TASK_TYPE_CODES = {
+    movement: "MOV",
+    science: "SCI",
+    digging: "DIG",
+    pushing: "PSH",
+    photo: "IMG",
+    "sample-handling": "SMP",
+  };
+
+  const MISSION_PRESETS = {
+    "cy3-pragyan": {
+      id_code: "CY3",
+      mission_phase: "CY3-ops",
+      title: "Chandrayaan-3 Pragyan Surface Ops",
+      summary:
+        "Traverse, image, and run in-situ surface science analogs around a Pragyan-style landing zone.",
+      payload_tags: ["Pragyan", "LIBS", "APXS", "NavCam"],
+      default_target_site: "Shiv Shakti Point Sector-A",
+      steps: [
+        {
+          title: "Traverse to scan waypoint",
+          task_type: "movement",
+          difficulty_level: "L2",
+          mission_phase: "CY3-ops",
+          target_site: "Traverse Corridor-1",
+          note: "Position rover safely before instrument operations.",
+        },
+        {
+          title: "Panoramic imaging sweep",
+          task_type: "photo",
+          difficulty_level: "L1",
+          mission_phase: "CY3-ops",
+          target_site: "Panorama Ridge",
+          note: "Capture terrain mosaic for route and science planning.",
+        },
+        {
+          title: "In-situ elemental science pass",
+          task_type: "science",
+          difficulty_level: "L3",
+          mission_phase: "CY3-ops",
+          target_site: "Surface Patch LIBS-02",
+          note: "Teach payload-style analysis sequencing.",
+        },
+      ],
+    },
+    "cy4-sample-return": {
+      id_code: "CY4",
+      mission_phase: "CY4-sample-chain",
+      title: "Chandrayaan-4 Sample Return Chain",
+      summary:
+        "A teaching sequence for prospecting, extraction, sample custody, and transfer preparation.",
+      payload_tags: ["Sampling Drill", "Transfer Canister", "Surface Relay"],
+      default_target_site: "Sample Depot Alpha",
+      steps: [
+        {
+          title: "Prospecting traverse to candidate site",
+          task_type: "movement",
+          difficulty_level: "L3",
+          mission_phase: "CY4-sample-chain",
+          target_site: "Candidate Site CY4-7",
+          note: "Reach site with enough battery and comm margin.",
+        },
+        {
+          title: "Volatile prospecting scan",
+          task_type: "science",
+          difficulty_level: "L3",
+          mission_phase: "CY4-sample-chain",
+          target_site: "Candidate Site CY4-7",
+          note: "Run spectroscopy-like measurement cycle.",
+        },
+        {
+          title: "Core extraction",
+          task_type: "digging",
+          difficulty_level: "L4",
+          mission_phase: "CY4-sample-chain",
+          target_site: "Drill Spot CY4-7B",
+          note: "Higher thermal and terrain stress during drilling.",
+        },
+        {
+          title: "Sample transfer and custody check",
+          task_type: "sample-handling",
+          difficulty_level: "L4",
+          mission_phase: "CY4-sample-chain",
+          target_site: "Sample Depot Alpha",
+          note: "Validate chain-of-custody workflow for return prep.",
+        },
+      ],
+    },
+    "lupex-polar-ice": {
+      id_code: "LXP",
+      mission_phase: "LUPEX-prospecting",
+      title: "LUPEX Polar Ice Prospecting",
+      summary:
+        "Polar traverse and subsurface investigation sequence focused on volatile resource mapping.",
+      payload_tags: ["Polar Traverse", "Volatile Mapping", "Drill Ops"],
+      default_target_site: "Polar Shadow Boundary",
+      steps: [
+        {
+          title: "Low-light approach traverse",
+          task_type: "movement",
+          difficulty_level: "L4",
+          mission_phase: "LUPEX-prospecting",
+          target_site: "Shadow Boundary Route-3",
+          note: "Night/terminator margins strongly influence risk.",
+        },
+        {
+          title: "High-fidelity imaging survey",
+          task_type: "photo",
+          difficulty_level: "L2",
+          mission_phase: "LUPEX-prospecting",
+          target_site: "Polar Survey Grid",
+          note: "Map hazard zones before drilling.",
+        },
+        {
+          title: "Subsurface excavation run",
+          task_type: "digging",
+          difficulty_level: "L5",
+          mission_phase: "LUPEX-prospecting",
+          target_site: "Ice Prospect Borehole",
+          note: "Max difficulty case for environment-aware planning.",
+        },
+      ],
+    },
+    "cy-future-base": {
+      id_code: "CYB",
+      mission_phase: "base-build",
+      title: "Future Chandrayaan Base Build",
+      summary:
+        "Multipurpose swarm scenario for regolith logistics, infrastructure staging, and base readiness.",
+      payload_tags: ["Swarm Ops", "Regolith Handling", "Infrastructure Build"],
+      default_target_site: "Bharati Base Site-01",
+      steps: [
+        {
+          title: "Route clearance traverse",
+          task_type: "movement",
+          difficulty_level: "L2",
+          mission_phase: "base-build",
+          target_site: "Access Corridor-B",
+          note: "Prepare route before heavy logistics tasks.",
+        },
+        {
+          title: "Regolith push and berm shaping",
+          task_type: "pushing",
+          difficulty_level: "L4",
+          mission_phase: "base-build",
+          target_site: "Shield Berm Segment-2",
+          note: "Material handling under traction limits.",
+        },
+        {
+          title: "Excavation for foundation trench",
+          task_type: "digging",
+          difficulty_level: "L4",
+          mission_phase: "base-build",
+          target_site: "Foundation Trench-A",
+          note: "Excavation workload for habitat anchoring.",
+        },
+        {
+          title: "Sample transfer to processing bay",
+          task_type: "sample-handling",
+          difficulty_level: "L3",
+          mission_phase: "base-build",
+          target_site: "ISRU Processing Bay",
+          note: "Logistics hand-off between rover roles.",
+        },
+        {
+          title: "Post-build imaging verification",
+          task_type: "photo",
+          difficulty_level: "L2",
+          mission_phase: "base-build",
+          target_site: "Base Site Panorama Mast",
+          note: "Visual QA pass for teaching mission closure.",
+        },
+      ],
+    },
+  };
+
+  const DEFAULT_MISSION_PRESET = "cy3-pragyan";
+  const missionPresetKeys = Object.keys(MISSION_PRESETS);
+  const taskIdCounters = {};
+  const missionGuideState = {
+    presetKey: DEFAULT_MISSION_PRESET,
+    completedCount: 0,
+    activeStepIndex: 0,
+    currentMissionPhase: MISSION_PRESETS[DEFAULT_MISSION_PRESET].mission_phase,
+  };
+  let taskIdDirty = false;
+  let suppressTaskIdInputTracking = false;
+
+  function safeMissionPresetKey(rawKey) {
+    const key = String(rawKey || "").trim();
+    return missionPresetKeys.includes(key) ? key : DEFAULT_MISSION_PRESET;
+  }
+
+  function getActiveMissionPreset() {
+    return MISSION_PRESETS[safeMissionPresetKey(missionGuideState.presetKey)];
+  }
+
+  function getTaskTypeConfig(taskType) {
+    return taskCatalog?.task_types?.[taskType] || null;
+  }
+
+  function sanitizeTaskToken(value, fallback = "TASK") {
+    const token = String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/(^-+|-+$)/g, "");
+    return token || fallback;
+  }
+
+  function getTaskIdContext() {
+    const preset = getActiveMissionPreset();
+    const taskType = String(dom.taskTypeSelect?.value || "movement")
+      .trim()
+      .toLowerCase();
+    const difficulty = String(dom.taskDifficultySelect?.value || "L2")
+      .trim()
+      .toUpperCase();
+    const missionCode = sanitizeTaskToken(preset.id_code || "CYX", "CYX");
+    const taskCode = TASK_TYPE_CODES[taskType] || sanitizeTaskToken(taskType, "TASK").slice(0, 4);
+    const difficultyCode = /^L[1-5]$/.test(difficulty) ? difficulty : "L2";
+
+    return {
+      missionCode,
+      taskCode,
+      difficultyCode,
+    };
+  }
+
+  function formatTaskId(context, sequence) {
+    return `${context.missionCode}-${context.taskCode}-${context.difficultyCode}-${String(sequence).padStart(3, "0")}`;
+  }
+
+  function peekGeneratedTaskId() {
+    const context = getTaskIdContext();
+    const counterKey = `${context.missionCode}:${context.taskCode}:${context.difficultyCode}`;
+    const sequence = taskIdCounters[counterKey] || 1;
+    return formatTaskId(context, sequence);
+  }
+
+  function reserveGeneratedTaskId() {
+    const context = getTaskIdContext();
+    const counterKey = `${context.missionCode}:${context.taskCode}:${context.difficultyCode}`;
+    const sequence = taskIdCounters[counterKey] || 1;
+    taskIdCounters[counterKey] = sequence + 1;
+    return formatTaskId(context, sequence);
+  }
+
+  function updateTaskIdPreview() {
+    if (!dom.taskIdPreview) return;
+    const suggested = peekGeneratedTaskId();
+    if (!dom.taskIdAutoToggle?.checked) {
+      dom.taskIdPreview.textContent = `Manual mode · Suggested ${suggested}`;
+      return;
+    }
+    dom.taskIdPreview.textContent = taskIdDirty
+      ? `Manual override · Suggested ${suggested}`
+      : `Next ${suggested}`;
+  }
+
+  function syncTaskIdInput({ force = false } = {}) {
+    if (!dom.taskIdInput) return null;
+    const generated = peekGeneratedTaskId();
+    const current = String(dom.taskIdInput.value || "").trim();
+    const canApplyAuto = dom.taskIdAutoToggle?.checked && !taskIdDirty;
+    if (force || !current || canApplyAuto) {
+      suppressTaskIdInputTracking = true;
+      dom.taskIdInput.value = generated;
+      suppressTaskIdInputTracking = false;
+      taskIdDirty = false;
+    }
+    updateTaskIdPreview();
+    return generated;
+  }
+
+  function markTaskIdAsDispatched() {
+    reserveGeneratedTaskId();
+    if (dom.taskIdAutoToggle?.checked) {
+      taskIdDirty = false;
+      syncTaskIdInput({ force: true });
+    } else {
+      updateTaskIdPreview();
+    }
+  }
+
+  function getMissionStepList() {
+    return getActiveMissionPreset().steps || [];
+  }
+
+  function getActiveMissionStep() {
+    const steps = getMissionStepList();
+    if (steps.length === 0) return null;
+    const clampedIndex = Math.max(0, Math.min(missionGuideState.activeStepIndex, steps.length - 1));
+    return steps[clampedIndex];
+  }
+
+  function setMissionGuidePhase(nextPhase) {
+    missionGuideState.currentMissionPhase = String(nextPhase || "").trim() || getActiveMissionPreset().mission_phase;
+    if (dom.missionBriefPhase) {
+      dom.missionBriefPhase.textContent = missionGuideState.currentMissionPhase;
+    }
+  }
+
+  function renderMissionBrief() {
+    const preset = getActiveMissionPreset();
+    if (dom.missionPresetSelect) {
+      dom.missionPresetSelect.value = safeMissionPresetKey(preset && missionGuideState.presetKey);
+    }
+    if (dom.missionBriefCode) dom.missionBriefCode.textContent = preset.id_code;
+    if (dom.missionBriefSummary) dom.missionBriefSummary.textContent = preset.summary;
+    setMissionGuidePhase(missionGuideState.currentMissionPhase || preset.mission_phase);
+    if (dom.missionBriefTags) {
+      dom.missionBriefTags.innerHTML = (preset.payload_tags || [])
+        .map((tag) => `<span class="mission-brief-tag">${escapeHtml(tag)}</span>`)
+        .join("");
+    }
+  }
+
+  function renderMissionStepList() {
+    if (!dom.missionStepList) return;
+    const steps = getMissionStepList();
+    if (steps.length === 0) {
+      dom.missionStepList.innerHTML = "";
+      return;
+    }
+
+    const nextIndex = Math.min(missionGuideState.completedCount, steps.length - 1);
+    dom.missionStepList.innerHTML = steps
+      .map((step, index) => {
+        const isComplete = index < missionGuideState.completedCount;
+        const isNext = missionGuideState.completedCount < steps.length && index === nextIndex;
+        const isApplied = index === missionGuideState.activeStepIndex;
+        const classes = [
+          "mission-step-item",
+          isComplete ? "is-complete" : "",
+          isNext ? "is-next" : "",
+          isApplied ? "is-applied" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return `
+          <li class="${classes}" data-step-index="${index}">
+            <div class="mission-step-title">
+              <span>${index + 1}. ${escapeHtml(step.title || "Step")}</span>
+              <span class="mission-step-badge">${isComplete ? "DONE" : isNext ? "NEXT" : "PLAN"}</span>
+            </div>
+            <div class="mission-step-meta">
+              <span class="mission-step-chip">${escapeHtml(step.task_type || "movement")}</span>
+              <span class="mission-step-chip">${escapeHtml(step.difficulty_level || "L2")}</span>
+            </div>
+            <div class="mission-step-note">${escapeHtml(step.note || "")}</div>
+          </li>
+        `;
+      })
+      .join("");
+  }
+
+  function applyMissionStepToControls(step, { announce = false } = {}) {
+    if (!step) return;
+
+    if (dom.taskTypeSelect && step.task_type && dom.taskTypeSelect.querySelector(`option[value="${step.task_type}"]`)) {
+      dom.taskTypeSelect.value = step.task_type;
+    }
+    if (
+      dom.taskDifficultySelect &&
+      step.difficulty_level &&
+      dom.taskDifficultySelect.querySelector(`option[value="${step.difficulty_level}"]`)
+    ) {
+      dom.taskDifficultySelect.value = step.difficulty_level;
+    }
+    if (dom.targetSiteInput) {
+      dom.targetSiteInput.value = step.target_site || getActiveMissionPreset().default_target_site || "";
+    }
+    setMissionGuidePhase(step.mission_phase || getActiveMissionPreset().mission_phase);
+    syncTaskIdInput();
+    renderMissionStepList();
+
+    if (announce) {
+      addFeedLine(
+        "system",
+        `📘 Mission step ready: ${step.title} (${step.task_type}/${step.difficulty_level})`,
+      );
+    }
+  }
+
+  function setMissionPreset(presetKey, { announce = false, resetProgress = true } = {}) {
+    missionGuideState.presetKey = safeMissionPresetKey(presetKey);
+    const preset = getActiveMissionPreset();
+    if (resetProgress) {
+      missionGuideState.completedCount = 0;
+      missionGuideState.activeStepIndex = 0;
+    } else {
+      missionGuideState.activeStepIndex = Math.max(
+        0,
+        Math.min(
+          missionGuideState.activeStepIndex,
+          Math.max(0, (preset.steps || []).length - 1),
+        ),
+      );
+    }
+    setMissionGuidePhase(preset.mission_phase);
+    renderMissionBrief();
+    renderMissionStepList();
+    applyMissionStepToControls(getActiveMissionStep(), { announce: false });
+
+    if (announce) {
+      addFeedLine("system", `🛰️ Mission preset loaded: ${preset.title}`);
+    }
+  }
+
+  function setMissionActiveStep(index, { announce = false } = {}) {
+    const steps = getMissionStepList();
+    if (steps.length === 0) return;
+    missionGuideState.activeStepIndex = Math.max(0, Math.min(index, steps.length - 1));
+    applyMissionStepToControls(getActiveMissionStep(), { announce });
+  }
+
+  function moveMissionActiveStep(delta) {
+    const steps = getMissionStepList();
+    if (steps.length === 0) return;
+    setMissionActiveStep(missionGuideState.activeStepIndex + delta, { announce: true });
+  }
+
+  function advanceMissionGuideAfterDispatch() {
+    const steps = getMissionStepList();
+    if (steps.length === 0) return;
+
+    if (missionGuideState.activeStepIndex >= missionGuideState.completedCount) {
+      missionGuideState.completedCount = Math.min(
+        steps.length,
+        missionGuideState.activeStepIndex + 1,
+      );
+    }
+
+    if (missionGuideState.completedCount >= steps.length) {
+      missionGuideState.activeStepIndex = steps.length - 1;
+      renderMissionStepList();
+      addFeedLine("system", "✅ Mission guide sequence complete. Use Reset Guide to run again.");
+      return;
+    }
+
+    missionGuideState.activeStepIndex = missionGuideState.completedCount;
+    applyMissionStepToControls(getActiveMissionStep(), { announce: false });
+  }
+
+  function ensureDispatchTaskId() {
+    const existing = String(dom.taskIdInput?.value || "").trim();
+    if (existing) return existing;
+    taskIdDirty = false;
+    syncTaskIdInput({ force: true });
+    return String(dom.taskIdInput?.value || "").trim() || peekGeneratedTaskId();
+  }
 
   const AUTO_ROVER_MODE = "auto";
   const roverIdCollator = new Intl.Collator(undefined, {
@@ -211,10 +678,22 @@
     const difficultyLevel = String(dom.taskDifficultySelect?.value || "L2")
       .trim()
       .toUpperCase();
+    const taskTypeCfg = getTaskTypeConfig(taskType);
+    const requiredCapabilities = Array.isArray(taskTypeCfg?.required_capabilities)
+      ? [...taskTypeCfg.required_capabilities]
+      : [];
+    const targetSiteRaw = String(dom.targetSiteInput?.value || "").trim();
+
     return {
       task_id: taskIdRaw.trim() || "TASK-001",
       task_type: taskType || "movement",
       difficulty_level: difficultyLevel || "L2",
+      required_capabilities: requiredCapabilities,
+      mission_phase:
+        missionGuideState.currentMissionPhase ||
+        taskTypeCfg?.mission_phase ||
+        getActiveMissionPreset().mission_phase,
+      target_site: targetSiteRaw || null,
     };
   }
 
@@ -628,11 +1107,16 @@
   function dispatchCommand(commandType, taskId = null) {
     let roverId = resolveTargetRover(commandType);
     let taskOptions = null;
+    let resolvedTaskId = taskId;
 
     if (commandType === "START_TASK") {
-      const selectedTask = getSelectedTaskConfig(taskId);
+      resolvedTaskId = taskId || ensureDispatchTaskId();
+      const selectedTask = getSelectedTaskConfig(resolvedTaskId);
       if (roverTargetMode === AUTO_ROVER_MODE) {
-        const assignment = sim.selectBestRoverForTask(selectedTask.task_id, selectedTask);
+        const assignment = sim.selectBestRoverForTask(
+          selectedTask.task_id,
+          selectedTask,
+        );
         roverId = assignment?.selected_rover || null;
         if (!roverId) {
           addFeedLine(
@@ -652,8 +1136,6 @@
       } else {
         taskOptions = {
           ...selectedTask,
-          mission_phase: "CY3-ops",
-          target_site: null,
           selected_rover: roverId,
         };
       }
@@ -665,13 +1147,17 @@
     }
 
     setSelectedRover(roverId);
-    const cmdId = sim.sendCommand(commandType, taskId, roverId, taskOptions);
+    const cmdId = sim.sendCommand(commandType, resolvedTaskId, roverId, taskOptions);
     if (roverTargetMode === AUTO_ROVER_MODE && cmdId) {
       const taskSuffix =
         commandType === "START_TASK" && taskOptions
           ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})`
           : "";
       addFeedLine("system", `🎯 Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`);
+    }
+    if (commandType === "START_TASK" && cmdId) {
+      advanceMissionGuideAfterDispatch();
+      markTaskIdAsDispatched();
     }
     return cmdId;
   }
@@ -697,7 +1183,12 @@
   function applyScenarioFromUrl() {
     const params = new URLSearchParams(window.location.search || "");
     const scenario = String(params.get("scenario") || "").toLowerCase();
-    const taskId = (params.get("task") || dom.taskIdInput?.value || "TASK-001").trim();
+    const missionPreset = safeMissionPresetKey(
+      params.get("mission") || missionGuideState.presetKey,
+    );
+    setMissionPreset(missionPreset, { announce: false, resetProgress: true });
+
+    const taskId = String(params.get("task") || dom.taskIdInput?.value || "").trim();
     const taskType = String(params.get("task_type") || dom.taskTypeSelect?.value || "movement")
       .trim()
       .toLowerCase();
@@ -706,6 +1197,7 @@
     )
       .trim()
       .toUpperCase();
+    const targetSite = String(params.get("target_site") || "").trim();
     const requestedView = String(params.get("view") || "").toLowerCase();
     const open3d = String(params.get("open3d") || "").toLowerCase();
     const delayMs = Math.max(
@@ -713,10 +1205,22 @@
       Math.round(Number(params.get("delay_ms")) || 1800),
     );
 
-    if (dom.taskIdInput && taskId) dom.taskIdInput.value = taskId;
+    if (dom.taskIdInput && taskId) {
+      dom.taskIdInput.value = taskId;
+      taskIdDirty = true;
+    }
     if (dom.taskTypeSelect && taskType) dom.taskTypeSelect.value = taskType;
     if (dom.taskDifficultySelect && difficultyLevel) {
       dom.taskDifficultySelect.value = difficultyLevel;
+    }
+    if (dom.targetSiteInput && targetSite) {
+      dom.targetSiteInput.value = targetSite;
+    }
+    if (!taskId) {
+      taskIdDirty = false;
+      syncTaskIdInput();
+    } else {
+      updateTaskIdPreview();
     }
 
     if (open3d === "1" || open3d === "true" || open3d === "yes") {
@@ -761,22 +1265,22 @@
     switch (scenario) {
       case "basic-auto":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || "AUTO-001"), delayMs);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
         break;
       case "manual-select": {
         const manualRover = params.get("manual_rover") || "rover-2";
         setRoverTargetMode(manualRover);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || "MANUAL-001"), delayMs);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
         break;
       }
       case "safe-mode":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || "SAFE-001"), delayMs);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
         setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
         break;
       case "battery-select":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || "BATT-001"), delayMs);
+        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
         break;
       default:
         break;
@@ -1133,8 +1637,92 @@
     });
   }
 
+  if (dom.missionPresetSelect) {
+    dom.missionPresetSelect.addEventListener("change", (event) => {
+      setMissionPreset(event.target.value, { announce: true, resetProgress: true });
+    });
+  }
+
+  if (dom.missionApplyBtn) {
+    dom.missionApplyBtn.addEventListener("click", () => {
+      applyMissionStepToControls(getActiveMissionStep(), { announce: true });
+      pulseButton(dom.missionApplyBtn);
+    });
+  }
+
+  if (dom.missionNextStepBtn) {
+    dom.missionNextStepBtn.addEventListener("click", () => {
+      moveMissionActiveStep(1);
+      pulseButton(dom.missionNextStepBtn);
+    });
+  }
+
+  if (dom.missionResetBtn) {
+    dom.missionResetBtn.addEventListener("click", () => {
+      missionGuideState.completedCount = 0;
+      missionGuideState.activeStepIndex = 0;
+      setMissionGuidePhase(getActiveMissionPreset().mission_phase);
+      applyMissionStepToControls(getActiveMissionStep(), { announce: true });
+      pulseButton(dom.missionResetBtn);
+    });
+  }
+
+  if (dom.missionStepList) {
+    dom.missionStepList.addEventListener("click", (event) => {
+      const item = event.target.closest(".mission-step-item");
+      if (!item) return;
+      const stepIndex = Number(item.dataset.stepIndex);
+      if (!Number.isFinite(stepIndex)) return;
+      setMissionActiveStep(stepIndex, { announce: true });
+    });
+  }
+
+  if (dom.taskIdInput) {
+    dom.taskIdInput.addEventListener("input", () => {
+      if (suppressTaskIdInputTracking) return;
+      taskIdDirty = true;
+      updateTaskIdPreview();
+    });
+  }
+
+  if (dom.taskIdAutoToggle) {
+    dom.taskIdAutoToggle.addEventListener("change", () => {
+      if (dom.taskIdAutoToggle.checked) {
+        taskIdDirty = false;
+        syncTaskIdInput({ force: true });
+        addFeedLine("system", "🧾 Auto task ID generation enabled");
+      } else {
+        updateTaskIdPreview();
+        addFeedLine("system", "🧾 Manual task ID mode enabled");
+      }
+    });
+  }
+
+  if (dom.taskIdRegenerateBtn) {
+    dom.taskIdRegenerateBtn.addEventListener("click", () => {
+      taskIdDirty = false;
+      syncTaskIdInput({ force: true });
+      addFeedLine("system", `🧾 Task ID regenerated: ${dom.taskIdInput.value}`);
+      pulseButton(dom.taskIdRegenerateBtn);
+    });
+  }
+
+  if (dom.taskTypeSelect) {
+    dom.taskTypeSelect.addEventListener("change", () => {
+      syncTaskIdInput();
+      updateTaskIdPreview();
+    });
+  }
+
+  if (dom.taskDifficultySelect) {
+    dom.taskDifficultySelect.addEventListener("change", () => {
+      syncTaskIdInput();
+      updateTaskIdPreview();
+    });
+  }
+
   $("#cmd-start-task").addEventListener("click", () => {
-    const taskId = dom.taskIdInput.value.trim() || "TASK-001";
+    const taskId = ensureDispatchTaskId();
     dispatchCommand("START_TASK", taskId);
     pulseButton($("#cmd-start-task"));
   });
@@ -1257,7 +1845,7 @@
           dispatchCommand("GO_SAFE");
           pulseButton($("#cmd-go-safe"));
         } else {
-          const taskId = dom.taskIdInput.value.trim() || "TASK-001";
+          const taskId = ensureDispatchTaskId();
           dispatchCommand("START_TASK", taskId);
           pulseButton($("#cmd-start-task"));
         }

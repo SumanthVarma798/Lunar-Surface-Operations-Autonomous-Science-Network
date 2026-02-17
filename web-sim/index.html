@@ -6,7 +6,7 @@
     <title>LSOAS — Lunar Mission Control</title>
     <meta
       name="description"
-      content="Lunar Surface Operations Autonomous Science Network — A school-level satellite communication simulation with NASA-inspired mission control interface."
+      content="Lunar Surface Operations Autonomous Science Network — A Chandrayaan-themed lunar mission control simulation for teaching swarm rover operations."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -301,6 +301,47 @@
           </div>
         </div>
 
+        <div class="command-section">
+          <h3>Mission Teaching Mode</h3>
+          <div class="input-group">
+            <label for="mission-preset-select">Mission Preset</label>
+            <select id="mission-preset-select" class="input-field select-field">
+              <option value="cy3-pragyan" selected>
+                Chandrayaan-3 Pragyan Surface Ops
+              </option>
+              <option value="cy4-sample-return">
+                Chandrayaan-4 Sample Return Chain
+              </option>
+              <option value="lupex-polar-ice">LUPEX Polar Ice Prospecting</option>
+              <option value="cy-future-base">
+                Future Chandrayaan Base Build (Teaching Scenario)
+              </option>
+            </select>
+          </div>
+          <article class="mission-brief-card" id="mission-brief-card">
+            <div class="mission-brief-head">
+              <span class="mission-brief-code" id="mission-brief-code">CY3</span>
+              <span class="mission-brief-phase" id="mission-brief-phase">CY3-ops</span>
+            </div>
+            <p class="mission-brief-summary" id="mission-brief-summary">
+              Pragyan-style near-surface traverse and in-situ science sequence.
+            </p>
+            <div class="mission-brief-tags" id="mission-brief-tags"></div>
+          </article>
+          <div class="mission-guide-toolbar">
+            <button class="btn-sm" id="mission-apply-btn" type="button">
+              Apply Preset
+            </button>
+            <button class="btn-sm" id="mission-next-step-btn" type="button">
+              Use Next Step
+            </button>
+            <button class="btn-sm" id="mission-reset-btn" type="button">
+              Reset Guide
+            </button>
+          </div>
+          <ol class="mission-step-list" id="mission-step-list"></ol>
+        </div>
+
         <!-- Task ID Input -->
         <div class="command-section">
           <h3>Task Configuration</h3>
@@ -312,13 +353,29 @@
           </div>
           <div class="input-group">
             <label for="task-id-input">Task ID</label>
-            <input
-              type="text"
-              id="task-id-input"
-              class="input-field"
-              placeholder="e.g. CY3-SCI-001"
-              value="CY3-SCI-001"
-            />
+            <div class="task-id-row">
+              <input
+                type="text"
+                id="task-id-input"
+                class="input-field"
+                placeholder="e.g. CY3-SCI-L2-001"
+                value="CY3-SCI-L2-001"
+              />
+              <button
+                class="btn-sm task-id-regenerate-btn"
+                id="task-id-regenerate-btn"
+                type="button"
+              >
+                Regenerate
+              </button>
+            </div>
+            <div class="task-id-meta">
+              <label class="task-id-toggle-label" for="task-id-auto-toggle">
+                <input type="checkbox" id="task-id-auto-toggle" checked />
+                Auto-generate
+              </label>
+              <span class="task-id-preview" id="task-id-preview"></span>
+            </div>
           </div>
           <div class="input-group">
             <label for="task-type-select">Task Type</label>
@@ -340,6 +397,15 @@
               <option value="L4">L4 - Hard</option>
               <option value="L5">L5 - Extreme</option>
             </select>
+          </div>
+          <div class="input-group">
+            <label for="target-site-input">Target Site (optional)</label>
+            <input
+              type="text"
+              id="target-site-input"
+              class="input-field"
+              placeholder="e.g. Shiv Shakti Point Sector-A"
+            />
           </div>
         </div>
 

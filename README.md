@@ -23,6 +23,7 @@ The project is now redesigned around a Chandrayaan-themed future mission concept
 - Real mission basis from Chandrayaan-3 rover operations, Chandrayaan-4 sample chain direction, and LUPEX polar prospecting goals.
 - Future extension to an Indian lunar-base predeploy and construction swarm.
 - Task-centric rover operations instead of generic flat tasks.
+- Teaching-oriented dashboard presets for Chandrayaan-3, Chandrayaan-4, LUPEX, and future base-build scenarios.
 
 ### Reality Basis
 
@@ -115,6 +116,10 @@ Useful query params:
 - `?rovers=5`
 - `?scenario=basic-auto&task=CY3-SCI-001&task_type=science&difficulty=L3`
 - `?scenario=safe-mode&task=CY4-SAMPLE-008&task_type=sample-handling&difficulty=L4`
+- `?mission=cy3-pragyan`
+- `?mission=cy4-sample-return&target_site=Sample%20Depot%20Alpha`
+
+Dashboard task IDs are auto-generated (mission + task type + difficulty + sequence), and can still be manually edited at any time.
 
 ### ROS 2 Simulation
 
