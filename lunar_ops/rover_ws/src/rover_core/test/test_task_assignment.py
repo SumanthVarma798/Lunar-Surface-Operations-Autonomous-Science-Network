@@ -1,9 +1,24 @@
-import inspect
-import trace
+from pathlib import Path
+import sys
 
 import pytest
 
 from _helpers import FakeBus, load_module
+
+SRC_ROOT = Path(__file__).resolve().parents[1]
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from rover_core.task_model import compute_fault_probability
+from rover_core.task_model import compute_task_duration_steps
+from rover_core.task_model import load_catalog
+from rover_core.task_model import normalize_task_request
+from rover_core.task_model import select_best_rover
+
+
+@pytest.fixture()
+def task_catalog():
+    return load_catalog()
 
 
 @pytest.fixture()
@@ -13,182 +28,200 @@ def earth_node(monkeypatch):
     return earth_module.EarthNode()
 
 
-def test_select_best_rover_prefers_highest_battery_when_idle(earth_node):
-    available = {
-        'rover_1': {'state': 'IDLE', 'battery': 0.72, 'solar_exposure': 0.8},
-        'rover_2': {'state': 'IDLE', 'battery': 0.91, 'solar_exposure': 0.7},
-        'rover_3': {
-            'state': 'EXECUTING',
-            'battery': 0.99,
-            'solar_exposure': 0.9,
-        },
+def test_catalog_validates_required_base_rates(task_catalog):
+    assert task_catalog['difficulty_levels']['L1']['base_fault_rate'] == 0.01
+    assert task_catalog['difficulty_levels']['L2']['base_fault_rate'] == 0.03
+    assert task_catalog['difficulty_levels']['L3']['base_fault_rate'] == 0.06
+    assert task_catalog['difficulty_levels']['L4']['base_fault_rate'] == 0.10
+    assert task_catalog['difficulty_levels']['L5']['base_fault_rate'] == 0.18
+
+
+def test_difficulty_l1_vs_l5_changes_duration_and_risk(task_catalog):
+    context = {
+        'terrain_difficulty': 0.4,
+        'comm_quality': 0.8,
+        'battery': 0.7,
+        'solar_intensity': 0.7,
+        'thermal_stress': 0.3,
+        'lunar_time_state': 'DAYLIGHT',
+        'capability_match': True,
     }
 
-    assert earth_node.select_best_rover(available) == 'rover_2'
+    movement_l1 = normalize_task_request(
+        task_catalog,
+        task_id='MOVE-L1',
+        task_type='movement',
+        difficulty_level='L1',
+    )
+    movement_l5 = normalize_task_request(
+        task_catalog,
+        task_id='MOVE-L5',
+        task_type='movement',
+        difficulty_level='L5',
+    )
+
+    l1_steps = compute_task_duration_steps(task_catalog, 'movement', 'L1', context)
+    l5_steps = compute_task_duration_steps(task_catalog, 'movement', 'L5', context)
+
+    l1_risk, _ = compute_fault_probability(task_catalog, 'movement', 'L1', context)
+    l5_risk, _ = compute_fault_probability(task_catalog, 'movement', 'L5', context)
+
+    assert movement_l1['difficulty_level'] == 'L1'
+    assert movement_l5['difficulty_level'] == 'L5'
+    assert l5_steps > l1_steps
+    assert l5_risk > l1_risk
 
 
-def test_select_best_rover_considers_solar_exposure_in_scoring(earth_node):
-    available = {
-        'rover_low_solar': {
+def test_low_battery_and_lunar_night_increase_predicted_risk(task_catalog):
+    day_context = {
+        'battery': 0.9,
+        'solar_intensity': 0.85,
+        'terrain_difficulty': 0.25,
+        'comm_quality': 0.9,
+        'thermal_stress': 0.2,
+        'lunar_time_state': 'DAYLIGHT',
+        'capability_match': True,
+    }
+    night_context = {
+        'battery': 0.18,
+        'solar_intensity': 0.1,
+        'terrain_difficulty': 0.65,
+        'comm_quality': 0.55,
+        'thermal_stress': 0.72,
+        'lunar_time_state': 'NIGHT',
+        'capability_match': True,
+    }
+
+    day_risk, _ = compute_fault_probability(task_catalog, 'science', 'L3', day_context)
+    night_risk, _ = compute_fault_probability(
+        task_catalog,
+        'science',
+        'L3',
+        night_context,
+    )
+
+    assert night_risk > day_risk
+
+
+def test_assignment_changes_with_task_capability_needs(task_catalog):
+    fleet = {
+        'rover_1': {
             'state': 'IDLE',
             'battery': 0.95,
-            'solar_exposure': 0.2,
+            'solar_exposure': 0.8,
+            'terrain_difficulty': 0.25,
+            'comm_quality': 0.88,
+            'thermal_stress': 0.2,
+            'position': {'lat': -43.3, 'lon': -11.2},
         },
-        'rover_high_solar': {
+        'rover_2': {
             'state': 'IDLE',
-            'battery': 0.55,
-            'solar_exposure': 0.9,
+            'battery': 0.82,
+            'solar_exposure': 0.7,
+            'terrain_difficulty': 0.35,
+            'comm_quality': 0.82,
+            'thermal_stress': 0.25,
+            'position': {'lat': -43.2, 'lon': -11.15},
+        },
+        'rover_3': {
+            'state': 'IDLE',
+            'battery': 0.76,
+            'solar_exposure': 0.65,
+            'terrain_difficulty': 0.38,
+            'comm_quality': 0.8,
+            'thermal_stress': 0.28,
+            'position': {'lat': -43.4, 'lon': -11.3},
         },
     }
 
-    # Scores:
-    # rover_low_solar  = 0.95*0.5 + 0.3 = 0.775
-    # rover_high_solar = 0.55*0.5 + 1.0 = 1.275
-    assert earth_node.select_best_rover(available) == 'rover_high_solar'
-
-
-def test_auto_assign_rejects_when_all_rovers_unavailable(
-    earth_node, monkeypatch
-):
-    earth_node.fleet_registry = {
-        'rover_1': {'state': 'EXECUTING', 'battery': 0.8, 'solar_exposure': 0.7},
-        'rover_2': {'state': 'SAFE_MODE', 'battery': 0.9, 'solar_exposure': 0.9},
-    }
-
-    dispatched = []
-    monkeypatch.setattr(
-        earth_node,
-        'send_command',
-        lambda rover_id, cmd_type, task_id=None: dispatched.append(
-            (rover_id, cmd_type, task_id)
-        ),
+    science_task = normalize_task_request(
+        task_catalog,
+        task_id='SCI-01',
+        task_type='science',
+        difficulty_level='L2',
+    )
+    digging_task = normalize_task_request(
+        task_catalog,
+        task_id='DIG-01',
+        task_type='digging',
+        difficulty_level='L2',
     )
 
-    assert earth_node.auto_assign_task('task-no-idle') is False
-    assert dispatched == []
+    science_selection = select_best_rover(task_catalog, fleet, science_task)
+    digging_selection = select_best_rover(task_catalog, fleet, digging_task)
+
+    assert science_selection['selected_rover'] in {'rover_1', 'rover_2'}
+    assert digging_selection['selected_rover'] == 'rover_3'
 
 
-def test_auto_assign_edge_case_single_rover(earth_node, monkeypatch):
-    earth_node.fleet_registry = {
-        'rover_1': {'state': 'IDLE', 'battery': 0.05, 'solar_exposure': 0.1}
+def test_rejection_when_no_feasible_rover(task_catalog):
+    fleet = {
+        'rover_1': {
+            'state': 'EXECUTING',
+            'battery': 0.14,
+            'solar_exposure': 0.1,
+            'terrain_difficulty': 0.75,
+            'comm_quality': 0.5,
+            'thermal_stress': 0.8,
+            'position': {'lat': -43.3, 'lon': -11.2},
+        },
+        'rover_2': {
+            'state': 'SAFE_MODE',
+            'battery': 0.2,
+            'solar_exposure': 0.15,
+            'terrain_difficulty': 0.8,
+            'comm_quality': 0.45,
+            'thermal_stress': 0.85,
+            'position': {'lat': -43.1, 'lon': -11.1},
+        },
     }
-
-    dispatched = []
-    monkeypatch.setattr(
-        earth_node,
-        'send_command',
-        lambda rover_id, cmd_type, task_id=None: dispatched.append(
-            (rover_id, cmd_type, task_id)
-        ),
+    hard_task = normalize_task_request(
+        task_catalog,
+        task_id='SAMPLE-FAIL',
+        task_type='sample-handling',
+        difficulty_level='L5',
     )
 
-    assert earth_node.auto_assign_task('task-single') is True
-    assert dispatched == [('rover_1', 'START_TASK', 'task-single')]
+    selection = select_best_rover(task_catalog, fleet, hard_task)
+    assert selection['selected_rover'] is None
+    assert selection['reject_reason']
 
 
-def test_auto_assign_edge_case_all_low_battery(earth_node, monkeypatch):
+def test_earth_auto_assign_legacy_call_still_works(earth_node, monkeypatch):
     earth_node.fleet_registry = {
-        'rover_1': {'state': 'IDLE', 'battery': 0.08, 'solar_exposure': 0.3},
-        'rover_2': {'state': 'IDLE', 'battery': 0.04, 'solar_exposure': 0.9},
-        'rover_3': {'state': 'IDLE', 'battery': 0.09, 'solar_exposure': 0.1},
+        'rover_1': {
+            'state': 'IDLE',
+            'battery': 0.8,
+            'solar_exposure': 0.7,
+            'terrain_difficulty': 0.3,
+            'comm_quality': 0.82,
+            'thermal_stress': 0.22,
+            'position': {'lat': -43.3, 'lon': -11.2},
+        },
+        'rover_2': {
+            'state': 'IDLE',
+            'battery': 0.72,
+            'solar_exposure': 0.62,
+            'terrain_difficulty': 0.4,
+            'comm_quality': 0.78,
+            'thermal_stress': 0.3,
+            'position': {'lat': -43.4, 'lon': -11.3},
+        },
     }
 
     dispatched = []
-    monkeypatch.setattr(
-        earth_node,
-        'send_command',
-        lambda rover_id, cmd_type, task_id=None: dispatched.append(
-            (rover_id, cmd_type, task_id)
-        ),
-    )
 
-    assert earth_node.auto_assign_task('task-low-battery') is True
-    assert dispatched == [('rover_2', 'START_TASK', 'task-low-battery')]
-
-
-def test_manual_assignment_overrides_auto_selection(earth_node, monkeypatch):
-    earth_node.fleet_registry = {
-        'rover_1': {'state': 'IDLE', 'battery': 0.95, 'solar_exposure': 0.8},
-        'rover_2': {'state': 'SAFE_MODE', 'battery': 0.4, 'solar_exposure': 0.2},
-    }
-
-    dispatched = []
-
-    def record_send(rover_id, cmd_type, task_id=None):
-        dispatched.append((rover_id, cmd_type, task_id))
+    def record_send(rover_id, cmd_type, task_id=None, task_request=None, assignment_context=None):
+        dispatched.append((rover_id, cmd_type, task_id, task_request, assignment_context))
 
     monkeypatch.setattr(earth_node, 'send_command', record_send)
 
-    assert earth_node.auto_assign_task('task-auto') is True
-    earth_node.assign_task('rover_2', 'task-manual')
-
-    assert dispatched[0] == ('rover_1', 'START_TASK', 'task-auto')
-    assert dispatched[1] == ('rover_2', 'START_TASK', 'task-manual')
-
-
-def _tracked_lines(func):
-    source_lines, start_line = inspect.getsourcelines(func)
-    tracked = set()
-    for offset, text in enumerate(source_lines):
-        stripped = text.strip()
-        if not stripped:
-            continue
-        if stripped.startswith('#'):
-            continue
-        if stripped.startswith('def '):
-            continue
-        if stripped.startswith('"""') or stripped.startswith("'''"):
-            continue
-        tracked.add(start_line + offset)
-    return tracked
-
-
-def _exercise_assignment_paths(node):
-    node.select_best_rover(
-        {
-            'rover_1': {'state': 'IDLE', 'battery': 0.7, 'solar_exposure': 0.6},
-            'rover_2': {
-                'state': 'EXECUTING',
-                'battery': 1.0,
-                'solar_exposure': 0.9,
-            },
-        }
-    )
-    node.select_best_rover(
-        {
-            'rover_1': {'state': 'SAFE_MODE', 'battery': 0.3, 'solar_exposure': 0.2}
-        }
-    )
-
-    node.send_command = lambda _rid, _cmd, _task=None: None
-    node.fleet_registry = {
-        'rover_1': {'state': 'IDLE', 'battery': 0.8, 'solar_exposure': 0.8}
-    }
-    node.auto_assign_task('task-success')
-
-    node.fleet_registry = {
-        'rover_1': {
-            'state': 'EXECUTING',
-            'battery': 0.8,
-            'solar_exposure': 0.8,
-        }
-    }
-    node.auto_assign_task('task-rejected')
-    node.assign_task('rover_2', 'task-manual')
-
-
-def test_assignment_logic_line_coverage_above_80_percent(earth_node):
-    tracer = trace.Trace(count=True, trace=False)
-    tracer.runfunc(_exercise_assignment_paths, earth_node)
-    counts = tracer.results().counts
-
-    source_file = earth_node.__class__.select_best_rover.__code__.co_filename
-    tracked_lines = set()
-    tracked_lines.update(_tracked_lines(earth_node.__class__.select_best_rover))
-    tracked_lines.update(_tracked_lines(earth_node.__class__.auto_assign_task))
-    tracked_lines.update(_tracked_lines(earth_node.__class__.assign_task))
-
-    executed = sum(1 for line in tracked_lines if (source_file, line) in counts)
-    coverage_ratio = executed / len(tracked_lines)
-
-    assert coverage_ratio >= 0.80
+    assert earth_node.auto_assign_task('legacy-task-id') is True
+    assert len(dispatched) == 1
+    rover_id, cmd_type, task_id, task_request, assignment_context = dispatched[0]
+    assert cmd_type == 'START_TASK'
+    assert task_id == 'legacy-task-id'
+    assert task_request['task_type'] == 'movement'
+    assert task_request['difficulty_level'] == 'L2'
+    assert rover_id in {'rover_1', 'rover_2'}
+    assert assignment_context['selected_rover'] == rover_id

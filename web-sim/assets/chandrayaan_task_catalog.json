@@ -1,0 +1,128 @@
+{
+  "schema_version": "2.0.0",
+  "catalog_name": "chandrayaan_swarm_task_catalog",
+  "difficulty_levels": {
+    "L1": {
+      "base_fault_rate": 0.01,
+      "duration_multiplier": 0.7,
+      "min_battery": 0.12,
+      "energy_drain_per_step": 0.002
+    },
+    "L2": {
+      "base_fault_rate": 0.03,
+      "duration_multiplier": 0.9,
+      "min_battery": 0.18,
+      "energy_drain_per_step": 0.003
+    },
+    "L3": {
+      "base_fault_rate": 0.06,
+      "duration_multiplier": 1.1,
+      "min_battery": 0.25,
+      "energy_drain_per_step": 0.004
+    },
+    "L4": {
+      "base_fault_rate": 0.1,
+      "duration_multiplier": 1.35,
+      "min_battery": 0.32,
+      "energy_drain_per_step": 0.0055
+    },
+    "L5": {
+      "base_fault_rate": 0.18,
+      "duration_multiplier": 1.7,
+      "min_battery": 0.42,
+      "energy_drain_per_step": 0.007
+    }
+  },
+  "task_types": {
+    "movement": {
+      "display_name": "Movement/Traverse",
+      "mission_phase": "CY3-ops",
+      "required_capabilities": ["mobility"],
+      "base_steps": 8,
+      "min_steps": 4,
+      "max_steps": 30,
+      "terrain_sensitivity": 1.0,
+      "solar_sensitivity": 0.7,
+      "comm_sensitivity": 0.5,
+      "thermal_sensitivity": 0.6,
+      "battery_sensitivity": 0.9,
+      "terrain_duration_sensitivity": 0.45,
+      "risk_floor": 0.005
+    },
+    "science": {
+      "display_name": "Science Investigation",
+      "mission_phase": "CY3-ops",
+      "required_capabilities": ["science", "imaging"],
+      "base_steps": 10,
+      "min_steps": 5,
+      "max_steps": 36,
+      "terrain_sensitivity": 0.5,
+      "solar_sensitivity": 0.6,
+      "comm_sensitivity": 0.7,
+      "thermal_sensitivity": 0.8,
+      "battery_sensitivity": 0.7,
+      "terrain_duration_sensitivity": 0.25,
+      "risk_floor": 0.008
+    },
+    "digging": {
+      "display_name": "Digging/Drilling/Excavation",
+      "mission_phase": "LUPEX-prospecting",
+      "required_capabilities": ["excavation"],
+      "base_steps": 12,
+      "min_steps": 6,
+      "max_steps": 42,
+      "terrain_sensitivity": 0.8,
+      "solar_sensitivity": 0.5,
+      "comm_sensitivity": 0.4,
+      "thermal_sensitivity": 0.9,
+      "battery_sensitivity": 1.0,
+      "terrain_duration_sensitivity": 0.35,
+      "risk_floor": 0.01
+    },
+    "pushing": {
+      "display_name": "Pushing/Transport/Regolith Handling",
+      "mission_phase": "base-build",
+      "required_capabilities": ["manipulation", "mobility"],
+      "base_steps": 11,
+      "min_steps": 6,
+      "max_steps": 40,
+      "terrain_sensitivity": 0.9,
+      "solar_sensitivity": 0.4,
+      "comm_sensitivity": 0.4,
+      "thermal_sensitivity": 0.7,
+      "battery_sensitivity": 1.0,
+      "terrain_duration_sensitivity": 0.4,
+      "risk_floor": 0.01
+    },
+    "photo": {
+      "display_name": "Photo/Imaging/Survey",
+      "mission_phase": "CY3-ops",
+      "required_capabilities": ["imaging"],
+      "base_steps": 6,
+      "min_steps": 3,
+      "max_steps": 24,
+      "terrain_sensitivity": 0.3,
+      "solar_sensitivity": 0.5,
+      "comm_sensitivity": 0.8,
+      "thermal_sensitivity": 0.4,
+      "battery_sensitivity": 0.4,
+      "terrain_duration_sensitivity": 0.15,
+      "risk_floor": 0.004
+    },
+    "sample-handling": {
+      "display_name": "Sample Handling/Transfer",
+      "mission_phase": "CY4-sample-chain",
+      "required_capabilities": ["sample-logistics", "manipulation"],
+      "base_steps": 9,
+      "min_steps": 5,
+      "max_steps": 32,
+      "terrain_sensitivity": 0.6,
+      "solar_sensitivity": 0.5,
+      "comm_sensitivity": 0.6,
+      "thermal_sensitivity": 0.8,
+      "battery_sensitivity": 0.8,
+      "terrain_duration_sensitivity": 0.3,
+      "risk_floor": 0.009
+    }
+  }
+}

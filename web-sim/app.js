@@ -3,15 +3,28 @@
    Connects the Simulation Engine to the DOM.
    ═══════════════════════════════════════════════════════ */
 
-(function () {
+(async function () {
   "use strict";
 
   // ─── DOM References ───
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
 
+  async function loadTaskCatalog() {
+    try {
+      const response = await fetch("assets/chandrayaan_task_catalog.json", {
+        cache: "no-cache",
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (_err) {
+      return null;
+    }
+  }
+
   // ─── Boot ───
-  const sim = new SimulationController();
+  const taskCatalog = await loadTaskCatalog();
+  const sim = new SimulationController({ taskCatalog });
   const bus = sim.bus;
 
   // ─── Orbital Visualization ───
@@ -111,6 +124,8 @@
     packetsReceived: $("#packets-received"),
     packetsDropped: $("#packets-dropped"),
     taskIdInput: $("#task-id-input"),
+    taskTypeSelect: $("#task-type-select"),
+    taskDifficultySelect: $("#task-difficulty-select"),
     roverTargetSelect: $("#rover-target-select"),
     latencySlider: $("#latency-slider"),
     latencyValue: $("#latency-value"),
@@ -122,6 +137,35 @@
     faultProbValue: $("#fault-prob-value"),
     topologyVisual: $("#topology-visual"),
   };
+
+  function hydrateTaskSelectorsFromCatalog() {
+    if (!taskCatalog || !dom.taskTypeSelect || !dom.taskDifficultySelect) return;
+
+    const taskTypes = Object.keys(taskCatalog.task_types || {});
+    if (taskTypes.length > 0) {
+      dom.taskTypeSelect.innerHTML = taskTypes
+        .map((taskType) => {
+          const display = taskCatalog.task_types[taskType]?.display_name || taskType;
+          return `<option value="${taskType}">${display}</option>`;
+        })
+        .join("");
+      if (taskTypes.includes("science")) {
+        dom.taskTypeSelect.value = "science";
+      }
+    }
+
+    const difficultyLevels = Object.keys(taskCatalog.difficulty_levels || {});
+    if (difficultyLevels.length > 0) {
+      dom.taskDifficultySelect.innerHTML = difficultyLevels
+        .sort()
+        .map((difficulty) => `<option value="${difficulty}">${difficulty}</option>`)
+        .join("");
+      if (difficultyLevels.includes("L2")) {
+        dom.taskDifficultySelect.value = "L2";
+      }
+    }
+  }
+  hydrateTaskSelectorsFromCatalog();
 
   const AUTO_ROVER_MODE = "auto";
   const roverIdCollator = new Intl.Collator(undefined, {
@@ -159,6 +203,19 @@
   function formatRoverLabel(roverId) {
     if (!roverId) return "Unknown";
     return roverId.replace(/^rover-/i, "Rover-");
+  }
+
+  function getSelectedTaskConfig(taskIdOverride = null) {
+    const taskIdRaw = taskIdOverride || dom.taskIdInput?.value || "TASK-001";
+    const taskType = String(dom.taskTypeSelect?.value || "movement").trim().toLowerCase();
+    const difficultyLevel = String(dom.taskDifficultySelect?.value || "L2")
+      .trim()
+      .toUpperCase();
+    return {
+      task_id: taskIdRaw.trim() || "TASK-001",
+      task_type: taskType || "movement",
+      difficulty_level: difficultyLevel || "L2",
+    };
   }
 
   function isCompactFleetMode() {
@@ -214,6 +271,7 @@
       battery: 1,
       task_id: null,
       task_progress: null,
+      task_total_steps: null,
       position: null,
       fault: null,
       solar_exposure: 0.5,
@@ -291,7 +349,7 @@
     const solarText = solarExposure >= 0.5 ? "☀ Sun" : "🌑 Dark";
     const solarPct = Math.round(solarExposure * 100);
     const taskText = snapshot.task_id
-      ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/10)` : ""}`
+      ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/${snapshot.task_total_steps || "?"})` : ""}`
       : "—";
     const pinClass = pinnedRoverIds.has(snapshot.rover_id) ? "pinned" : "";
 
@@ -515,7 +573,8 @@
   function scoreRover(snapshot) {
     const battery = Number(snapshot.battery || 0);
     const solar = Number(snapshot.solar_exposure || 0);
-    const progress = Number(snapshot.task_progress || 0) / 10;
+    const totalSteps = Number(snapshot.task_total_steps || 10) || 10;
+    const progress = Number(snapshot.task_progress || 0) / totalSteps;
     return battery * 0.65 + solar * 0.25 + progress * 0.1;
   }
 
@@ -567,16 +626,52 @@
   }
 
   function dispatchCommand(commandType, taskId = null) {
-    const roverId = resolveTargetRover(commandType);
+    let roverId = resolveTargetRover(commandType);
+    let taskOptions = null;
+
+    if (commandType === "START_TASK") {
+      const selectedTask = getSelectedTaskConfig(taskId);
+      if (roverTargetMode === AUTO_ROVER_MODE) {
+        const assignment = sim.selectBestRoverForTask(selectedTask.task_id, selectedTask);
+        roverId = assignment?.selected_rover || null;
+        if (!roverId) {
+          addFeedLine(
+            "ack-fail",
+            `No rover available for ${selectedTask.task_type}/${selectedTask.difficulty_level}: ${assignment?.reject_reason || "feasibility check failed"}`,
+          );
+          return null;
+        }
+        const topScore = assignment?.scored_candidates?.[0];
+        taskOptions = {
+          ...assignment.task_request,
+          selected_rover: roverId,
+          predicted_fault_probability: topScore?.predicted_fault_probability ?? null,
+          assignment_score_breakdown: topScore?.score_breakdown ?? null,
+          reject_reason: assignment?.reject_reason || null,
+        };
+      } else {
+        taskOptions = {
+          ...selectedTask,
+          mission_phase: "CY3-ops",
+          target_site: null,
+          selected_rover: roverId,
+        };
+      }
+    }
+
     if (!roverId) {
       addFeedLine("ack-fail", "No rover available for command dispatch");
       return null;
     }
 
     setSelectedRover(roverId);
-    const cmdId = sim.sendCommand(commandType, taskId, roverId);
+    const cmdId = sim.sendCommand(commandType, taskId, roverId, taskOptions);
     if (roverTargetMode === AUTO_ROVER_MODE && cmdId) {
-      addFeedLine("system", `🎯 Auto-selected ${formatRoverLabel(roverId)} for ${commandType}`);
+      const taskSuffix =
+        commandType === "START_TASK" && taskOptions
+          ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})`
+          : "";
+      addFeedLine("system", `🎯 Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`);
     }
     return cmdId;
   }
@@ -603,6 +698,14 @@
     const params = new URLSearchParams(window.location.search || "");
     const scenario = String(params.get("scenario") || "").toLowerCase();
     const taskId = (params.get("task") || dom.taskIdInput?.value || "TASK-001").trim();
+    const taskType = String(params.get("task_type") || dom.taskTypeSelect?.value || "movement")
+      .trim()
+      .toLowerCase();
+    const difficultyLevel = String(
+      params.get("difficulty") || dom.taskDifficultySelect?.value || "L2",
+    )
+      .trim()
+      .toUpperCase();
     const requestedView = String(params.get("view") || "").toLowerCase();
     const open3d = String(params.get("open3d") || "").toLowerCase();
     const delayMs = Math.max(
@@ -611,6 +714,10 @@
     );
 
     if (dom.taskIdInput && taskId) dom.taskIdInput.value = taskId;
+    if (dom.taskTypeSelect && taskType) dom.taskTypeSelect.value = taskType;
+    if (dom.taskDifficultySelect && difficultyLevel) {
+      dom.taskDifficultySelect.value = difficultyLevel;
+    }
 
     if (open3d === "1" || open3d === "true" || open3d === "yes") {
       setTimeout(() => set3DPanel(true), 80);
@@ -770,7 +877,13 @@
       `${icon} ${normalizedState} | ${batteryIcon} ${batteryPct}%` +
       `${roverId ? ` | 🤖 ${formatRoverLabel(roverId)}` : ""}`;
     if (data.task_id) feedText += ` | 📋 ${data.task_id}`;
-    if (data.task_progress) feedText += ` (${data.task_progress}/10)`;
+    if (data.task_progress) feedText += ` (${data.task_progress}/${data.task_total_steps || "?"})`;
+    if (data.active_task_type && data.active_task_difficulty) {
+      feedText += ` | 🧭 ${data.active_task_type}/${data.active_task_difficulty}`;
+    }
+    if (Number.isFinite(Number(data.predicted_fault_probability))) {
+      feedText += ` | 📉 risk ${(Number(data.predicted_fault_probability) * 100).toFixed(1)}%`;
+    }
     if (data.fault) feedText += ` | ⚠️ ${data.fault}`;
 
     addFeedLine("tlm", feedText);
@@ -825,7 +938,7 @@
     entry.id = `cmd-entry-${data.cmdId}`;
     entry.innerHTML = `
       <span class="cmd-log-id">${data.cmdId}</span>
-      <span class="cmd-log-type">${data.cmdType}${data.taskId ? " " + data.taskId : ""}</span>
+      <span class="cmd-log-type">${data.cmdType}${data.taskId ? " " + data.taskId : ""}${data.taskType ? ` (${data.taskType}/${data.difficultyLevel || "L2"})` : ""}</span>
       <span class="cmd-log-target">[${formatRoverLabel(data.roverId)}]</span>
       <span class="cmd-log-status pending">PENDING</span>
     `;
@@ -1080,7 +1193,7 @@
   dom.faultSlider.addEventListener("input", (e) => {
     const val = parseInt(e.target.value);
     sim.updateConfig("faultProbability", val);
-    dom.faultProbValue.textContent = val + "%";
+    dom.faultProbValue.textContent = `${val > 0 ? "+" : ""}${val}%`;
   });
 
   // ─── Mission Elapsed Time Clock ───
