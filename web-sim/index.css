@@ -663,20 +663,6 @@ body.three-panel-open .panel-command {
   overflow: hidden;
 }
 
-#visualization-container.view-astronaut::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      120% 90% at 50% 118%,
-      rgba(14, 22, 40, 0.08),
-      rgba(8, 12, 24, 0.6) 46%,
-      rgba(4, 8, 16, 0.9) 70%
-    );
-}
-
 .cmd-btn-sm {
   margin-right: 12px;
   height: 32px;

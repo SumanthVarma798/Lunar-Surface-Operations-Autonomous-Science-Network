@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    LSOAS — 3D Visualization System
-   Two camera modes + orbital physics + collision handling
+   Orbital visualization + physics + collision handling
    ═══════════════════════════════════════════════════════ */
 
 class VisualizationController {
@@ -14,7 +14,6 @@ class VisualizationController {
     this.ROVER_SURFACE_OFFSET = 0.005;
     this.LOS_MARGIN = 0.012;
     this.LOS_ENDPOINT_TOLERANCE = 0.04;
-    this.SATELLITE_COUNT = 3;
     this.GRAVITY_MU = 1.22;
     this.DEFAULT_RESTITUTION = 0.68;
 
@@ -27,10 +26,7 @@ class VisualizationController {
     this.earthBase = null;
 
     this.viewMode = "orbital";
-    this.orbitalDistance = 8.4;
-    this.astronautPitch = 0.09;
-    this.astronautHeight = 0.018;
-    this.astronautShoulderOffset = 0.009;
+    this.orbitalDistance = 6.6;
     this.lastFrameTs = performance.now();
 
     this.dragState = {
@@ -58,11 +54,7 @@ class VisualizationController {
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
     this.tmpVecC = new THREE.Vector3();
-    this.tmpVecD = new THREE.Vector3();
-    this.tmpVecE = new THREE.Vector3();
-    this.tmpQuatA = new THREE.Quaternion();
     this.tmpColor = new THREE.Color();
-    this.worldUp = new THREE.Vector3(0, 1, 0);
     this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
     this.earthAnchor = this.earthAnchorOrbital.clone();
 
@@ -283,12 +275,12 @@ class VisualizationController {
     const size = new THREE.Vector3();
     geometry.boundingBox.getSize(size);
     const maxDim = Math.max(size.x, size.y, size.z, 0.0001);
-    const targetSize = 0.036;
+    const targetSize = 0.065;
     const scale = targetSize / maxDim;
 
     geometry.scale(scale, scale, scale);
     geometry.rotateX(-Math.PI / 2);
-    geometry.translate(0, 0.004, 0);
+    geometry.translate(0, 0.0072, 0);
     geometry.computeBoundingSphere();
     return geometry;
   }
@@ -359,7 +351,7 @@ class VisualizationController {
   createEarthBase() {
     const baseGroup = new THREE.Group();
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 26, 26),
+      new THREE.SphereGeometry(0.3, 26, 26),
       new THREE.MeshStandardMaterial({
         color: 0x93c5fd,
         emissive: 0x1d4e89,
@@ -371,7 +363,7 @@ class VisualizationController {
     baseGroup.add(core);
 
     const cloudBand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.186, 20, 20),
+      new THREE.SphereGeometry(0.312, 20, 20),
       new THREE.MeshBasicMaterial({
         color: 0xe0f2fe,
         transparent: true,
@@ -381,7 +373,7 @@ class VisualizationController {
     baseGroup.add(cloudBand);
 
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.26, 18, 18),
+      new THREE.SphereGeometry(0.44, 18, 18),
       new THREE.MeshBasicMaterial({
         color: 0x67e8f9,
         transparent: true,
@@ -500,18 +492,14 @@ class VisualizationController {
     const orbitPath = this.createOrbitPath(def.radius, basis, index, def.color);
     const linkToEarth = this.createBeam({
       color: 0x67e8f9,
-      emissive: 0x1c90a8,
       blockedColor: 0xfb7185,
-      blockedEmissive: 0x7f1d1d,
       opacity: 0.48,
       blockedOpacity: 0.7,
       thickness: 0.012,
     });
     const linkToRover = this.createBeam({
       color: 0xfacc15,
-      emissive: 0x7c5d0b,
       blockedColor: 0xf97316,
-      blockedEmissive: 0x7c2d12,
       opacity: 0.42,
       blockedOpacity: 0.66,
       thickness: 0.009,
@@ -538,72 +526,54 @@ class VisualizationController {
       points.push(p);
     }
 
-    const group = new THREE.Group();
-    const curve = new THREE.CatmullRomCurve3(points, true);
-    const orbitTube = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, segments, 0.004 + index * 0.001, 10, true),
-      new THREE.MeshStandardMaterial({
-        color: orbitColor,
-        emissive: new THREE.Color(orbitColor).multiplyScalar(0.2),
-        transparent: true,
-        opacity: 0.3,
-        roughness: 0.56,
-        metalness: 0.12,
-      }),
-    );
-    group.add(orbitTube);
-
     const dashed = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(points),
       new THREE.LineDashedMaterial({
-        color: 0x93c5fd,
+        color: orbitColor,
         transparent: true,
-        opacity: 0.34,
-        dashSize: 0.2 + index * 0.03,
-        gapSize: 0.12 + index * 0.02,
+        opacity: 0.58,
+        dashSize: 0.11 + index * 0.02,
+        gapSize: 0.07 + index * 0.015,
       }),
     );
     dashed.computeLineDistances();
-    group.add(dashed);
-
-    return group;
+    return dashed;
   }
 
   createBeam({
     color,
-    emissive = 0x223449,
     blockedColor = 0xfb7185,
-    blockedEmissive = 0x7f1d1d,
     opacity,
     blockedOpacity = 0.7,
     thickness,
   }) {
-    const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(1, 1, 1, 12, 1, true),
-      new THREE.MeshStandardMaterial({
+    const beam = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(),
+        new THREE.Vector3(0, 0.001, 0),
+      ]),
+      new THREE.LineDashedMaterial({
         color,
-        emissive: new THREE.Color(emissive),
-        emissiveIntensity: 0.95,
         transparent: true,
         opacity,
-        roughness: 0.26,
-        metalness: 0.06,
+        dashSize: 0.11 + thickness * 6.5,
+        gapSize: 0.06 + thickness * 4.5,
       }),
     );
-    mesh.userData = {
-      thickness,
+    beam.computeLineDistances();
+    beam.userData = {
+      dashSize: 0.11 + thickness * 6.5,
+      gapSize: 0.06 + thickness * 4.5,
       style: {
         color,
-        emissive,
         blockedColor,
-        blockedEmissive,
         opacity,
         blockedOpacity,
       },
       blocked: false,
     };
-    mesh.visible = false;
-    return mesh;
+    beam.visible = false;
+    return beam;
   }
 
   createInterSatelliteLinks() {
@@ -615,9 +585,7 @@ class VisualizationController {
         b: next,
         beam: this.createBeam({
           color: 0x818cf8,
-          emissive: 0x3730a3,
           blockedColor: 0xf87171,
-          blockedEmissive: 0x7f1d1d,
           opacity: 0.24,
           blockedOpacity: 0.58,
           thickness: 0.0062,
@@ -636,11 +604,9 @@ class VisualizationController {
     const style = beam.userData.style;
     const material = beam.material;
     const color = blocked ? style.blockedColor : style.color;
-    const emissive = blocked ? style.blockedEmissive : style.emissive;
     const opacity = blocked ? style.blockedOpacity : style.opacity;
 
     material.color.setHex(color);
-    material.emissive.setHex(emissive);
     material.opacity = opacity;
   }
 
@@ -672,13 +638,8 @@ class VisualizationController {
     }
 
     beam.visible = true;
-    const radius = beam.userData?.thickness || 0.005;
-    beam.position.copy(start).addScaledVector(this.tmpVecA, 0.5);
-    beam.scale.set(radius, length, radius);
-    beam.quaternion.setFromUnitVectors(
-      this.worldUp,
-      this.tmpVecA.normalize(),
-    );
+    beam.geometry.setFromPoints([start, end]);
+    beam.computeLineDistances();
     this.setBeamBlockedState(beam, blocked);
   }
 
@@ -723,17 +684,17 @@ class VisualizationController {
       metalness: 0.26,
     });
     const fallbackMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.01, 0.012),
+      new THREE.BoxGeometry(0.03, 0.016, 0.02),
       fallbackMaterial,
     );
     group.add(fallbackMesh);
 
     const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x34d399 });
     const beacon = new THREE.Mesh(
-      new THREE.SphereGeometry(0.0028, 10, 10),
+      new THREE.SphereGeometry(0.0048, 10, 10),
       beaconMaterial,
     );
-    beacon.position.set(0, 0.014, 0);
+    beacon.position.set(0, 0.024, 0);
     group.add(beacon);
 
     const rover = {
@@ -751,7 +712,7 @@ class VisualizationController {
       staticCollider: {
         id: roverId,
         type: "rover",
-        radius: 0.015,
+        radius: 0.028,
         mass: Infinity,
         restitution: 0.5,
         position: new THREE.Vector3(),
@@ -789,7 +750,7 @@ class VisualizationController {
     this.selectedRoverId = roverId;
     this.rovers.forEach((rover, id) => {
       const selected = id === roverId;
-      rover.group.scale.setScalar(selected ? 1.12 : 1.0);
+      rover.group.scale.setScalar(selected ? 1.25 : 1.12);
       rover.group.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return;
         if (!Object.prototype.hasOwnProperty.call(obj.material, "emissive")) return;
@@ -832,28 +793,15 @@ class VisualizationController {
   }
 
   setViewMode(mode, emitEvent = true) {
-    const next = mode === "astronaut" ? "astronaut" : "orbital";
+    const next = "orbital";
     this.viewMode = next;
-    this.container.classList.toggle("view-astronaut", next === "astronaut");
-    this.satellites.forEach((sat) => {
-      sat.orbitPath.visible = next === "orbital";
-    });
     this.updateCamera(true);
     this.updateMetaText();
     if (emitEvent) this.bus.emit("viz:view-mode", { mode: next });
   }
 
-  getViewAnchorLocal() {
-    if (this.selectedRoverId && this.rovers.has(this.selectedRoverId)) {
-      return this.rovers.get(this.selectedRoverId).group.position;
-    }
-    if (this.rovers.size > 0) {
-      return this.rovers.values().next().value.group.position;
-    }
-    return null;
-  }
-
-  updateOrbitalCamera() {
+  updateCamera(force = false) {
+    if (!this.camera) return;
     this.camera.fov = 35;
     this.camera.position.set(0, 0, this.orbitalDistance);
     this.camera.lookAt(0, 0, 0);
@@ -862,64 +810,7 @@ class VisualizationController {
       this.earthAnchor.copy(this.earthAnchorOrbital);
       if (this.earthBase) this.earthBase.position.copy(this.earthAnchor);
     }
-    if (this.earthBase) this.earthBase.scale.setScalar(1);
-  }
-
-  updateAstronautCamera() {
-    const anchorLocal = this.getViewAnchorLocal();
-    if (!anchorLocal) {
-      this.camera.fov = 40;
-      this.camera.position.set(0, 2.2, 4.2);
-      this.camera.lookAt(0, 0, 0);
-      return;
-    }
-
-    const rootQuat = this.rootGroup.quaternion;
-    const normalWorld = this.tmpVecA.copy(anchorLocal).applyQuaternion(rootQuat).normalize();
-    const surfaceWorld = this.tmpVecB.copy(normalWorld).multiplyScalar(this.MOON_RADIUS + this.ROVER_SURFACE_OFFSET);
-
-    const horizonRef = Math.abs(normalWorld.dot(this.worldUp)) > 0.94
-      ? this.tmpVecC.set(1, 0, 0)
-      : this.tmpVecC.copy(this.worldUp);
-    const rightWorld = this.tmpVecD.crossVectors(horizonRef, normalWorld).normalize();
-    const forwardWorld = this.tmpVecE.crossVectors(normalWorld, rightWorld).normalize();
-
-    const lookDir = forwardWorld.clone().applyAxisAngle(rightWorld, this.astronautPitch).normalize();
-    const eye = surfaceWorld
-      .clone()
-      .addScaledVector(normalWorld, this.astronautHeight)
-      .addScaledVector(rightWorld, this.astronautShoulderOffset);
-
-    this.camera.fov = 52;
-    this.camera.position.copy(eye);
-    this.camera.lookAt(eye.clone().addScaledVector(lookDir, 3.6));
-
-    this.updateEarthForAstronautView(normalWorld, rightWorld, forwardWorld);
-  }
-
-  updateEarthForAstronautView(normalWorld, rightWorld, forwardWorld) {
-    if (!this.earthBase) return;
-
-    const earthDirectionWorld = this.tmpVecA
-      .copy(forwardWorld)
-      .applyAxisAngle(rightWorld, 0.065)
-      .applyAxisAngle(normalWorld, -0.34)
-      .normalize();
-
-    this.tmpQuatA.copy(this.rootGroup.quaternion).invert();
-    this.earthAnchor.copy(earthDirectionWorld).applyQuaternion(this.tmpQuatA).multiplyScalar(10.4);
-    this.earthBase.position.copy(this.earthAnchor);
-    this.earthBase.scale.setScalar(1.22);
-  }
-
-  updateCamera(force = false) {
-    if (!this.camera) return;
-
-    if (this.viewMode === "orbital") {
-      this.updateOrbitalCamera();
-    } else {
-      this.updateAstronautCamera();
-    }
+    if (this.earthBase) this.earthBase.scale.setScalar(1.28);
 
     if (force) this.camera.updateProjectionMatrix();
   }
@@ -928,7 +819,7 @@ class VisualizationController {
     const metaEl = document.getElementById("lunar-meta");
     if (!metaEl) return;
 
-    const modeLabel = this.viewMode === "astronaut" ? "Astronaut" : "Orbital";
+    const modeLabel = "Orbital";
     const selectedLabel = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
       ? this.selectedRoverId.toUpperCase()
       : "ROVER --";
@@ -979,19 +870,11 @@ class VisualizationController {
       "wheel",
       (e) => {
         e.preventDefault();
-        if (this.viewMode === "orbital") {
-          this.orbitalDistance = THREE.MathUtils.clamp(
-            this.orbitalDistance + e.deltaY * 0.0012,
-            5.2,
-            16.0,
-          );
-        } else {
-          this.astronautPitch = THREE.MathUtils.clamp(
-            this.astronautPitch + e.deltaY * 0.0009,
-            -0.12,
-            0.38,
-          );
-        }
+        this.orbitalDistance = THREE.MathUtils.clamp(
+          this.orbitalDistance + e.deltaY * 0.0012,
+          1.35,
+          16.0,
+        );
         this.updateCamera();
       },
       { passive: false },
@@ -1139,13 +1022,11 @@ class VisualizationController {
     }
 
     const linkStatus = { total: 0, clear: 0, blocked: 0 };
-    const hideVisualLinks = this.viewMode === "astronaut";
 
     this.satellites.forEach((sat) => {
       const satPos = sat.body.position;
       const earthBlocked = this.isLineOfSightBlocked(satPos, this.earthAnchor);
       this.updateBeam(sat.linkToEarth, satPos, this.earthAnchor, earthBlocked);
-      if (hideVisualLinks) sat.linkToEarth.visible = false;
       linkStatus.total += 1;
       if (earthBlocked) linkStatus.blocked += 1;
       else linkStatus.clear += 1;
@@ -1155,7 +1036,6 @@ class VisualizationController {
           allowEndSurfaceTouch: true,
         });
         this.updateBeam(sat.linkToRover, satPos, selectedPos, roverBlocked);
-        if (hideVisualLinks) sat.linkToRover.visible = false;
         linkStatus.total += 1;
         if (roverBlocked) linkStatus.blocked += 1;
         else linkStatus.clear += 1;
@@ -1170,7 +1050,6 @@ class VisualizationController {
       if (!satA || !satB) return;
       const blocked = this.isLineOfSightBlocked(satA.body.position, satB.body.position);
       this.updateBeam(link.beam, satA.body.position, satB.body.position, blocked);
-      if (hideVisualLinks) link.beam.visible = false;
       linkStatus.total += 1;
       if (blocked) linkStatus.blocked += 1;
       else linkStatus.clear += 1;

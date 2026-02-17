@@ -105,7 +105,6 @@
     telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
     viewOrbitalBtn: $("#btn-view-orbital"),
-    viewAstronautBtn: $("#btn-view-astronaut"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
     pendingCount: $("#pending-count"),
@@ -146,31 +145,23 @@
       dom.viewOrbitalBtn.classList.toggle("active", orbitalActive);
       dom.viewOrbitalBtn.setAttribute("aria-pressed", orbitalActive ? "true" : "false");
     }
-    if (dom.viewAstronautBtn) {
-      dom.viewAstronautBtn.classList.toggle("active", !orbitalActive);
-      dom.viewAstronautBtn.setAttribute("aria-pressed", !orbitalActive ? "true" : "false");
-    }
   }
 
   function setVisualizationMode(mode) {
     if (!viz || typeof viz.setViewMode !== "function") return;
-    viz.setViewMode(mode);
+    viz.setViewMode("orbital");
   }
 
   if (dom.viewOrbitalBtn) {
     dom.viewOrbitalBtn.addEventListener("click", () => setVisualizationMode("orbital"));
   }
-  if (dom.viewAstronautBtn) {
-    dom.viewAstronautBtn.addEventListener("click", () => setVisualizationMode("astronaut"));
-  }
   setViewModeButtonState("orbital");
   if (!viz) {
     if (dom.viewOrbitalBtn) dom.viewOrbitalBtn.disabled = true;
-    if (dom.viewAstronautBtn) dom.viewAstronautBtn.disabled = true;
   }
 
-  bus.on("viz:view-mode", (payload) => {
-    setViewModeButtonState(payload?.mode === "astronaut" ? "astronaut" : "orbital");
+  bus.on("viz:view-mode", () => {
+    setViewModeButtonState("orbital");
   });
 
   function clamp01(value) {
@@ -645,7 +636,7 @@
       setTimeout(() => set3DPanel(true), 80);
     }
 
-    if (requestedView === "orbital" || requestedView === "astronaut") {
+    if (requestedView === "orbital") {
       setTimeout(() => setVisualizationMode(requestedView), 120);
     }
 
