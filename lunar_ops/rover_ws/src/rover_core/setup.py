@@ -17,6 +17,10 @@ setup(
             glob('launch/*.py')),
     ],
     install_requires=['setuptools'],
+    include_package_data=True,
+    package_data={
+        package_name: ['chandrayaan_task_catalog.json'],
+    },
     zip_safe=True,
     maintainer='TODO',
     maintainer_email='user@todo.todo',

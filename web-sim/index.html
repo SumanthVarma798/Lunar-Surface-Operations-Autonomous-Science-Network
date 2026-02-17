@@ -316,9 +316,30 @@
               type="text"
               id="task-id-input"
               class="input-field"
-              placeholder="e.g. SAMPLE-001"
-              value="SAMPLE-001"
+              placeholder="e.g. CY3-SCI-001"
+              value="CY3-SCI-001"
             />
+          </div>
+          <div class="input-group">
+            <label for="task-type-select">Task Type</label>
+            <select id="task-type-select" class="input-field select-field">
+              <option value="movement">Movement/Traverse</option>
+              <option value="science">Science Investigation</option>
+              <option value="digging">Digging/Drilling</option>
+              <option value="pushing">Pushing/Regolith Handling</option>
+              <option value="photo">Photo/Imaging Survey</option>
+              <option value="sample-handling">Sample Handling/Transfer</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="task-difficulty-select">Difficulty</label>
+            <select id="task-difficulty-select" class="input-field select-field">
+              <option value="L1">L1 - Very Easy</option>
+              <option value="L2" selected>L2 - Easy</option>
+              <option value="L3">L3 - Moderate</option>
+              <option value="L4">L4 - Hard</option>
+              <option value="L5">L5 - Extreme</option>
+            </select>
           </div>
         </div>
 
@@ -372,17 +393,17 @@
           </div>
           <div class="input-group">
             <label for="fault-slider"
-              >Fault Probability
-              <span class="param-value" id="fault-prob-value">10%</span></label
+              >Risk Bias
+              <span class="param-value" id="fault-prob-value">0%</span></label
             >
             <input
               type="range"
               id="fault-slider"
               class="range-input"
-              min="0"
-              max="100"
+              min="-20"
+              max="20"
               step="1"
-              value="10"
+              value="0"
             />
           </div>
         </div>

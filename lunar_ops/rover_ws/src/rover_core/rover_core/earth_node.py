@@ -7,6 +7,10 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
+from .task_model import load_catalog
+from .task_model import normalize_task_request
+from .task_model import select_best_rover
+
 
 class EarthNode(Node):
     """Earth station with fleet registry and task assignment logic."""
@@ -19,11 +23,15 @@ class EarthNode(Node):
         self.declare_parameter('ack_timeout', 5.0)
         self.declare_parameter('max_retries', 3)
         self.declare_parameter('enable_topic_discovery', True)
+        self.declare_parameter('task_catalog_path', '')
 
         self.ack_timeout = float(self.get_parameter('ack_timeout').value)
         self.max_retries = int(self.get_parameter('max_retries').value)
         self.enable_topic_discovery = bool(
             self.get_parameter('enable_topic_discovery').value
+        )
+        self.task_catalog = load_catalog(
+            str(self.get_parameter('task_catalog_path').value).strip() or None
         )
 
         # Command tracking
@@ -102,10 +110,20 @@ class EarthNode(Node):
                 'battery': 0.0,
                 'solar_exposure': 0.0,
                 'task_id': None,
+                'active_task_type': None,
+                'active_task_difficulty': None,
+                'task_total_steps': None,
                 'position': None,
                 'data_buffer_size': 0,
                 'fault': None,
                 'last_seen': None,
+                'predicted_fault_probability': 0.0,
+                'assignment_score_breakdown': None,
+                'lunar_time_state': 'UNKNOWN',
+                'solar_intensity': 0.0,
+                'terrain_difficulty': 0.3,
+                'comm_quality': 0.8,
+                'thermal_stress': 0.3,
             }
             created = True
 
@@ -157,10 +175,20 @@ class EarthNode(Node):
                     'battery': 0.0,
                     'solar_exposure': 0.0,
                     'task_id': None,
+                    'active_task_type': None,
+                    'active_task_difficulty': None,
+                    'task_total_steps': None,
                     'position': None,
                     'data_buffer_size': 0,
                     'fault': None,
                     'last_seen': None,
+                    'predicted_fault_probability': 0.0,
+                    'assignment_score_breakdown': None,
+                    'lunar_time_state': 'UNKNOWN',
+                    'solar_intensity': 0.0,
+                    'terrain_difficulty': 0.3,
+                    'comm_quality': 0.8,
+                    'thermal_stress': 0.3,
                 }
 
             self.fleet_registry[rover_id].update({
@@ -168,10 +196,31 @@ class EarthNode(Node):
                 'battery': float(data.get('battery', 0.0)),
                 'solar_exposure': float(data.get('solar_exposure', 0.0)),
                 'task_id': data.get('task_id'),
+                'active_task_type': (
+                    data.get('active_task_type') or data.get('task_type')
+                ),
+                'active_task_difficulty': (
+                    data.get('active_task_difficulty')
+                    or data.get('difficulty_level')
+                ),
+                'task_total_steps': data.get('task_total_steps'),
                 'position': data.get('position'),
                 'data_buffer_size': int(data.get('data_buffer_size', 0)),
                 'fault': data.get('fault'),
                 'last_seen': time.time(),
+                'predicted_fault_probability': float(
+                    data.get('predicted_fault_probability', 0.0)
+                ),
+                'assignment_score_breakdown': data.get(
+                    'assignment_score_breakdown'
+                ),
+                'lunar_time_state': data.get('lunar_time_state', 'UNKNOWN'),
+                'solar_intensity': float(
+                    data.get('solar_intensity', data.get('solar_exposure', 0.0))
+                ),
+                'terrain_difficulty': float(data.get('terrain_difficulty', 0.3)),
+                'comm_quality': float(data.get('comm_quality', 0.8)),
+                'thermal_stress': float(data.get('thermal_stress', 0.3)),
             })
 
     def ack_callback(self, msg, subscribed_rover_id):
@@ -264,51 +313,95 @@ class EarthNode(Node):
                 with self._lock:
                     self.pending_commands.pop(cmd_id, None)
 
-    def select_best_rover(self, available_rovers):
-        """Pick best rover using IDLE + battery/solar scoring."""
-        scores = {}
-        for rover_id, status in available_rovers.items():
-            if status.get('state') != 'IDLE':
-                continue
+    def select_best_rover(self, available_rovers, task_request):
+        """Pick best rover with explainable context-aware assignment scoring."""
+        selection = select_best_rover(
+            self.task_catalog, available_rovers, task_request
+        )
+        return selection
 
-            battery = float(status.get('battery', 0.0))
-            solar_exposure = float(status.get('solar_exposure', 0.0))
-            solar_bonus = 1.0 if solar_exposure >= 0.5 else 0.3
-            score = battery * 0.5 + solar_bonus
-            scores[rover_id] = score
-
-        if not scores:
-            return None
-        return max(scores, key=scores.get)
-
-    def auto_assign_task(self, task_id):
+    def auto_assign_task(self, task_id, task_type=None, difficulty_level='L2',
+                         mission_phase=None, required_capabilities=None,
+                         target_site=None):
         """Auto-assign a task to the best available rover."""
+        task_request = normalize_task_request(
+            self.task_catalog,
+            task_id=task_id,
+            task_type=task_type,
+            difficulty_level=difficulty_level,
+            mission_phase=mission_phase,
+            required_capabilities=required_capabilities,
+            target_site=target_site,
+        )
+
         with self._lock:
             available = {
                 rover_id: status.copy()
                 for rover_id, status in self.fleet_registry.items()
-                if status.get('state') == 'IDLE'
             }
 
-        best_rover = self.select_best_rover(available)
+        selection = self.select_best_rover(available, task_request)
+        best_rover = selection.get('selected_rover')
         if best_rover is None:
             print(
-                f'REJECTED: no suitable rover for task {task_id} '
-                '(need IDLE rover with telemetry)'
+                f'REJECTED: no suitable rover for task {task_request["task_id"]} '
+                f'({selection.get("reject_reason")})'
             )
             return False
 
-        print(f'Auto-assigned task {task_id} -> [{best_rover}]')
-        self.send_command(best_rover, 'START_TASK', task_id)
+        selected_candidate = selection['scored_candidates'][0]
+        score_text = json.dumps(selected_candidate['score_breakdown'])
+        print(
+            f'Auto-assigned task {task_request["task_id"]} '
+            f'({task_request["task_type"]}/{task_request["difficulty_level"]}) '
+            f'-> [{best_rover}] score={selected_candidate["score"]:.3f} '
+            f'risk={selected_candidate["predicted_fault_probability"]:.3f}'
+        )
+        print(f'Assignment breakdown [{best_rover}]: {score_text}')
+        self.send_command(
+            best_rover,
+            'START_TASK',
+            task_id=task_request['task_id'],
+            task_request=task_request,
+            assignment_context={
+                'selected_rover': best_rover,
+                'score_breakdown': selected_candidate['score_breakdown'],
+                'predicted_fault_probability': selected_candidate[
+                    'predicted_fault_probability'
+                ],
+                'reject_reason': None,
+            },
+        )
         return True
 
-    def assign_task(self, rover_id, task_id):
+    def assign_task(self, rover_id, task_id, task_type=None,
+                    difficulty_level='L2', mission_phase=None,
+                    required_capabilities=None, target_site=None):
         """Manual assignment command for a specific rover."""
         self._ensure_rover_interfaces(rover_id, source='manual-assign')
-        print(f'Manual assignment: {task_id} -> [{rover_id}]')
-        self.send_command(rover_id, 'START_TASK', task_id)
+        task_request = normalize_task_request(
+            self.task_catalog,
+            task_id=task_id,
+            task_type=task_type,
+            difficulty_level=difficulty_level,
+            mission_phase=mission_phase,
+            required_capabilities=required_capabilities,
+            target_site=target_site,
+        )
+        print(
+            f'Manual assignment: {task_request["task_id"]} '
+            f'({task_request["task_type"]}/{task_request["difficulty_level"]}) '
+            f'-> [{rover_id}]'
+        )
+        self.send_command(
+            rover_id,
+            'START_TASK',
+            task_id=task_request['task_id'],
+            task_request=task_request,
+        )
 
-    def send_command(self, rover_id, cmd_type, task_id=None):
+    def send_command(self, rover_id, cmd_type, task_id=None, task_request=None,
+                     assignment_context=None):
         """Send JSON command to a target rover and track ACK state."""
         self._ensure_rover_interfaces(rover_id, source='send-command')
         publisher = self.command_publishers.get(rover_id)
@@ -330,6 +423,23 @@ class EarthNode(Node):
         }
         if task_id:
             cmd_data['task_id'] = task_id
+        if task_request:
+            cmd_data.update({
+                'task_type': task_request['task_type'],
+                'difficulty_level': task_request['difficulty_level'],
+                'required_capabilities': task_request['required_capabilities'],
+                'mission_phase': task_request['mission_phase'],
+                'target_site': task_request.get('target_site'),
+            })
+        if assignment_context:
+            cmd_data['assignment_score_breakdown'] = assignment_context.get(
+                'score_breakdown'
+            )
+            cmd_data['predicted_fault_probability'] = assignment_context.get(
+                'predicted_fault_probability'
+            )
+            cmd_data['selected_rover'] = assignment_context.get('selected_rover')
+            cmd_data['reject_reason'] = assignment_context.get('reject_reason')
 
         cmd_json = json.dumps(cmd_data)
         msg = String()
@@ -344,6 +454,8 @@ class EarthNode(Node):
                 'cmd_json': cmd_json,
                 'rover_id': rover_id,
                 'task_id': task_id,
+                'task_request': task_request,
+                'assignment_context': assignment_context,
             }
 
         task_suffix = f' {task_id}' if task_id else ''
@@ -390,10 +502,10 @@ class EarthNode(Node):
         print('EARTH STATION FLEET COMMAND INTERFACE')
         print('=' * 66)
         print('Commands:')
-        print('  start <task_id>')
-        print('      Auto-select best rover (IDLE + battery/solar score)')
-        print('  assign_task <rover_id> <task_id>')
-        print('      Manual ASSIGN_TASK to specific rover')
+        print('  start <task_id> [task_type] [difficulty]')
+        print('      Auto-select best rover using capability/risk scoring')
+        print('  assign_task <rover_id> <task_id> [task_type] [difficulty]')
+        print('      Manual START_TASK to specific rover')
         print('  abort <rover_id>')
         print('  safe <rover_id>')
         print('  reset <rover_id>')
@@ -429,22 +541,29 @@ def command_loop(node):
                 continue
 
             if cmd == 'START':
-                split_parts = user_input.split(maxsplit=1)
+                split_parts = user_input.split(maxsplit=3)
                 if len(split_parts) < 2:
-                    print('Usage: start <task_id>')
+                    print('Usage: start <task_id> [task_type] [difficulty]')
                     continue
                 task_id = split_parts[1]
-                node.auto_assign_task(task_id)
+                task_type = split_parts[2] if len(split_parts) >= 3 else None
+                difficulty = split_parts[3] if len(split_parts) >= 4 else 'L2'
+                node.auto_assign_task(task_id, task_type, difficulty)
                 continue
 
             if cmd in {'ASSIGN_TASK', 'ASSIGN'}:
-                split_parts = user_input.split(maxsplit=2)
+                split_parts = user_input.split(maxsplit=4)
                 if len(split_parts) < 3:
-                    print('Usage: assign_task <rover_id> <task_id>')
+                    print(
+                        'Usage: assign_task <rover_id> <task_id> '
+                        '[task_type] [difficulty]'
+                    )
                     continue
                 rover_id = split_parts[1]
                 task_id = split_parts[2]
-                node.assign_task(rover_id, task_id)
+                task_type = split_parts[3] if len(split_parts) >= 4 else None
+                difficulty = split_parts[4] if len(split_parts) >= 5 else 'L2'
+                node.assign_task(rover_id, task_id, task_type, difficulty)
                 continue
 
             if cmd in {'ABORT', 'SAFE', 'RESET'}:
