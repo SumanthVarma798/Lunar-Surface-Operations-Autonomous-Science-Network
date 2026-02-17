@@ -26,16 +26,11 @@ git fetch origin
 git checkout main
 git pull --ff-only origin main
 git checkout staging || git checkout -b staging origin/main
+git push -u origin staging || true
 git pull --ff-only origin staging
-git checkout dev || git checkout -b dev origin/staging
+git checkout dev || git checkout -b dev origin/staging || git checkout -b dev staging
+git push -u origin dev || true
 git pull --ff-only origin dev
-```
-
-If `dev` or `staging` is missing on remote for first-time setup:
-
-```bash
-git push -u origin staging
-git push -u origin dev
 ```
 
 ## 2. Create a working branch from dev
