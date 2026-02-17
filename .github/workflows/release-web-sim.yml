@@ -89,4 +89,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy web-sim --project-name ${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch production
+          command: pages deploy web-sim --project-name ${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch main
