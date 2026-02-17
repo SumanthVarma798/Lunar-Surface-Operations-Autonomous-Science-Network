@@ -74,8 +74,8 @@ Final predicted fault probability is context-aware and clamped to `0%..60%` usin
 
 Task catalog source (machine-readable):
 
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/assets/chandrayaan_task_catalog.json`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/rover_core/chandrayaan_task_catalog.json`
+- `web-sim/assets/chandrayaan_task_catalog.json`
+- `lunar_ops/rover_ws/src/rover_core/rover_core/chandrayaan_task_catalog.json`
 
 ---
 
@@ -90,13 +90,13 @@ Core runtime nodes/layers:
 
 Task-model utility module:
 
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/rover_core/task_model.py`
+- `lunar_ops/rover_ws/src/rover_core/rover_core/task_model.py`
 
 Supporting docs:
 
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/chandrayaan_v2_architecture.md`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/chandrayaan_v2_migration.md`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/roadmap.md`
+- `docs/chandrayaan_v2_architecture.md`
+- `docs/chandrayaan_v2_migration.md`
+- `docs/roadmap.md`
 
 ---
 
@@ -163,7 +163,7 @@ Dashboard task IDs are auto-generated (mission + task type + difficulty + sequen
 ### ROS 2 Simulation
 
 ```bash
-cd /Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network
+cd Lunar-Surface-Operations-Autonomous-Science-Network
 make build
 make test-space-link
 make test-telemetry
@@ -244,6 +244,16 @@ Environment mapping:
 
 CI triggers on `dev`, `staging`, and `main`.
 
+GitHub Environments are used for gated promotion:
+
+- `dev` environment for playground/integration deploys
+- `staging` environment as production replica for validation/sign-off
+- `production` environment for final releases from `main`
+
+Deployment workflow file:
+
+- `.github/workflows/deploy-environments.yml`
+
 ---
 
 ## Roadmap Status
@@ -272,7 +282,7 @@ Milestone: `Phase 2: Chandrayaan Teaching & Base Operations`
 Run core unit/integration tests:
 
 ```bash
-pytest -q /Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/test
+pytest -q lunar_ops/rover_ws/src/rover_core/test
 ```
 
 Expected coverage targets for v2 scope:
@@ -286,7 +296,7 @@ Expected coverage targets for v2 scope:
 
 Detailed testing guide:
 
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/chandrayaan_v2_testing.md`
+- `docs/chandrayaan_v2_testing.md`
 
 ---
 

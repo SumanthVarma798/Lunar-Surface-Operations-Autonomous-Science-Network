@@ -6,6 +6,8 @@ description: Implement a GitHub issue from the LSOAS roadmap using dev, staging,
 
 This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*` branch.
 
+Prerequisite: run `gh auth login` once on your machine before using `gh` commands.
+
 ## Steps
 
 // turbo-all
@@ -13,7 +15,7 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
 1. **Fetch the issue** from GitHub:
 
    ```bash
-   export GH_CONFIG_DIR=/Users/varma/.gh_config
+   gh auth status || gh auth login
    gh issue view <ISSUE_NUMBER> \
      -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
      --json title,body,labels,milestone,state
@@ -59,7 +61,6 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
 8. **Create PR to dev**:
 
    ```bash
-   export GH_CONFIG_DIR=/Users/varma/.gh_config
    gh pr create \
      -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
      --base dev \
@@ -71,7 +72,6 @@ This workflow fetches a GitHub issue and implements it end-to-end on a `codex/*`
 9. **Move issue to In Review** on project board:
 
    ```bash
-   export GH_CONFIG_DIR=/Users/varma/.gh_config
    gh project item-edit \
      --project-id <PROJECT_ID> \
      --id <ITEM_ID> \

@@ -1,0 +1,116 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LSOAS Environment Promotion Pipeline
+# Uses GitHub Environments for gated deployments:
+# dev (playground) -> staging (prod replica) -> production
+# ─────────────────────────────────────────────────────────────────────────────
+name: CD — Environment Promotion Gates
+
+on:
+  push:
+    branches: [dev, staging, main]
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Environment to deploy"
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      ref:
+        description: "Optional git ref (branch, tag, or SHA)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    name: Deploy to Dev
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'dev')
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: ${{ vars.DEV_ENV_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Deployment summary
+        run: |
+          echo "Environment: dev" >> $GITHUB_STEP_SUMMARY
+          echo "Ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Health smoke
+        run: |
+          cd web-sim
+          python3 -m http.server 8080 &
+          SERVER_PID=$!
+          sleep 2
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          test "$CODE" = "200"
+          kill $SERVER_PID
+
+  deploy-staging:
+    name: Deploy to Staging
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging')
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_ENV_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Deployment summary
+        run: |
+          echo "Environment: staging" >> $GITHUB_STEP_SUMMARY
+          echo "Ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "This environment should mirror production for release gating." >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify build artifacts
+        run: |
+          test -f web-sim/index.html
+          test -f lunar_ops/rover_ws/src/rover_core/rover_core/rover_node.py
+
+  deploy-production:
+    name: Deploy to Production
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_ENV_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Deployment summary
+        run: |
+          echo "Environment: production" >> $GITHUB_STEP_SUMMARY
+          echo "Ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Production deploys should only happen from staging-approved state." >> $GITHUB_STEP_SUMMARY
+
+      - name: Final sanity checks
+        run: |
+          test -f README.md
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/deploy-environments.yml

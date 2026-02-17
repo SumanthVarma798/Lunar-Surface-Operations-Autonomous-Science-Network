@@ -6,6 +6,8 @@ description: Explain a GitHub issue in detail — what it involves, why it matte
 
 This workflow fetches a GitHub issue and provides a comprehensive explanation.
 
+Prerequisite: run `gh auth login` once on your machine before using `gh` commands.
+
 ## Steps
 
 // turbo-all
@@ -13,7 +15,7 @@ This workflow fetches a GitHub issue and provides a comprehensive explanation.
 1. **Fetch the issue** from GitHub:
 
    ```
-   export GH_CONFIG_DIR=/Users/varma/.gh_config && gh issue view <ISSUE_NUMBER> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone,assignees,state
+   gh issue view <ISSUE_NUMBER> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone,assignees,state
    ```
 
    Replace `<ISSUE_NUMBER>` with the issue number provided by the user.

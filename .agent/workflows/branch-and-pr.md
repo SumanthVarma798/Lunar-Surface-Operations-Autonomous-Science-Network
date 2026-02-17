@@ -6,6 +6,8 @@ description: How to create a feature branch, commit changes, and raise PRs with 
 
 Follow this process for every feature, fix, or docs change.
 
+Prerequisite: run `gh auth login` once on your machine before using `gh` commands.
+
 ## Branch and environment model
 
 - `dev`: integration branch for daily development (deploys to Dev environment)
@@ -73,8 +75,7 @@ git push -u origin codex/<branch-name>
 ## 6. Open PR to dev
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
-
+gh auth status || gh auth login
 gh pr create \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --base dev \

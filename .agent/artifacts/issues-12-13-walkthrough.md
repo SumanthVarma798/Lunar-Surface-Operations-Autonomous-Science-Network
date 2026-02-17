@@ -5,9 +5,9 @@
 - Added an integration-style multi-rover command-flow test covering auto assignment, rover state transitions, and ACK routing.
 
 ## Files Added
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/test/_helpers.py`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/test/test_task_assignment.py`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/test/test_fleet_integration.py`
+- `lunar_ops/rover_ws/src/rover_core/test/_helpers.py`
+- `lunar_ops/rover_ws/src/rover_core/test/test_task_assignment.py`
+- `lunar_ops/rover_ws/src/rover_core/test/test_fleet_integration.py`
 
 ## Issue #12: Unit tests for task assignment algorithm
 

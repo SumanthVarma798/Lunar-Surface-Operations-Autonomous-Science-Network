@@ -6,6 +6,8 @@ description: Compare two GitHub issues — scope, complexity, overlap, and recom
 
 This workflow fetches two GitHub issues and provides a side-by-side comparison.
 
+Prerequisite: run `gh auth login` once on your machine before using `gh` commands.
+
 ## Steps
 
 // turbo-all
@@ -13,11 +15,11 @@ This workflow fetches two GitHub issues and provides a side-by-side comparison.
 1. **Fetch both issues** from GitHub:
 
    ```
-   export GH_CONFIG_DIR=/Users/varma/.gh_config && gh issue view <ISSUE_A> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone
+   gh issue view <ISSUE_A> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone
    ```
 
    ```
-   export GH_CONFIG_DIR=/Users/varma/.gh_config && gh issue view <ISSUE_B> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone
+   gh issue view <ISSUE_B> -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network --json title,body,labels,milestone
    ```
 
    Replace `<ISSUE_A>` and `<ISSUE_B>` with the two issue numbers provided by the user.

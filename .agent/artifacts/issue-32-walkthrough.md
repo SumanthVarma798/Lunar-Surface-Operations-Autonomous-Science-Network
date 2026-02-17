@@ -8,10 +8,10 @@ Implemented a bug-fix upgrade for fleet telemetry visibility and interaction in 
 - Added compact 3D hover-mode status cards for rover quick inspection.
 
 ## Files Updated
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/index.html`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/index.css`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/app.js`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/.agent/artifacts/issue-32-implementation-plan.md`
+- `web-sim/index.html`
+- `web-sim/index.css`
+- `web-sim/app.js`
+- `.agent/artifacts/issue-32-implementation-plan.md`
 
 ## What Was Implemented
 
