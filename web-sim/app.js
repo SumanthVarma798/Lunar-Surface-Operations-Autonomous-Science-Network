@@ -117,7 +117,10 @@
     fleetTotalRovers: $("#fleet-total-rovers"),
     fleetStateDistribution: $("#fleet-state-distribution"),
     fleetAvgBattery: $("#fleet-avg-battery"),
+    fleetAvgSolar: $("#fleet-avg-solar"),
+    fleetAvgRisk: $("#fleet-avg-risk"),
     fleetCommandAck: $("#fleet-command-ack"),
+    fleetMissionContext: $("#fleet-mission-context"),
     telemetryFeed: $("#telemetry-feed"),
     telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
@@ -1042,13 +1045,19 @@
     };
 
     let batterySum = 0;
+    let solarSum = 0;
+    let riskSum = 0;
     entries.forEach((snapshot) => {
       const state = normalizeState(snapshot.state);
       counts[state] = (counts[state] || 0) + 1;
       batterySum += snapshot.battery || 0;
+      solarSum += snapshot.solar_exposure || 0;
+      riskSum += Number(snapshot.predicted_fault_probability || 0);
     });
 
     const avgBattery = total === 0 ? 0 : Math.round((batterySum / total) * 100);
+    const avgSolar = total === 0 ? 0 : Math.round((solarSum / total) * 100);
+    const avgRisk = total === 0 ? 0 : (riskSum / total) * 100;
 
     if (dom.fleetTotalRovers) dom.fleetTotalRovers.textContent = String(total);
     if (dom.fleetStateDistribution) {
@@ -1056,9 +1065,20 @@
         `${counts.IDLE || 0} IDLE · ${counts.EXECUTING || 0} EXECUTING · ${counts.SAFE_MODE || 0} SAFE_MODE`;
     }
     if (dom.fleetAvgBattery) dom.fleetAvgBattery.textContent = `${avgBattery}%`;
+    if (dom.fleetAvgSolar) dom.fleetAvgSolar.textContent = `${avgSolar}%`;
+    if (dom.fleetAvgRisk) dom.fleetAvgRisk.textContent = `${avgRisk.toFixed(1)}%`;
     if (dom.fleetCommandAck) {
       dom.fleetCommandAck.textContent =
         `${trafficCounters.commandsSent} / ${trafficCounters.acksReceived}`;
+    }
+    if (dom.fleetMissionContext) {
+      const steps = getMissionStepList();
+      const stepTotal = steps.length;
+      const stepCurrent = stepTotal > 0
+        ? Math.min(missionGuideState.activeStepIndex + 1, stepTotal)
+        : 0;
+      dom.fleetMissionContext.textContent =
+        `${missionGuideState.currentMissionPhase || "mission"} · Step ${stepCurrent}/${stepTotal || 0}`;
     }
   }
 

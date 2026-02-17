@@ -113,8 +113,22 @@
         <span class="fleet-banner-value" id="fleet-avg-battery">100%</span>
       </div>
       <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Average Solar</span>
+        <span class="fleet-banner-value" id="fleet-avg-solar">--</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Average Risk</span>
+        <span class="fleet-banner-value" id="fleet-avg-risk">--</span>
+      </div>
+      <div class="fleet-banner-item">
         <span class="fleet-banner-label">Commands / ACKs</span>
         <span class="fleet-banner-value" id="fleet-command-ack">0 / 0</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Mission Context</span>
+        <span class="fleet-banner-value" id="fleet-mission-context"
+          >CY3-ops · Step 1/3</span
+        >
       </div>
     </section>
 
@@ -552,16 +566,16 @@
           </section>
 
           <section
-            class="dropdown-block is-open"
+            class="dropdown-block"
             id="mission-explanation-block"
             data-accordion-group="right-controls"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
+            <button class="dropdown-toggle" type="button" aria-expanded="false">
               <span class="dropdown-title">Mission Explanation</span>
               <span class="dropdown-meta">Theme and payload context</span>
               <span class="dropdown-chevron" aria-hidden="true"></span>
             </button>
-            <div class="dropdown-content">
+            <div class="dropdown-content" hidden>
               <div class="command-section command-section-inner">
                 <div class="input-group">
                   <label for="mission-preset-select">Mission Preset</label>
