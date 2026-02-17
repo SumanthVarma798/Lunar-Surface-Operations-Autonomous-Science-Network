@@ -96,6 +96,7 @@ Supporting docs:
 
 - `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/chandrayaan_v2_architecture.md`
 - `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/chandrayaan_v2_migration.md`
+- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/docs/roadmap.md`
 
 ---
 
@@ -232,19 +233,24 @@ CI triggers on `main` and `pull_request` to `main`.
 
 ---
 
-## Chandrayaan v2 Roadmap Issues
+## Roadmap Status
 
-Active redesigned roadmap:
+### Phase 1 (Complete)
 
-- [#38 Epic: Chandrayaan v2 context-aware orchestration](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/38)
-- [#39 TaskCatalog schema and loader](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/39)
-- [#40 Dynamic fault-rate engine](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/40)
-- [#41 Capability-class assignment output](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/41)
-- [#42 Variable-duration execution engine](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/42)
-- [#43 Web task controls](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/43)
-- [#44 Expanded telemetry schema](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/44)
-- [#45 Validation suite](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/45)
-- [#46 Docs and migration](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/46)
+- Baseline release: [`v1.0.0`](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/releases/tag/v1.0.0)
+- Release PR: [#52](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/pull/52)
+- Completed issue set: [#38](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/38) through [#46](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/46)
+
+### Phase 2 (Active)
+
+Milestone: `Phase 2: Chandrayaan Teaching & Base Operations`
+
+- [#53 Epic: Phase 2 teaching missions and lunar-base operations](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/53)
+- [#54 Mission preset packs v2](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/54)
+- [#55 Base-build operations pack](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/55)
+- [#56 Multi-sol energy and thermal planner](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/56)
+- [#57 Mission replay and explainability timeline](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/57)
+- [#58 Phase 2 validation matrix and release criteria](https://github.com/SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network/issues/58)
 
 ---
 

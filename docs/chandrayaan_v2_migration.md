@@ -11,9 +11,24 @@ Closed as superseded by new roadmap epic:
 - `#19`
 - `#20`
 
-Replacement roadmap starts at:
+Phase 1 implementation roadmap started at:
 
 - `#38` (epic) with child issues `#39` to `#46`.
+
+## Release Baseline
+
+Phase 1 is released and frozen as:
+
+- tag: `v1.0.0`
+- release PR: `#52`
+
+All Phase 1 roadmap issues `#38` to `#46` are now closed as delivered.
+
+## Active Roadmap Track
+
+Phase 2 roadmap now starts at:
+
+- `#53` (epic) with child issues `#54` to `#58`.
 
 ## Behavior Changes
 
