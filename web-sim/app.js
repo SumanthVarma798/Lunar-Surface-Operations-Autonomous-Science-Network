@@ -804,7 +804,7 @@
 
     addFeedLine("tlm", feedText);
 
-    if (dom.lunarMeta && data.position) {
+    if (dom.lunarMeta && data.position && !document.body.classList.contains("three-panel-open")) {
       const lat = Number(data.position.lat || 0).toFixed(2);
       const lon = Number(data.position.lon || 0).toFixed(2);
       dom.lunarMeta.textContent = `Lat ${lat}, Lon ${lon}`;

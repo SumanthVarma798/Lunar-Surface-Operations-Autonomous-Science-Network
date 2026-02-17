@@ -616,6 +616,10 @@ body.three-panel-open .panel-command {
   letter-spacing: 0.02em;
 }
 
+.floating-panel-meta.warning {
+  color: #fda4af;
+}
+
 .floating-close-btn {
   flex-shrink: 0;
 }

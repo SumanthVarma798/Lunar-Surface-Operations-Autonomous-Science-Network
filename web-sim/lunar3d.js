@@ -11,7 +11,9 @@ class VisualizationController {
     this.height = this.container.clientHeight;
 
     this.MOON_RADIUS = 1.0;
-    this.ROVER_SURFACE_OFFSET = 0.01;
+    this.ROVER_SURFACE_OFFSET = 0.005;
+    this.LOS_MARGIN = 0.012;
+    this.LOS_ENDPOINT_TOLERANCE = 0.04;
     this.SATELLITE_COUNT = 3;
     this.GRAVITY_MU = 1.22;
     this.DEFAULT_RESTITUTION = 0.68;
@@ -25,8 +27,8 @@ class VisualizationController {
     this.earthBase = null;
 
     this.viewMode = "orbital";
-    this.orbitalDistance = 5.35;
-    this.astronautPitch = 1.08;
+    this.orbitalDistance = 8.4;
+    this.astronautPitch = 2.45;
     this.lastFrameTs = performance.now();
 
     this.dragState = {
@@ -45,12 +47,18 @@ class VisualizationController {
     this.rovers = new Map();
     this.selectedRoverId = null;
     this.collisionCounter = 0;
+    this.linkStatus = { total: 0, clear: 0, blocked: 0 };
+    this.curiosityGeometry = null;
+    this.curiosityModelReady = false;
+    this.curiosityModelFailed = false;
+    this.curiosityAssetUrl = "assets/nasa/curiosity-nasa.stl";
 
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
     this.tmpVecC = new THREE.Vector3();
-    this.tmpVecD = new THREE.Vector3();
-    this.earthAnchor = new THREE.Vector3(7.2, 2.8, 5.9);
+    this.tmpColor = new THREE.Color();
+    this.worldUp = new THREE.Vector3(0, 1, 0);
+    this.earthAnchor = new THREE.Vector3(8.4, 3.2, 6.8);
 
     this.init();
     this.bindBus();
@@ -82,6 +90,7 @@ class VisualizationController {
 
     this.createLighting();
     this.createMoon();
+    this.loadCuriosityModel();
     this.createStars();
     this.createEarthBase();
     this.createSatellites();
@@ -124,15 +133,19 @@ class VisualizationController {
     const geometry = new THREE.SphereGeometry(this.MOON_RADIUS, 96, 96);
     const textureLoader = new THREE.TextureLoader();
     const colorMap = textureLoader.load(
-      "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg",
+      "assets/nasa/moon-nasa.jpg",
     );
-    colorMap.anisotropy = 12;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = Math.min(
+      14,
+      this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
+    );
 
     const material = new THREE.MeshStandardMaterial({
       map: colorMap,
       bumpMap: colorMap,
-      bumpScale: 0.048,
-      roughness: 0.92,
+      bumpScale: 0.084,
+      roughness: 0.96,
       metalness: 0.01,
     });
 
@@ -159,6 +172,77 @@ class VisualizationController {
       mesh: this.moon,
       mass: Infinity,
     });
+  }
+
+  loadCuriosityModel() {
+    if (!THREE.STLLoader) {
+      this.curiosityModelFailed = true;
+      this.bus.emit("log", {
+        tag: "system",
+        text: "⚠️ STL loader unavailable, using fallback rover mesh",
+      });
+      return;
+    }
+
+    const loader = new THREE.STLLoader();
+    loader.load(
+      this.curiosityAssetUrl,
+      (geometry) => {
+        this.curiosityGeometry = this.normalizeCuriosityGeometry(geometry);
+        this.curiosityModelReady = true;
+        this.rovers.forEach((rover) => this.attachCuriosityModel(rover));
+      },
+      undefined,
+      () => {
+        this.curiosityModelFailed = true;
+        this.bus.emit("log", {
+          tag: "system",
+          text: "⚠️ Curiosity model failed to load, using fallback rover mesh",
+        });
+      },
+    );
+  }
+
+  normalizeCuriosityGeometry(geometry) {
+    geometry.computeBoundingBox();
+    geometry.computeVertexNormals();
+    geometry.center();
+
+    const size = new THREE.Vector3();
+    geometry.boundingBox.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z, 0.0001);
+    const targetSize = 0.036;
+    const scale = targetSize / maxDim;
+
+    geometry.scale(scale, scale, scale);
+    geometry.rotateX(-Math.PI / 2);
+    geometry.translate(0, 0.004, 0);
+    geometry.computeBoundingSphere();
+    return geometry;
+  }
+
+  attachCuriosityModel(rover) {
+    if (!rover || !this.curiosityModelReady || rover.modelMesh) return;
+
+    const modelMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc6d0dc,
+      roughness: 0.55,
+      metalness: 0.52,
+      emissive: 0x0b1220,
+      emissiveIntensity: 0.24,
+    });
+    const model = new THREE.Mesh(this.curiosityGeometry, modelMaterial);
+    model.castShadow = false;
+    model.receiveShadow = false;
+    rover.group.add(model);
+    rover.modelMesh = model;
+    rover.modelMaterial = modelMaterial;
+
+    if (rover.fallbackMesh) {
+      rover.fallbackMesh.visible = false;
+    }
+
+    this.updateRoverStateStyle(rover);
   }
 
   createStars() {
@@ -232,9 +316,9 @@ class VisualizationController {
 
   createSatellites() {
     const orbitDefs = [
-      { radius: 2.65, tiltX: 0.24, tiltZ: 0.0, phase: 0.0, size: 0.038, color: 0x5dd6ff },
-      { radius: 3.25, tiltX: 0.88, tiltZ: 0.51, phase: 2.1, size: 0.042, color: 0xf0abfc },
-      { radius: 3.95, tiltX: 0.56, tiltZ: -0.78, phase: 4.35, size: 0.046, color: 0x93c5fd },
+      { radius: 3.4, tiltX: 0.16, tiltZ: -0.06, phase: 0.0, size: 0.048, color: 0x4fd1f9 },
+      { radius: 4.55, tiltX: 0.78, tiltZ: 0.46, phase: 2.1, size: 0.054, color: 0xa78bfa },
+      { radius: 5.95, tiltX: 0.52, tiltZ: -0.86, phase: 4.35, size: 0.061, color: 0x93c5fd },
     ];
 
     orbitDefs.forEach((def, index) => {
@@ -333,14 +417,22 @@ class VisualizationController {
 
     const orbitPath = this.createOrbitPath(def.radius, basis, index, def.color);
     const linkToEarth = this.createBeam({
-      color: 0x8be9fd,
-      opacity: 0.46,
-      thickness: 0.0095,
+      color: 0x67e8f9,
+      emissive: 0x1c90a8,
+      blockedColor: 0xfb7185,
+      blockedEmissive: 0x7f1d1d,
+      opacity: 0.48,
+      blockedOpacity: 0.7,
+      thickness: 0.012,
     });
     const linkToRover = this.createBeam({
-      color: 0xfbbf24,
+      color: 0xfacc15,
+      emissive: 0x7c5d0b,
+      blockedColor: 0xf97316,
+      blockedEmissive: 0x7c2d12,
       opacity: 0.42,
-      thickness: 0.0075,
+      blockedOpacity: 0.66,
+      thickness: 0.009,
     });
 
     return {
@@ -367,13 +459,13 @@ class VisualizationController {
     const group = new THREE.Group();
     const curve = new THREE.CatmullRomCurve3(points, true);
     const orbitTube = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, segments, 0.0045 + index * 0.0009, 10, true),
+      new THREE.TubeGeometry(curve, segments, 0.004 + index * 0.001, 10, true),
       new THREE.MeshStandardMaterial({
         color: orbitColor,
-        emissive: new THREE.Color(orbitColor).multiplyScalar(0.22),
+        emissive: new THREE.Color(orbitColor).multiplyScalar(0.2),
         transparent: true,
-        opacity: 0.34,
-        roughness: 0.52,
+        opacity: 0.3,
+        roughness: 0.56,
         metalness: 0.12,
       }),
     );
@@ -382,11 +474,11 @@ class VisualizationController {
     const dashed = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(points),
       new THREE.LineDashedMaterial({
-        color: 0xe2e8f0,
+        color: 0x93c5fd,
         transparent: true,
-        opacity: 0.42,
-        dashSize: 0.23 + index * 0.03,
-        gapSize: 0.11 + index * 0.02,
+        opacity: 0.34,
+        dashSize: 0.2 + index * 0.03,
+        gapSize: 0.12 + index * 0.02,
       }),
     );
     dashed.computeLineDistances();
@@ -395,12 +487,20 @@ class VisualizationController {
     return group;
   }
 
-  createBeam({ color, opacity, thickness }) {
+  createBeam({
+    color,
+    emissive = 0x223449,
+    blockedColor = 0xfb7185,
+    blockedEmissive = 0x7f1d1d,
+    opacity,
+    blockedOpacity = 0.7,
+    thickness,
+  }) {
     const mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(1, 1, 1, 12, 1, true),
       new THREE.MeshStandardMaterial({
         color,
-        emissive: new THREE.Color(color).multiplyScalar(0.3),
+        emissive: new THREE.Color(emissive),
         emissiveIntensity: 0.95,
         transparent: true,
         opacity,
@@ -408,7 +508,18 @@ class VisualizationController {
         metalness: 0.06,
       }),
     );
-    mesh.userData.thickness = thickness;
+    mesh.userData = {
+      thickness,
+      style: {
+        color,
+        emissive,
+        blockedColor,
+        blockedEmissive,
+        opacity,
+        blockedOpacity,
+      },
+      blocked: false,
+    };
     mesh.visible = false;
     return mesh;
   }
@@ -421,9 +532,13 @@ class VisualizationController {
         a: i,
         b: next,
         beam: this.createBeam({
-          color: 0x38bdf8,
-          opacity: 0.26,
-          thickness: 0.0052,
+          color: 0x818cf8,
+          emissive: 0x3730a3,
+          blockedColor: 0xf87171,
+          blockedEmissive: 0x7f1d1d,
+          opacity: 0.24,
+          blockedOpacity: 0.58,
+          thickness: 0.0062,
         }),
       };
       this.interSatelliteLinks.push(link);
@@ -431,7 +546,42 @@ class VisualizationController {
     }
   }
 
-  updateBeam(beam, start, end) {
+  setBeamBlockedState(beam, blocked) {
+    if (!beam || !beam.material || !beam.userData?.style) return;
+    if (beam.userData.blocked === blocked) return;
+    beam.userData.blocked = blocked;
+
+    const style = beam.userData.style;
+    const material = beam.material;
+    const color = blocked ? style.blockedColor : style.color;
+    const emissive = blocked ? style.blockedEmissive : style.emissive;
+    const opacity = blocked ? style.blockedOpacity : style.opacity;
+
+    material.color.setHex(color);
+    material.emissive.setHex(emissive);
+    material.opacity = opacity;
+  }
+
+  isLineOfSightBlocked(
+    start,
+    end,
+    { allowStartSurfaceTouch = false, allowEndSurfaceTouch = false } = {},
+  ) {
+    this.tmpVecA.copy(end).sub(start);
+    const lenSq = this.tmpVecA.lengthSq();
+    if (lenSq < 0.0000001) return false;
+
+    let t = -start.dot(this.tmpVecA) / lenSq;
+    if (t <= 0 || t >= 1) return false;
+
+    if (allowStartSurfaceTouch && t < this.LOS_ENDPOINT_TOLERANCE) return false;
+    if (allowEndSurfaceTouch && t > 1 - this.LOS_ENDPOINT_TOLERANCE) return false;
+
+    this.tmpVecB.copy(start).addScaledVector(this.tmpVecA, t);
+    return this.tmpVecB.length() < this.MOON_RADIUS + this.LOS_MARGIN;
+  }
+
+  updateBeam(beam, start, end, blocked = false) {
     this.tmpVecA.copy(end).sub(start);
     const length = this.tmpVecA.length();
     if (length < 0.001) {
@@ -440,13 +590,14 @@ class VisualizationController {
     }
 
     beam.visible = true;
-    const radius = beam.userData.thickness || 0.005;
+    const radius = beam.userData?.thickness || 0.005;
     beam.position.copy(start).addScaledVector(this.tmpVecA, 0.5);
     beam.scale.set(radius, length, radius);
     beam.quaternion.setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
+      this.worldUp,
       this.tmpVecA.normalize(),
     );
+    this.setBeamBlockedState(beam, blocked);
   }
 
   upsertFleetSnapshot(fleet) {
@@ -483,88 +634,34 @@ class VisualizationController {
 
   createRover(roverId) {
     const group = new THREE.Group();
-    const materials = [];
-
-    const bodyMat = new THREE.MeshStandardMaterial({
+    const fallbackMaterial = new THREE.MeshStandardMaterial({
       color: 0x34d399,
       emissive: 0x0a1f16,
-      roughness: 0.63,
-      metalness: 0.18,
+      roughness: 0.48,
+      metalness: 0.26,
     });
-    materials.push(bodyMat);
-
-    const chassis = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.010, 0.014),
-      bodyMat,
+    const fallbackMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.01, 0.012),
+      fallbackMaterial,
     );
-    group.add(chassis);
+    group.add(fallbackMesh);
 
-    const mast = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0016, 0.0016, 0.014, 9),
-      new THREE.MeshStandardMaterial({
-        color: 0xd1d5db,
-        roughness: 0.44,
-        metalness: 0.48,
-      }),
+    const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+    const beacon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.0028, 10, 10),
+      beaconMaterial,
     );
-    mast.position.set(0, 0.012, 0.0);
-    group.add(mast);
-
-    const cameraHead = new THREE.Mesh(
-      new THREE.BoxGeometry(0.007, 0.0048, 0.0048),
-      new THREE.MeshStandardMaterial({
-        color: 0xe5e7eb,
-        roughness: 0.35,
-        metalness: 0.56,
-      }),
-    );
-    cameraHead.position.set(0, 0.02, 0.0);
-    group.add(cameraHead);
-
-    const wheelMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      roughness: 0.82,
-      metalness: 0.07,
-    });
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = -1; i <= 1; i += 1) {
-        const wheel = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.0028, 0.0028, 0.0024, 12),
-          wheelMat,
-        );
-        wheel.rotation.z = Math.PI / 2;
-        wheel.position.set(i * 0.0092, -0.005, side * 0.0076);
-        group.add(wheel);
-      }
-    }
-
-    const antenna = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0008, 0.0008, 0.011, 8),
-      new THREE.MeshStandardMaterial({
-        color: 0x9ca3af,
-        roughness: 0.5,
-        metalness: 0.6,
-      }),
-    );
-    antenna.position.set(-0.0066, 0.012, -0.003);
-    group.add(antenna);
-
-    const dish = new THREE.Mesh(
-      new THREE.ConeGeometry(0.0024, 0.0048, 14),
-      new THREE.MeshStandardMaterial({
-        color: 0xf3f4f6,
-        roughness: 0.25,
-        metalness: 0.65,
-      }),
-    );
-    dish.rotation.z = Math.PI / 2;
-    dish.position.set(-0.009, 0.0172, -0.003);
-    group.add(dish);
+    beacon.position.set(0, 0.014, 0);
+    group.add(beacon);
 
     const rover = {
       id: roverId,
       group,
-      materials,
+      fallbackMesh,
+      fallbackMaterial,
+      beaconMaterial,
+      modelMesh: null,
+      modelMaterial: null,
       lat: -43.3,
       lon: -11.2,
       battery: 1.0,
@@ -572,14 +669,16 @@ class VisualizationController {
       staticCollider: {
         id: roverId,
         type: "rover",
-        radius: 0.018,
+        radius: 0.015,
         mass: Infinity,
         restitution: 0.5,
         position: new THREE.Vector3(),
       },
     };
 
+    this.attachCuriosityModel(rover);
     this.placeRover(rover);
+    this.updateRoverStateStyle(rover);
     return rover;
   }
 
@@ -607,12 +706,12 @@ class VisualizationController {
     if (!roverId || !this.rovers.has(roverId)) return;
     this.selectedRoverId = roverId;
     this.rovers.forEach((rover, id) => {
-      rover.group.scale.setScalar(id === roverId ? 1.2 : 1.0);
+      const selected = id === roverId;
+      rover.group.scale.setScalar(selected ? 1.12 : 1.0);
       rover.group.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return;
         if (!Object.prototype.hasOwnProperty.call(obj.material, "emissive")) return;
-        if (id === roverId) obj.material.emissiveIntensity = 0.6;
-        else obj.material.emissiveIntensity = 0.24;
+        obj.material.emissiveIntensity = selected ? 0.5 : 0.24;
       });
     });
     this.updateMetaText();
@@ -620,24 +719,34 @@ class VisualizationController {
 
   updateRoverStateStyle(rover) {
     const state = rover.state;
-    let color = 0x34d399;
-    let emissive = 0x0a1f16;
+    let accent = 0x34d399;
+    let fallbackEmissive = 0x0a1f16;
 
     if (state === "EXECUTING") {
-      color = 0x3b82f6;
-      emissive = 0x11244d;
+      accent = 0x3b82f6;
+      fallbackEmissive = 0x11244d;
     } else if (state === "SAFE_MODE") {
-      color = 0xf59e0b;
-      emissive = 0x3a2a09;
+      accent = 0xf59e0b;
+      fallbackEmissive = 0x3a2a09;
     } else if (state === "ERROR") {
-      color = 0xef4444;
-      emissive = 0x450f0f;
+      accent = 0xef4444;
+      fallbackEmissive = 0x450f0f;
     }
 
-    rover.materials.forEach((mat) => {
-      mat.color.setHex(color);
-      mat.emissive.setHex(emissive);
-    });
+    if (rover.fallbackMaterial) {
+      rover.fallbackMaterial.color.setHex(accent);
+      rover.fallbackMaterial.emissive.setHex(fallbackEmissive);
+    }
+
+    if (rover.beaconMaterial) {
+      rover.beaconMaterial.color.setHex(accent);
+    }
+
+    if (rover.modelMaterial) {
+      rover.modelMaterial.color.setHex(0xc6d0dc);
+      this.tmpColor.setHex(accent).multiplyScalar(0.26);
+      rover.modelMaterial.emissive.copy(this.tmpColor);
+    }
   }
 
   setViewMode(mode, emitEvent = true) {
@@ -653,12 +762,12 @@ class VisualizationController {
     if (!this.camera) return;
 
     if (this.viewMode === "orbital") {
-      this.camera.fov = 38;
+      this.camera.fov = 35;
       this.camera.position.set(0, 0, this.orbitalDistance);
       this.camera.lookAt(0, 0, 0);
     } else {
-      this.camera.fov = 44;
-      this.camera.position.set(0, 2.6, 3.45);
+      this.camera.fov = 34;
+      this.camera.position.set(0, 4.05, 4.9);
       this.camera.lookAt(0, -this.astronautPitch, 0);
     }
 
@@ -670,16 +779,20 @@ class VisualizationController {
     if (!metaEl) return;
 
     const modeLabel = this.viewMode === "astronaut" ? "Astronaut" : "Orbital";
-    if (!this.selectedRoverId || !this.rovers.has(this.selectedRoverId)) {
-      metaEl.textContent = `${modeLabel} view | Rover: --`;
+    const selectedLabel = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+      ? this.selectedRoverId.toUpperCase()
+      : "ROVER --";
+
+    if (this.linkStatus.total <= 0) {
+      metaEl.classList.remove("warning");
+      metaEl.textContent = `${modeLabel} | ${selectedLabel} | LOS pending`;
       return;
     }
 
-    const rover = this.rovers.get(this.selectedRoverId);
-    const lat = Number(rover.lat).toFixed(2);
-    const lon = Number(rover.lon).toFixed(2);
-    metaEl.textContent =
-      `${modeLabel} | ${rover.id.toUpperCase()} | Lat ${lat}, Lon ${lon} | Collisions ${this.collisionCounter}`;
+    const blocked = this.linkStatus.blocked;
+    const clear = this.linkStatus.clear;
+    metaEl.classList.toggle("warning", blocked > 0);
+    metaEl.textContent = `${modeLabel} | ${selectedLabel} | LOS ${clear}/${this.linkStatus.total} clear${blocked > 0 ? ` (${blocked} blocked)` : ""}`;
   }
 
   setupInteraction() {
@@ -719,14 +832,14 @@ class VisualizationController {
         if (this.viewMode === "orbital") {
           this.orbitalDistance = THREE.MathUtils.clamp(
             this.orbitalDistance + e.deltaY * 0.0012,
-            3.2,
-            11.5,
+            5.2,
+            16.0,
           );
         } else {
           this.astronautPitch = THREE.MathUtils.clamp(
             this.astronautPitch + e.deltaY * 0.0009,
-            0.9,
-            2.1,
+            1.55,
+            3.1,
           );
         }
         this.updateCamera();
@@ -875,20 +988,50 @@ class VisualizationController {
       selectedPos = this.rovers.values().next().value.group.position;
     }
 
+    const linkStatus = { total: 0, clear: 0, blocked: 0 };
+
     this.satellites.forEach((sat) => {
       const satPos = sat.body.position;
-      this.updateBeam(sat.linkToEarth, satPos, this.earthAnchor);
+      const earthBlocked = this.isLineOfSightBlocked(satPos, this.earthAnchor);
+      this.updateBeam(sat.linkToEarth, satPos, this.earthAnchor, earthBlocked);
+      linkStatus.total += 1;
+      if (earthBlocked) linkStatus.blocked += 1;
+      else linkStatus.clear += 1;
 
-      const roverTarget = selectedPos || this.tmpVecD.set(0, 0, 0);
-      this.updateBeam(sat.linkToRover, satPos, roverTarget);
+      if (selectedPos) {
+        const roverBlocked = this.isLineOfSightBlocked(satPos, selectedPos, {
+          allowEndSurfaceTouch: true,
+        });
+        this.updateBeam(sat.linkToRover, satPos, selectedPos, roverBlocked);
+        linkStatus.total += 1;
+        if (roverBlocked) linkStatus.blocked += 1;
+        else linkStatus.clear += 1;
+      } else {
+        sat.linkToRover.visible = false;
+      }
     });
 
     this.interSatelliteLinks.forEach((link) => {
       const satA = this.satellites[link.a];
       const satB = this.satellites[link.b];
       if (!satA || !satB) return;
-      this.updateBeam(link.beam, satA.body.position, satB.body.position);
+      const blocked = this.isLineOfSightBlocked(satA.body.position, satB.body.position);
+      this.updateBeam(link.beam, satA.body.position, satB.body.position, blocked);
+      linkStatus.total += 1;
+      if (blocked) linkStatus.blocked += 1;
+      else linkStatus.clear += 1;
     });
+
+    if (
+      linkStatus.total !== this.linkStatus.total
+      || linkStatus.clear !== this.linkStatus.clear
+      || linkStatus.blocked !== this.linkStatus.blocked
+    ) {
+      this.linkStatus = linkStatus;
+      this.updateMetaText();
+    } else {
+      this.linkStatus = linkStatus;
+    }
   }
 
   onResize() {
