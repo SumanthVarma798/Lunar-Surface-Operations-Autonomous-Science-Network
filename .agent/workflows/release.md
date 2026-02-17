@@ -6,6 +6,8 @@ description: End-to-end release workflow using dev -> staging -> main(prod), sem
 
 Use this workflow for every formal release (`vX.Y.Z`).
 
+Prerequisite: run `gh auth login` once on your machine before using `gh` commands.
+
 ## Environment and branch mapping
 
 - `dev` branch -> Dev environment (playground/integration)
@@ -126,7 +128,6 @@ PRBODY
 Open PR:
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr create \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --base staging \
@@ -140,7 +141,6 @@ gh pr create \
 On the `dev -> staging` PR:
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr view <STAGE_PR_NUMBER> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --json mergeable,mergeStateStatus,statusCheckRollup
@@ -156,7 +156,6 @@ Required to pass before merge:
 Merge gate PR:
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr merge <STAGE_PR_NUMBER> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --merge --delete-branch=false
@@ -198,7 +197,6 @@ PRBODY
 Open PR:
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr create \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --base main \
@@ -210,7 +208,6 @@ gh pr create \
 Verify and merge:
 
 ```bash
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh pr view <PROD_PR_NUMBER> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --json mergeable,mergeStateStatus,statusCheckRollup
@@ -249,7 +246,6 @@ cat > /tmp/release_notes.md <<'NOTES'
 - Promoted via dev -> staging -> main
 NOTES
 
-export GH_CONFIG_DIR=/Users/varma/.gh_config
 gh release create <VERSION> \
   -R SumanthVarma798/Lunar-Surface-Operations-Autonomous-Science-Network \
   --target main \

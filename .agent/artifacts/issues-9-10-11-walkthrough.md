@@ -4,9 +4,9 @@
 Updated the web dashboard to support fleet-level mission operations UI.
 
 Files changed:
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/index.html`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/index.css`
-- `/Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/web-sim/app.js`
+- `web-sim/index.html`
+- `web-sim/index.css`
+- `web-sim/app.js`
 
 ## Issue #9: Fleet Status Grid
 

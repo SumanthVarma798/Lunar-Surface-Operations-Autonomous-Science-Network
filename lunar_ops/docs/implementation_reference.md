@@ -2,10 +2,10 @@
 
 ## Files Modified
 
-### [`rover_node.py`](file:///Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/rover_core/rover_node.py)
+### [`rover_node.py`](../rover_ws/src/rover_core/rover_core/rover_node.py)
 **Complete rewrite** from puppetry to autonomy
 
-### [`earth_node.py`](file:///Users/varma/Desktop/workspace/Lunar-Surface-Operations-Autonomous-Science-Network/lunar_ops/rover_ws/src/rover_core/rover_core/earth_node.py)
+### [`earth_node.py`](../rover_ws/src/rover_core/rover_core/earth_node.py)
 **Added interactive command interface** for operator control
 
 ## State Machine Implementation
