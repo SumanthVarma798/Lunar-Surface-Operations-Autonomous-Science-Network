@@ -265,20 +265,16 @@ Web simulation hosting is automated by:
 Behavior:
 
 - On every GitHub Release (`published`), the workflow deploys `web-sim/` to GitHub Pages.
-- If Cloudflare secrets are configured, the same release also deploys to Cloudflare Pages.
 - You can also run it manually via `workflow_dispatch`.
 
 One-time setup:
 
 1. In repository settings, set GitHub Pages source to **GitHub Actions**.
-2. Optional Cloudflare setup (repository secrets):
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-   - `CLOUDFLARE_PAGES_PROJECT`
 
 Result:
 
 - Creating a release refreshes the hosted simulation automatically.
+- GitHub Pages URL: [https://sumanthvarma798.github.io/Lunar-Surface-Operations-Autonomous-Science-Network/](https://sumanthvarma798.github.io/Lunar-Surface-Operations-Autonomous-Science-Network/)
 
 ---
 
