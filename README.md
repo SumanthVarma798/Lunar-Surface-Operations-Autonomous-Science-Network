@@ -23,6 +23,7 @@ The project is now redesigned around a Chandrayaan-themed future mission concept
 - Real mission basis from Chandrayaan-3 rover operations, Chandrayaan-4 sample chain direction, and LUPEX polar prospecting goals.
 - Future extension to an Indian lunar-base predeploy and construction swarm.
 - Task-centric rover operations instead of generic flat tasks.
+- Teaching-oriented dashboard presets for Chandrayaan-3, Chandrayaan-4, LUPEX, and future base-build scenarios.
 
 ### Reality Basis
 
@@ -98,6 +99,44 @@ Supporting docs:
 
 ---
 
+## Dashboard Screenshots
+
+### Main Mission Dashboard States
+
+Idle operations
+
+![LSOAS dashboard idle state](docs/screenshots/dashboard-idle.png)
+
+Executing task flow
+
+![LSOAS dashboard executing task state](docs/screenshots/dashboard-executing.png)
+
+Safe mode command flow
+
+![LSOAS dashboard safe mode state](docs/screenshots/dashboard-safe-mode.png)
+
+### Mission Setup and Selection Flows
+
+Battery-informed rover selection
+
+![Battery-informed rover selection](docs/screenshots/phase1-battery-selection.png)
+
+Manual rover selection
+
+![Manual rover selection](docs/screenshots/phase1-manual-selection.png)
+
+Telemetry-first mission stream
+
+![Telemetry stream focus](docs/screenshots/phase1-telemetry-load.png)
+
+### Visual Theme Variant
+
+Light theme reference
+
+![Light theme dashboard view](docs/screenshots/dashboard-light-theme.png)
+
+---
+
 ## Quick Start
 
 ### Web Simulation
@@ -115,6 +154,10 @@ Useful query params:
 - `?rovers=5`
 - `?scenario=basic-auto&task=CY3-SCI-001&task_type=science&difficulty=L3`
 - `?scenario=safe-mode&task=CY4-SAMPLE-008&task_type=sample-handling&difficulty=L4`
+- `?mission=cy3-pragyan`
+- `?mission=cy4-sample-return&target_site=Sample%20Depot%20Alpha`
+
+Dashboard task IDs are auto-generated (mission + task type + difficulty + sequence), and can still be manually edited at any time.
 
 ### ROS 2 Simulation
 

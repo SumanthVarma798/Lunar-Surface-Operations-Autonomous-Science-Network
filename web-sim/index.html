@@ -6,7 +6,7 @@
     <title>LSOAS — Lunar Mission Control</title>
     <meta
       name="description"
-      content="Lunar Surface Operations Autonomous Science Network — A school-level satellite communication simulation with NASA-inspired mission control interface."
+      content="Lunar Surface Operations Autonomous Science Network — A Chandrayaan-themed lunar mission control simulation for teaching swarm rover operations."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -113,74 +113,144 @@
         <span class="fleet-banner-value" id="fleet-avg-battery">100%</span>
       </div>
       <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Average Solar</span>
+        <span class="fleet-banner-value" id="fleet-avg-solar">--</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Average Risk</span>
+        <span class="fleet-banner-value" id="fleet-avg-risk">--</span>
+      </div>
+      <div class="fleet-banner-item">
         <span class="fleet-banner-label">Commands / ACKs</span>
         <span class="fleet-banner-value" id="fleet-command-ack">0 / 0</span>
+      </div>
+      <div class="fleet-banner-item">
+        <span class="fleet-banner-label">Mission Context</span>
+        <span class="fleet-banner-value" id="fleet-mission-context"
+          >CY3-ops · Step 1/3</span
+        >
       </div>
     </section>
 
     <!-- ─── Main Layout ─── -->
     <main id="main-grid">
-      <!-- ━━━ LEFT: Node Topology ━━━ -->
+      <!-- ━━━ LEFT: Operations Streams ━━━ -->
       <section class="panel panel-topology" id="panel-topology">
         <div class="panel-header">
-          <h2>Network Topology</h2>
-          <span class="badge badge-live" id="badge-nodes">4 Nodes</span>
+          <h2>Operations Streams</h2>
+          <span class="badge badge-live">3 Tabs</span>
         </div>
-        <div class="topology-visual" id="topology-visual">
-          <!-- Topology Canvas (SVG-based connection lines) -->
-          <svg
-            class="topology-lines"
-            id="topology-lines"
-            preserveAspectRatio="none"
-          ></svg>
-
-          <!-- Nodes... -->
-
-          <!-- Earth Node -->
-          <div class="topo-node" id="topo-earth" data-node="earth">
-            <div class="topo-node-ring">
-              <div class="topo-node-icon">🌍</div>
+        <div class="dropdown-stack left-dropdown-stack" id="left-dropdown-stack">
+          <section
+            class="dropdown-block is-open"
+            id="left-command-log-block"
+            data-accordion-group="left-orbital"
+            data-default-open="true"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="true">
+              <span class="dropdown-title">Command Log</span>
+              <span class="dropdown-meta">Earth uplink stream</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content">
+              <div class="command-log command-log-left" id="command-log">
+                <div class="feed-empty">
+                  <span>No commands sent yet</span>
+                </div>
+              </div>
             </div>
-            <span class="topo-node-label">Earth Station</span>
-            <span class="topo-node-state" id="earth-state">ONLINE</span>
-          </div>
+          </section>
 
-          <!-- Space Link Node -->
-          <div class="topo-node" id="topo-spacelink" data-node="spacelink">
-            <div class="topo-node-ring">
-              <div class="topo-node-icon">🛰️</div>
+          <section
+            class="dropdown-block"
+            id="left-pending-ack-block"
+            data-accordion-group="left-orbital"
+            data-default-open="false"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="false">
+              <span class="dropdown-title">Pending ACKs</span>
+              <span class="pending-count" id="pending-count">0</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content" hidden>
+              <div class="pending-acks pending-acks-left" id="pending-acks">
+                <span class="pending-none">No pending commands</span>
+              </div>
             </div>
-            <span class="topo-node-label">Space Link</span>
-            <span class="topo-node-state" id="spacelink-state">RELAY</span>
-          </div>
+          </section>
 
-          <!-- Rover Node -->
-          <div class="topo-node" id="topo-rover" data-node="rover">
-            <div class="topo-node-ring">
-              <div class="topo-node-icon">🤖</div>
+          <section
+            class="dropdown-block is-open"
+            id="left-topology-block"
+            data-accordion-group="left-orbital"
+            data-default-open="true"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="true">
+              <span class="dropdown-title">Network Topology</span>
+              <span class="dropdown-meta">4 mission nodes</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content">
+              <div class="topology-visual" id="topology-visual">
+                <!-- Topology Canvas (SVG-based connection lines) -->
+                <svg
+                  class="topology-lines"
+                  id="topology-lines"
+                  preserveAspectRatio="none"
+                ></svg>
+
+                <!-- Nodes... -->
+
+                <!-- Earth Node -->
+                <div class="topo-node" id="topo-earth" data-node="earth">
+                  <div class="topo-node-ring">
+                    <div class="topo-node-icon">🌍</div>
+                  </div>
+                  <span class="topo-node-label">Earth Station</span>
+                  <span class="topo-node-state" id="earth-state">ONLINE</span>
+                </div>
+
+                <!-- Space Link Node -->
+                <div class="topo-node" id="topo-spacelink" data-node="spacelink">
+                  <div class="topo-node-ring">
+                    <div class="topo-node-icon">🛰️</div>
+                  </div>
+                  <span class="topo-node-label">Space Link</span>
+                  <span class="topo-node-state" id="spacelink-state">RELAY</span>
+                </div>
+
+                <!-- Rover Node -->
+                <div class="topo-node" id="topo-rover" data-node="rover">
+                  <div class="topo-node-ring">
+                    <div class="topo-node-icon">🤖</div>
+                  </div>
+                  <span class="topo-node-label">Lunar Rover</span>
+                  <span class="topo-node-state" id="rover-state">IDLE</span>
+                </div>
+
+                <!-- Telemetry Monitor -->
+                <div class="topo-node" id="topo-telemetry" data-node="telemetry">
+                  <div class="topo-node-ring">
+                    <div class="topo-node-icon">📡</div>
+                  </div>
+                  <span class="topo-node-label">Telemetry</span>
+                  <span class="topo-node-state" id="telemetry-state"
+                    >LISTENING</span
+                  >
+                </div>
+              </div>
+
+              <!-- Signal Flow Indicators -->
+              <div class="signal-legend">
+                <div class="signal-legend-item">
+                  <span class="signal-arrow up">↑</span> Uplink (Cmd)
+                </div>
+                <div class="signal-legend-item">
+                  <span class="signal-arrow down">↓</span> Downlink (Tlm)
+                </div>
+              </div>
             </div>
-            <span class="topo-node-label">Lunar Rover</span>
-            <span class="topo-node-state" id="rover-state">IDLE</span>
-          </div>
-
-          <!-- Telemetry Monitor -->
-          <div class="topo-node" id="topo-telemetry" data-node="telemetry">
-            <div class="topo-node-ring">
-              <div class="topo-node-icon">📡</div>
-            </div>
-            <span class="topo-node-label">Telemetry</span>
-            <span class="topo-node-state" id="telemetry-state">LISTENING</span>
-          </div>
-        </div>
-
-        <!-- Signal Flow Indicators -->
-        <div class="signal-legend">
-          <div class="signal-legend-item">
-            <span class="signal-arrow up">↑</span> Uplink (Cmd)
-          </div>
-          <div class="signal-legend-item">
-            <span class="signal-arrow down">↓</span> Downlink (Tlm)
-          </div>
+          </section>
         </div>
       </section>
 
@@ -193,35 +263,68 @@
           </div>
         </div>
 
-        <!-- Fleet Status Grid -->
-        <div class="fleet-grid-panel" id="fleet-grid-panel">
-          <div class="fleet-grid-toolbar">
-            <span class="fleet-grid-summary" id="fleet-grid-summary"
-              >Showing 0 of 0 rovers</span
-            >
-            <button class="btn-sm" id="btn-toggle-fleet-scope">Show All</button>
-          </div>
-          <div class="fleet-grid" id="fleet-grid" aria-live="polite">
-            <div class="feed-empty">
-              <span class="feed-empty-icon">🤖</span>
-              <span>Awaiting fleet telemetry…</span>
-            </div>
-          </div>
-          <div class="fleet-hover-card" id="fleet-hover-card" hidden></div>
-        </div>
-
-        <!-- Telemetry Feed -->
-        <div class="telemetry-feed" id="telemetry-feed">
-          <div class="feed-empty">
-            <span class="feed-empty-icon">📡</span>
-            <span>Awaiting telemetry…</span>
-          </div>
-        </div>
-        <div class="telemetry-last-line" id="telemetry-last-line">
-          <span class="telemetry-last-label">Last Log</span>
-          <span class="telemetry-last-value" id="telemetry-last-value"
-            >Awaiting telemetry…</span
+        <div
+          class="dropdown-stack telemetry-dropdown-stack"
+          id="telemetry-dropdown-stack"
+        >
+          <section
+            class="dropdown-block is-open"
+            id="telemetry-fleet-block"
+            data-accordion-group="telemetry-orbital"
+            data-default-open="true"
           >
+            <button class="dropdown-toggle" type="button" aria-expanded="true">
+              <span class="dropdown-title">Fleet Status</span>
+              <span class="dropdown-meta">Rover cards and pinning</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content">
+              <div class="fleet-grid-panel" id="fleet-grid-panel">
+                <div class="fleet-grid-toolbar">
+                  <span class="fleet-grid-summary" id="fleet-grid-summary"
+                    >Showing 0 of 0 rovers</span
+                  >
+                  <button class="btn-sm" id="btn-toggle-fleet-scope">
+                    Show All
+                  </button>
+                </div>
+                <div class="fleet-grid" id="fleet-grid" aria-live="polite">
+                  <div class="feed-empty">
+                    <span class="feed-empty-icon">🤖</span>
+                    <span>Awaiting fleet telemetry…</span>
+                  </div>
+                </div>
+                <div class="fleet-hover-card" id="fleet-hover-card" hidden></div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="dropdown-block is-open"
+            id="telemetry-stream-block"
+            data-accordion-group="telemetry-orbital"
+            data-default-open="true"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="true">
+              <span class="dropdown-title">Telemetry Stream</span>
+              <span class="dropdown-meta">Live downlink events</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content">
+              <div class="telemetry-feed" id="telemetry-feed">
+                <div class="feed-empty">
+                  <span class="feed-empty-icon">📡</span>
+                  <span>Awaiting telemetry…</span>
+                </div>
+              </div>
+              <div class="telemetry-last-line" id="telemetry-last-line">
+                <span class="telemetry-last-label">Last Log</span>
+                <span class="telemetry-last-value" id="telemetry-last-value"
+                  >Awaiting telemetry…</span
+                >
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -278,154 +381,244 @@
           <span class="badge badge-earth">Earth Station</span>
         </div>
 
-        <!-- Quick Commands -->
-        <div class="command-section">
-          <h3>Quick Commands</h3>
-          <div class="command-grid">
-            <button class="cmd-btn cmd-start" id="cmd-start-task">
-              <span class="cmd-icon">▶</span>
-              <span class="cmd-label">Start Task</span>
+        <div class="dropdown-stack right-dropdown-stack" id="right-dropdown-stack">
+          <section
+            class="dropdown-block is-open"
+            id="mission-controls-block"
+            data-accordion-group="right-controls"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="true">
+              <span class="dropdown-title">Mission Controls</span>
+              <span class="dropdown-meta">Guide, task setup, and dispatch</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
             </button>
-            <button class="cmd-btn cmd-abort" id="cmd-abort">
-              <span class="cmd-icon">⏹</span>
-              <span class="cmd-label">Abort</span>
-            </button>
-            <button class="cmd-btn cmd-safe" id="cmd-go-safe">
-              <span class="cmd-icon">🛡</span>
-              <span class="cmd-label">Safe Mode</span>
-            </button>
-            <button class="cmd-btn cmd-reset" id="cmd-reset">
-              <span class="cmd-icon">↻</span>
-              <span class="cmd-label">Reset</span>
-            </button>
-          </div>
-        </div>
+            <div class="dropdown-content">
+              <div class="command-section command-section-inner">
+                <div class="control-subheading">Quick Commands</div>
+                <div class="command-grid">
+                  <button class="cmd-btn cmd-start" id="cmd-start-task">
+                    <span class="cmd-icon">▶</span>
+                    <span class="cmd-label">Start Task</span>
+                  </button>
+                  <button class="cmd-btn cmd-abort" id="cmd-abort">
+                    <span class="cmd-icon">⏹</span>
+                    <span class="cmd-label">Abort</span>
+                  </button>
+                  <button class="cmd-btn cmd-safe" id="cmd-go-safe">
+                    <span class="cmd-icon">🛡</span>
+                    <span class="cmd-label">Safe Mode</span>
+                  </button>
+                  <button class="cmd-btn cmd-reset" id="cmd-reset">
+                    <span class="cmd-icon">↻</span>
+                    <span class="cmd-label">Reset</span>
+                  </button>
+                </div>
 
-        <!-- Task ID Input -->
-        <div class="command-section">
-          <h3>Task Configuration</h3>
-          <div class="input-group">
-            <label for="rover-target-select">Target Rover</label>
-            <select id="rover-target-select" class="input-field select-field">
-              <option value="auto">Auto-Select (Best Rover)</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label for="task-id-input">Task ID</label>
-            <input
-              type="text"
-              id="task-id-input"
-              class="input-field"
-              placeholder="e.g. CY3-SCI-001"
-              value="CY3-SCI-001"
-            />
-          </div>
-          <div class="input-group">
-            <label for="task-type-select">Task Type</label>
-            <select id="task-type-select" class="input-field select-field">
-              <option value="movement">Movement/Traverse</option>
-              <option value="science">Science Investigation</option>
-              <option value="digging">Digging/Drilling</option>
-              <option value="pushing">Pushing/Regolith Handling</option>
-              <option value="photo">Photo/Imaging Survey</option>
-              <option value="sample-handling">Sample Handling/Transfer</option>
-            </select>
-          </div>
-          <div class="input-group">
-            <label for="task-difficulty-select">Difficulty</label>
-            <select id="task-difficulty-select" class="input-field select-field">
-              <option value="L1">L1 - Very Easy</option>
-              <option value="L2" selected>L2 - Easy</option>
-              <option value="L3">L3 - Moderate</option>
-              <option value="L4">L4 - Hard</option>
-              <option value="L5">L5 - Extreme</option>
-            </select>
-          </div>
-        </div>
+                <div class="control-subheading">Task Configuration</div>
+                <div class="input-group">
+                  <label for="rover-target-select">Target Rover</label>
+                  <select id="rover-target-select" class="input-field select-field">
+                    <option value="auto">Auto-Select (Best Rover)</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="task-id-input">Task ID</label>
+                  <div class="task-id-row">
+                    <input
+                      type="text"
+                      id="task-id-input"
+                      class="input-field"
+                      placeholder="e.g. CY3-SCI-L2-001"
+                      value="CY3-SCI-L2-001"
+                    />
+                    <button
+                      class="btn-sm task-id-regenerate-btn"
+                      id="task-id-regenerate-btn"
+                      type="button"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                  <div class="task-id-meta">
+                    <label class="task-id-toggle-label" for="task-id-auto-toggle">
+                      <input type="checkbox" id="task-id-auto-toggle" checked />
+                      Auto-generate
+                    </label>
+                    <span class="task-id-preview" id="task-id-preview"></span>
+                  </div>
+                </div>
+                <div class="input-group">
+                  <label for="task-type-select">Task Type</label>
+                  <select id="task-type-select" class="input-field select-field">
+                    <option value="movement">Movement/Traverse</option>
+                    <option value="science">Science Investigation</option>
+                    <option value="digging">Digging/Drilling</option>
+                    <option value="pushing">Pushing/Regolith Handling</option>
+                    <option value="photo">Photo/Imaging Survey</option>
+                    <option value="sample-handling">Sample Handling/Transfer</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="task-difficulty-select">Difficulty</label>
+                  <select
+                    id="task-difficulty-select"
+                    class="input-field select-field"
+                  >
+                    <option value="L1">L1 - Very Easy</option>
+                    <option value="L2" selected>L2 - Easy</option>
+                    <option value="L3">L3 - Moderate</option>
+                    <option value="L4">L4 - Hard</option>
+                    <option value="L5">L5 - Extreme</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <label for="target-site-input">Target Site (optional)</label>
+                  <input
+                    type="text"
+                    id="target-site-input"
+                    class="input-field"
+                    placeholder="e.g. Shiv Shakti Point Sector-A"
+                  />
+                </div>
 
-        <!-- Space Link Config -->
-        <div class="command-section">
-          <h3>Space Link Parameters</h3>
-          <div class="input-group">
-            <label for="latency-slider"
-              >Base Latency
-              <span class="param-value" id="latency-value">1.3s</span></label
-            >
-            <input
-              type="range"
-              id="latency-slider"
-              class="range-input"
-              min="0"
-              max="5"
-              step="0.1"
-              value="1.3"
-            />
-          </div>
-          <div class="input-group">
-            <label for="jitter-slider"
-              >Jitter
-              <span class="param-value" id="jitter-value">±0.2s</span></label
-            >
-            <input
-              type="range"
-              id="jitter-slider"
-              class="range-input"
-              min="0"
-              max="2"
-              step="0.05"
-              value="0.2"
-            />
-          </div>
-          <div class="input-group">
-            <label for="drop-slider"
-              >Drop Rate
-              <span class="param-value" id="drop-value">5%</span></label
-            >
-            <input
-              type="range"
-              id="drop-slider"
-              class="range-input"
-              min="0"
-              max="50"
-              step="1"
-              value="5"
-            />
-          </div>
-          <div class="input-group">
-            <label for="fault-slider"
-              >Risk Bias
-              <span class="param-value" id="fault-prob-value">0%</span></label
-            >
-            <input
-              type="range"
-              id="fault-slider"
-              class="range-input"
-              min="-20"
-              max="20"
-              step="1"
-              value="0"
-            />
-          </div>
-        </div>
-
-        <!-- Command Log -->
-        <div class="command-section">
-          <h3>Command Log</h3>
-          <div class="command-log" id="command-log">
-            <div class="feed-empty">
-              <span>No commands sent yet</span>
+                <section
+                  class="dropdown-block nested-dropdown-block"
+                  id="advanced-controls-block"
+                >
+                  <button
+                    class="dropdown-toggle"
+                    type="button"
+                    aria-expanded="false"
+                  >
+                    <span class="dropdown-title">Advanced Controls</span>
+                    <span class="dropdown-meta"
+                      >Fine-grained link and risk tuning</span
+                    >
+                    <span class="dropdown-chevron" aria-hidden="true"></span>
+                  </button>
+                  <div class="dropdown-content" hidden>
+                    <div class="input-group">
+                      <label for="latency-slider"
+                        >Base Latency
+                        <span class="param-value" id="latency-value">1.3s</span></label
+                      >
+                      <input
+                        type="range"
+                        id="latency-slider"
+                        class="range-input"
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        value="1.3"
+                      />
+                    </div>
+                    <div class="input-group">
+                      <label for="jitter-slider"
+                        >Jitter
+                        <span class="param-value" id="jitter-value"
+                          >±0.2s</span
+                        ></label
+                      >
+                      <input
+                        type="range"
+                        id="jitter-slider"
+                        class="range-input"
+                        min="0"
+                        max="2"
+                        step="0.05"
+                        value="0.2"
+                      />
+                    </div>
+                    <div class="input-group">
+                      <label for="drop-slider"
+                        >Drop Rate
+                        <span class="param-value" id="drop-value">5%</span></label
+                      >
+                      <input
+                        type="range"
+                        id="drop-slider"
+                        class="range-input"
+                        min="0"
+                        max="50"
+                        step="1"
+                        value="5"
+                      />
+                    </div>
+                    <div class="input-group">
+                      <label for="fault-slider"
+                        >Risk Bias
+                        <span class="param-value" id="fault-prob-value">0%</span></label
+                      >
+                      <input
+                        type="range"
+                        id="fault-slider"
+                        class="range-input"
+                        min="-20"
+                        max="20"
+                        step="1"
+                        value="0"
+                      />
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        <!-- Pending ACKs -->
-        <div class="command-section">
-          <h3>
-            Pending ACKs <span class="pending-count" id="pending-count">0</span>
-          </h3>
-          <div class="pending-acks" id="pending-acks">
-            <span class="pending-none">No pending commands</span>
-          </div>
+          <section
+            class="dropdown-block"
+            id="mission-explanation-block"
+            data-accordion-group="right-controls"
+          >
+            <button class="dropdown-toggle" type="button" aria-expanded="false">
+              <span class="dropdown-title">Mission Explanation</span>
+              <span class="dropdown-meta">Theme and payload context</span>
+              <span class="dropdown-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="dropdown-content" hidden>
+              <div class="command-section command-section-inner">
+                <div class="input-group">
+                  <label for="mission-preset-select">Mission Preset</label>
+                  <select id="mission-preset-select" class="input-field select-field">
+                    <option value="cy3-pragyan" selected>
+                      Chandrayaan-3 Pragyan Surface Ops
+                    </option>
+                    <option value="cy4-sample-return">
+                      Chandrayaan-4 Sample Return Chain
+                    </option>
+                    <option value="lupex-polar-ice">LUPEX Polar Ice Prospecting</option>
+                    <option value="cy-future-base">
+                      Future Chandrayaan Base Build (Teaching Scenario)
+                    </option>
+                  </select>
+                </div>
+                <article class="mission-brief-card" id="mission-brief-card">
+                  <div class="mission-brief-head">
+                    <span class="mission-brief-code" id="mission-brief-code">CY3</span>
+                    <span class="mission-brief-phase" id="mission-brief-phase"
+                      >CY3-ops</span
+                    >
+                  </div>
+                  <p class="mission-brief-summary" id="mission-brief-summary">
+                    Pragyan-style near-surface traverse and in-situ science sequence.
+                  </p>
+                  <div class="mission-brief-tags" id="mission-brief-tags"></div>
+                </article>
+                <div class="mission-guide-toolbar">
+                  <button class="btn-sm" id="mission-apply-btn" type="button">
+                    Apply Preset
+                  </button>
+                  <button class="btn-sm" id="mission-next-step-btn" type="button">
+                    Use Next Step
+                  </button>
+                  <button class="btn-sm" id="mission-reset-btn" type="button">
+                    Reset Guide
+                  </button>
+                </div>
+                <ol class="mission-step-list" id="mission-step-list"></ol>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
