@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   LSOAS — 3D Visualization System
+   LSOAS — Orbital Visualization System
    Orbital visualization + physics + collision handling
    ═══════════════════════════════════════════════════════ */
 

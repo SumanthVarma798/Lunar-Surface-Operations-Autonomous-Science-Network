@@ -462,7 +462,7 @@ body.three-panel-open #main-grid {
   z-index: 0;
 }
 
-/* ─── Floating 3D Panel ─── */
+/* ─── Floating Orbital Panel ─── */
 #floating-panel {
   grid-column: 3;
   grid-row: 1;

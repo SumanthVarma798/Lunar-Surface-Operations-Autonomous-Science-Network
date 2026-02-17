@@ -14,19 +14,19 @@
   const sim = new SimulationController();
   const bus = sim.bus;
 
-  // ─── 3D Visualization ───
+  // ─── Orbital Visualization ───
   let viz = null;
   if (window.THREE) {
     try {
       viz = new VisualizationController(bus, "visualization-container");
     } catch (err) {
       // Keep mission control usable even when WebGL is unavailable (e.g. headless test runs).
-      console.warn("3D visualization disabled:", err);
+      console.warn("Orbital visualization disabled:", err);
       viz = null;
     }
   }
 
-  // Toggle 3D Panel
+  // Toggle Orbital Panel
   const floatingPanel = $("#floating-panel");
   const btnToggle = $("#btn-3d-toggle");
   const btnToggleLabel = $("#btn-3d-toggle-label");
@@ -44,7 +44,7 @@
       btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
     if (btnToggleLabel) {
-      btnToggleLabel.textContent = open ? "Close 3D" : "3D View";
+      btnToggleLabel.textContent = open ? "Close Orbital" : "Orbital View";
     }
 
     if (open) {
