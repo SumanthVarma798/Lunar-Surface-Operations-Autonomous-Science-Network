@@ -447,7 +447,7 @@ body.three-panel-open #main-grid {
 
 .left-dropdown-stack {
   padding: 0 var(--sp-md) var(--sp-md);
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
@@ -625,7 +625,7 @@ body.three-panel-open #main-grid {
 
 .telemetry-dropdown-stack {
   padding: 0 var(--sp-lg) var(--sp-lg);
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
@@ -657,7 +657,7 @@ body.three-panel-open .panel-telemetry.compact-log {
   transform: none;
   grid-column: 1;
   grid-row: 2;
-  align-self: stretch;
+  align-self: start;
   min-height: 0;
 }
 

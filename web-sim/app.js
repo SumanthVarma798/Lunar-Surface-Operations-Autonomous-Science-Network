@@ -128,6 +128,8 @@
     packetsReceived: $("#packets-received"),
     packetsDropped: $("#packets-dropped"),
     missionPresetSelect: $("#mission-preset-select"),
+    missionControlsBlock: $("#mission-controls-block"),
+    missionExplanationBlock: $("#mission-explanation-block"),
     missionBriefCode: $("#mission-brief-code"),
     missionBriefPhase: $("#mission-brief-phase"),
     missionBriefSummary: $("#mission-brief-summary"),
@@ -243,6 +245,11 @@
     configureAccordionGroup("right-controls", { singleOpen: false });
     configureAccordionGroup("telemetry-orbital", { singleOpen: false });
     syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
+  }
+
+  function openMissionControlsCard() {
+    if (!dom.missionControlsBlock) return;
+    setAccordionBlockOpen(dom.missionControlsBlock, true);
   }
 
   function hydrateTaskSelectorsFromCatalog() {
@@ -1759,6 +1766,7 @@
   if (dom.missionPresetSelect) {
     dom.missionPresetSelect.addEventListener("change", (event) => {
       setMissionPreset(event.target.value, { announce: true, resetProgress: true });
+      openMissionControlsCard();
     });
   }
 
@@ -1768,6 +1776,7 @@
         announce: true,
         forceTaskId: true,
       });
+      openMissionControlsCard();
       pulseButton(dom.missionApplyBtn);
     });
   }
@@ -1775,6 +1784,7 @@
   if (dom.missionNextStepBtn) {
     dom.missionNextStepBtn.addEventListener("click", () => {
       moveMissionActiveStep(1);
+      openMissionControlsCard();
       pulseButton(dom.missionNextStepBtn);
     });
   }
@@ -1784,7 +1794,11 @@
       missionGuideState.completedCount = 0;
       missionGuideState.activeStepIndex = 0;
       setMissionGuidePhase(getActiveMissionPreset().mission_phase);
-      applyMissionStepToControls(getActiveMissionStep(), { announce: true });
+      applyMissionStepToControls(getActiveMissionStep(), {
+        announce: true,
+        forceTaskId: true,
+      });
+      openMissionControlsCard();
       pulseButton(dom.missionResetBtn);
     });
   }
@@ -1796,6 +1810,7 @@
       const stepIndex = Number(item.dataset.stepIndex);
       if (!Number.isFinite(stepIndex)) return;
       setMissionActiveStep(stepIndex, { announce: true });
+      openMissionControlsCard();
     });
   }
 

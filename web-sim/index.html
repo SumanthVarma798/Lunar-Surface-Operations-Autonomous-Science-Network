@@ -370,6 +370,7 @@
         <div class="dropdown-stack right-dropdown-stack" id="right-dropdown-stack">
           <section
             class="dropdown-block is-open"
+            id="mission-controls-block"
             data-accordion-group="right-controls"
           >
             <button class="dropdown-toggle" type="button" aria-expanded="true">
@@ -379,19 +380,6 @@
             </button>
             <div class="dropdown-content">
               <div class="command-section command-section-inner">
-                <div class="mission-guide-toolbar">
-                  <button class="btn-sm" id="mission-apply-btn" type="button">
-                    Apply Preset
-                  </button>
-                  <button class="btn-sm" id="mission-next-step-btn" type="button">
-                    Use Next Step
-                  </button>
-                  <button class="btn-sm" id="mission-reset-btn" type="button">
-                    Reset Guide
-                  </button>
-                </div>
-                <ol class="mission-step-list" id="mission-step-list"></ol>
-
                 <div class="control-subheading">Quick Commands</div>
                 <div class="command-grid">
                   <button class="cmd-btn cmd-start" id="cmd-start-task">
@@ -565,6 +553,7 @@
 
           <section
             class="dropdown-block is-open"
+            id="mission-explanation-block"
             data-accordion-group="right-controls"
           >
             <button class="dropdown-toggle" type="button" aria-expanded="true">
@@ -601,6 +590,18 @@
                   </p>
                   <div class="mission-brief-tags" id="mission-brief-tags"></div>
                 </article>
+                <div class="mission-guide-toolbar">
+                  <button class="btn-sm" id="mission-apply-btn" type="button">
+                    Apply Preset
+                  </button>
+                  <button class="btn-sm" id="mission-next-step-btn" type="button">
+                    Use Next Step
+                  </button>
+                  <button class="btn-sm" id="mission-reset-btn" type="button">
+                    Reset Guide
+                  </button>
+                </div>
+                <ol class="mission-step-list" id="mission-step-list"></ol>
               </div>
             </div>
           </section>
