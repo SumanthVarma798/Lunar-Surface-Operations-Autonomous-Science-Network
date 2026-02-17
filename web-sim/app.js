@@ -160,6 +160,12 @@
     topologyVisual: $("#topology-visual"),
   };
 
+  const ACCORDION_GROUP_CONFIG = {
+    "left-orbital": { singleOpen: false, requireOneOpen: false },
+    "telemetry-orbital": { singleOpen: false, requireOneOpen: true },
+    "right-controls": { singleOpen: false, requireOneOpen: true },
+  };
+
   function getAccordionBlocks(groupName) {
     return Array.from(
       document.querySelectorAll(
@@ -186,6 +192,7 @@
     if (!block) return;
     const group = String(block.dataset.accordionGroup || "");
     const singleOpen = block.dataset.singleOpen === "true";
+    const requireOneOpen = block.dataset.requireOneOpen === "true";
     const nextOpen = !block.classList.contains("is-open");
 
     if (singleOpen && nextOpen && group) {
@@ -194,13 +201,36 @@
       });
     }
 
+    if (!nextOpen && requireOneOpen && group) {
+      const openBlocks = getAccordionBlocks(group).filter((candidate) =>
+        candidate.classList.contains("is-open"),
+      );
+      if (openBlocks.length <= 1 && openBlocks[0] === block) return;
+    }
+
     setAccordionBlockOpen(block, nextOpen);
   }
 
-  function configureAccordionGroup(groupName, { singleOpen = false } = {}) {
+  function configureAccordionGroup(
+    groupName,
+    { singleOpen = false, requireOneOpen = false } = {},
+  ) {
     getAccordionBlocks(groupName).forEach((block) => {
       block.dataset.singleOpen = singleOpen ? "true" : "false";
+      block.dataset.requireOneOpen = requireOneOpen ? "true" : "false";
     });
+  }
+
+  function ensureAccordionGroupHasOpen(groupName) {
+    const blocks = getAccordionBlocks(groupName);
+    if (blocks.length === 0) return;
+    const requireOneOpen = blocks[0].dataset.requireOneOpen === "true";
+    if (!requireOneOpen) return;
+    const openBlocks = blocks.filter((block) => block.classList.contains("is-open"));
+    if (openBlocks.length > 0) return;
+    const preferred =
+      blocks.find((block) => block.dataset.defaultOpen !== "false") || blocks[0];
+    setAccordionBlockOpen(preferred, true);
   }
 
   function syncAccordionLayoutMode(compact) {
@@ -208,7 +238,10 @@
     const telemetryBlocks = getAccordionBlocks("telemetry-orbital");
 
     if (leftBlocks.length > 0) {
-      configureAccordionGroup("left-orbital", { singleOpen: compact });
+      configureAccordionGroup("left-orbital", {
+        singleOpen: compact,
+        requireOneOpen: false,
+      });
       if (compact) {
         leftBlocks.forEach((block) => setAccordionBlockOpen(block, false));
       } else {
@@ -220,7 +253,10 @@
     }
 
     if (telemetryBlocks.length > 0) {
-      configureAccordionGroup("telemetry-orbital", { singleOpen: compact });
+      configureAccordionGroup("telemetry-orbital", {
+        singleOpen: compact,
+        requireOneOpen: true,
+      });
       if (compact) {
         telemetryBlocks.forEach((block) => setAccordionBlockOpen(block, false));
         const preferred = telemetryBlocks.find(
@@ -232,6 +268,7 @@
           const defaultOpen = block.dataset.defaultOpen !== "false";
           setAccordionBlockOpen(block, defaultOpen);
         });
+        ensureAccordionGroupHasOpen("telemetry-orbital");
       }
     }
   }
@@ -245,9 +282,17 @@
       const isOpen = block.classList.contains("is-open");
       setAccordionBlockOpen(block, isOpen);
     });
-    configureAccordionGroup("right-controls", { singleOpen: false });
-    configureAccordionGroup("telemetry-orbital", { singleOpen: false });
+    configureAccordionGroup("right-controls", {
+      singleOpen: ACCORDION_GROUP_CONFIG["right-controls"].singleOpen,
+      requireOneOpen: ACCORDION_GROUP_CONFIG["right-controls"].requireOneOpen,
+    });
+    configureAccordionGroup("telemetry-orbital", {
+      singleOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].singleOpen,
+      requireOneOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
+    });
     syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
+    ensureAccordionGroupHasOpen("right-controls");
+    ensureAccordionGroupHasOpen("telemetry-orbital");
   }
 
   function openMissionControlsCard() {

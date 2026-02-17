@@ -441,8 +441,10 @@ body.three-panel-open #main-grid {
 }
 
 .dropdown-stack {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-sm);
+  min-height: 0;
 }
 
 .left-dropdown-stack {
