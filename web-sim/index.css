@@ -566,6 +566,18 @@ body.three-panel-open #main-grid {
   min-height: 0;
 }
 
+#left-pending-ack-block .dropdown-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#telemetry-stream-block .dropdown-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .dropdown-content[hidden] {
   display: none;
 }
@@ -2005,7 +2017,10 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 }
 
 .pending-acks-left {
-  max-height: 126px;
+  max-height: none;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
   overflow-y: auto;
 }
 

@@ -162,17 +162,17 @@
           </section>
 
           <section
-            class="dropdown-block is-open"
+            class="dropdown-block"
             id="left-pending-ack-block"
             data-accordion-group="left-orbital"
-            data-default-open="true"
+            data-default-open="false"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
+            <button class="dropdown-toggle" type="button" aria-expanded="false">
               <span class="dropdown-title">Pending ACKs</span>
               <span class="pending-count" id="pending-count">0</span>
               <span class="dropdown-chevron" aria-hidden="true"></span>
             </button>
-            <div class="dropdown-content">
+            <div class="dropdown-content" hidden>
               <div class="pending-acks pending-acks-left" id="pending-acks">
                 <span class="pending-none">No pending commands</span>
               </div>
