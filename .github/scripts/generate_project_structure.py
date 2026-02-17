@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-GitHub Project Setup Script for the Chandrayaan Swarm v2 Roadmap.
+GitHub Project Setup Script for the post-v1 Chandrayaan roadmap.
 
 This script is the single source of truth for labels, milestones, and issues
-used to run the Chandrayaan-oriented roadmap refresh.
+used to track ongoing roadmap work after the Phase 1 v1.0.0 release.
 """
 
 import json
 from datetime import datetime, timezone
 
 PROJECT_CONFIG = {
-    "name": "LSOAS Chandrayaan Swarm v2 Roadmap",
+    "name": "LSOAS Chandrayaan Roadmap (Post-v1)",
     "description": (
-        "Chandrayaan-themed autonomous lunar swarm roadmap: realistic mission "
-        "operations plus future base-build extensions"
+        "Post-v1 roadmap for Chandrayaan teaching missions, lunar-base operations, "
+        "and mission explainability"
     ),
     "columns": [
         {"name": "Backlog", "purpose": "Future work not yet prioritized"},
@@ -22,6 +22,11 @@ PROJECT_CONFIG = {
         {"name": "In Review", "purpose": "Awaiting review and validation"},
         {"name": "Done", "purpose": "Completed and verified"},
     ],
+    "phase1_release": {
+        "tag": "v1.0.0",
+        "release_pr": "#52",
+        "released_on": "2026-02-17",
+    },
 }
 
 LABELS = [
@@ -30,6 +35,7 @@ LABELS = [
     {"name": "phase-v2-sim", "color": "1D76DB", "description": "Web simulation and UX"},
     {"name": "phase-v2-docs", "color": "5319E7", "description": "Documentation and migration"},
     {"name": "phase-v2-validation", "color": "E99695", "description": "Validation and QA"},
+    {"name": "phase-v2-phase2", "color": "C5DEF5", "description": "Phase 2 post-v1 roadmap"},
 
     # Existing broad labels retained
     {"name": "category: ros", "color": "006B75", "description": "ROS 2 implementation work"},
@@ -81,259 +87,157 @@ LABELS = [
 
 MILESTONES = [
     {
-        "title": "Chandrayaan v2 - Core Task Model",
-        "description": "Task catalog, difficulty model, and assignment scoring",
-        "due_on": "2026-03-25T00:00:00Z",
-    },
-    {
-        "title": "Chandrayaan v2 - Simulation and Telemetry",
-        "description": "Web simulation parity with ROS task semantics",
-        "due_on": "2026-04-20T00:00:00Z",
-    },
-    {
-        "title": "Chandrayaan v2 - Documentation and Validation",
-        "description": "README, architecture docs, and test evidence",
-        "due_on": "2026-05-08T00:00:00Z",
+        "title": "Phase 2: Chandrayaan Teaching & Base Operations",
+        "description": "Post-v1 expansion: guided mission curriculum, base-build operations, multi-sol planning, and learning analytics",
+        "due_on": "2026-08-31T00:00:00Z",
     },
 ]
 
-CHANDRAYAAN_V2_ISSUES = [
+PHASE2_ISSUES = [
     {
-        "title": "[EPIC] Chandrayaan v2: Context-aware swarm task orchestration",
-        "body": """## Overview
-Redesign task planning and rover assignment around Chandrayaan and LUPEX-inspired operations with a future Indian lunar base scenario.
+        "title": "[EPIC] Phase 2: Chandrayaan teaching missions and lunar-base operations",
+        "body": """## Context
+Phase 1 shipped in v1.0.0 with context-aware tasks, dynamic risk, and the redesigned teaching dashboard.
 
-## Goals
-- Structured task taxonomy with six mission families
-- Difficulty levels L1-L5 with context-aware fault modeling
-- Capability-aware rover assignment with explainable scoring
-- Unified ROS + web-sim behavior using a shared task catalog
+## Phase 2 Goals
+- Expand Chandrayaan lesson flows into guided mission packs with instructor controls
+- Model base-predeploy and early base-build operations with realistic constraints
+- Add multi-sol planning, what-if analysis, and after-action review tooling
 
 ## Success Criteria
-- [ ] Task catalog file is consumed by ROS and web-sim
-- [ ] Dynamic fault model replaces fixed per-step fault chance
-- [ ] Assignment returns score breakdown and reject reason when infeasible
-- [ ] New telemetry fields expose mission context and risk
-- [ ] Legacy open roadmap epics are superseded and linked
+- [ ] Mission presets support guided teaching progression and override synchronization
+- [ ] Base operations tasks and constraints are represented in simulation and telemetry
+- [ ] Operator can review mission replay with assignment/risk rationale
+- [ ] Phase 2 acceptance tests and docs are in place
 """,
         "labels": [
-            "phase-v2-core",
+            "phase-v2-phase2",
             "type: epic",
             "priority: P0-critical",
             "category: architecture",
-            "mission-phase: base-predeploy",
+            "mission-phase: base-build",
         ],
-        "milestone": "Chandrayaan v2 - Core Task Model",
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
     },
     {
-        "title": "Create shared Chandrayaan TaskCatalog schema and loader",
+        "title": "Mission preset packs v2: guided lesson flow + control synchronization",
         "body": """## Task
-Add a machine-readable TaskCatalog file and loader utilities for both ROS and web-sim.
-
-## Required fields
-- task_type
-- difficulty_level
-- base_fault_rate
-- duration_profile
-- required_capabilities
+Add curated Chandrayaan teaching mission packs where Mission Explanation selections always synchronize Task Configuration defaults and open Mission Controls automatically.
 
 ## Acceptance Criteria
-- [ ] Catalog validates at startup
-- [ ] L1..L5 maps to 1/3/6/10/18 percent base fault rates
-- [ ] Catalog file is versioned and documented
+- [ ] Preset selection updates task type, difficulty, target site, and rover strategy
+- [ ] Apply preset and Use next step produce deterministic command payloads
+- [ ] Manual override remains possible without breaking preset progression
+- [ ] UI tests verify sync behavior and state persistence
 """,
         "labels": [
-            "phase-v2-core",
+            "phase-v2-phase2",
+            "type: feature",
+            "priority: P1-high",
+            "category: web-dashboard",
+            "difficulty: L3",
+            "mission-phase: CY3-ops",
+            "mission-phase: CY4-sample-chain",
+        ],
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
+    },
+    {
+        "title": "Base-build operations pack: regolith logistics, excavation, and emplacement tasks",
+        "body": """## Task
+Extend task catalog and scenario templates for realistic base-predeploy/base-build workflows (site prep, regolith movement, equipment emplacement).
+
+## Acceptance Criteria
+- [ ] New base-build task templates map to existing task families and difficulty L1-L5
+- [ ] Capability constraints reject infeasible assignments deterministically
+- [ ] Telemetry exposes base-build context and predicted risk
+- [ ] Sample scenarios documented in README and docs
+""",
+        "labels": [
+            "phase-v2-phase2",
             "type: feature",
             "priority: P0-critical",
             "category: architecture",
-            "difficulty: L3",
-            "task-type: movement",
-            "task-type: science",
+            "category: ros",
+            "difficulty: L4",
             "task-type: digging",
             "task-type: pushing",
-            "task-type: photo",
             "task-type: sample-handling",
+            "mission-phase: base-predeploy",
+            "mission-phase: base-build",
         ],
-        "milestone": "Chandrayaan v2 - Core Task Model",
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
     },
     {
-        "title": "Implement dynamic fault-rate engine with lunar context modifiers",
+        "title": "Multi-sol energy and thermal planner for assignment pre-check",
         "body": """## Task
-Replace flat fault chance with dynamic risk driven by mission context.
-
-## Context inputs
-- battery SOC
-- lunar day/night state
-- solar intensity
-- terrain difficulty
-- comm quality and latency
-- thermal stress
+Add a planning layer that forecasts battery, solar, and thermal margins across multiple lunar cycles before dispatching higher-risk tasks.
 
 ## Acceptance Criteria
-- [ ] Output fault probability clamped to 0-60 percent
-- [ ] Same task yields different risk in day vs night and low vs high battery
-- [ ] Unit tests cover modifier behavior
+- [ ] Planner produces feasibility score for next mission window
+- [ ] Assignment logic can consume planner output as a weighted factor
+- [ ] Night-time and low-solar windows visibly affect assignment decisions
+- [ ] Tests cover planner edge cases and fallback behavior
 """,
         "labels": [
-            "phase-v2-core",
-            "type: feature",
+            "phase-v2-phase2",
+            "type: enhancement",
             "priority: P1-high",
             "category: ros",
             "category: testing",
             "difficulty: L4",
             "mission-phase: LUPEX-prospecting",
+            "mission-phase: base-build",
         ],
-        "milestone": "Chandrayaan v2 - Core Task Model",
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
     },
     {
-        "title": "Add capability-class rover profiles and explainable assignment output",
+        "title": "Mission replay and explainability timeline for teaching outcomes",
         "body": """## Task
-Implement rover capability classes and assignment scoring with explanation.
-
-## Scoring factors
-- capability match
-- battery margin
-- solar margin
-- thermal margin
-- comm margin
-- distance and accessibility
-- predicted mission risk
+Implement timeline replay that explains why rover assignments were chosen and how risk/context changed over time.
 
 ## Acceptance Criteria
-- [ ] Assignment returns selected_rover, score_breakdown, reject_reason
-- [ ] Assignment rejects infeasible tasks deterministically
-- [ ] Auto mode chooses different rover under changed mission context
+- [ ] Replay shows command, assignment score breakdown, and telemetry checkpoints
+- [ ] Instructor can filter by rover, task type, and mission phase
+- [ ] Exportable summary supports post-mission teaching review
+- [ ] Web and ROS telemetry semantics stay aligned
 """,
         "labels": [
-            "phase-v2-core",
-            "type: feature",
-            "priority: P0-critical",
-            "category: ros",
-            "difficulty: L4",
-            "capability-class: mobility",
-            "capability-class: science",
-            "capability-class: excavation",
-            "capability-class: manipulation",
-            "capability-class: imaging",
-            "capability-class: sample-logistics",
-        ],
-        "milestone": "Chandrayaan v2 - Core Task Model",
-    },
-    {
-        "title": "Update rover execution engine for variable duration and risk by task+difficulty",
-        "body": """## Task
-Remove fixed 10-step task execution and support catalog-driven duration profiles by task and difficulty.
-
-## Acceptance Criteria
-- [ ] L1 tasks complete faster than L5 for same family
-- [ ] Battery drain and risk reflect task profile
-- [ ] Telemetry includes active_task_type and active_task_difficulty
-""",
-        "labels": [
-            "phase-v2-core",
-            "type: enhancement",
-            "priority: P1-high",
-            "category: ros",
-            "difficulty: L3",
-            "mission-phase: CY3-ops",
-        ],
-        "milestone": "Chandrayaan v2 - Core Task Model",
-    },
-    {
-        "title": "Extend web-sim command panel with task type and difficulty controls",
-        "body": """## Task
-Expose task_type and difficulty_level controls in the dashboard and route them in command payloads.
-
-## Acceptance Criteria
-- [ ] Operator can set movement/science/digging/pushing/photo/sample-handling
-- [ ] Operator can set L1-L5
-- [ ] Auto assignment decisions are logged with score breakdown
-""",
-        "labels": [
-            "phase-v2-sim",
+            "phase-v2-phase2",
             "type: feature",
             "priority: P1-high",
             "category: web-dashboard",
-            "difficulty: L2",
-        ],
-        "milestone": "Chandrayaan v2 - Simulation and Telemetry",
-    },
-    {
-        "title": "Publish expanded telemetry schema for mission-context observability",
-        "body": """## Task
-Extend rover and fleet telemetry with context and risk observability fields.
-
-## Required fields
-- active_task_type
-- active_task_difficulty
-- predicted_fault_probability
-- assignment_score_breakdown
-- lunar_time_state
-- solar_intensity
-
-## Acceptance Criteria
-- [ ] ROS and web-sim publish and consume these fields
-- [ ] Fleet display shows context-aware risk insights
-""",
-        "labels": [
-            "phase-v2-sim",
-            "type: enhancement",
-            "priority: P1-high",
-            "category: web-dashboard",
-            "category: ros",
+            "category: documentation",
             "difficulty: L3",
+            "mission-phase: CY4-sample-chain",
         ],
-        "milestone": "Chandrayaan v2 - Simulation and Telemetry",
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
     },
     {
-        "title": "Validation suite for catalog parsing, risk engine, and assignment edge cases",
+        "title": "Phase 2 validation matrix and release criteria (v1.1.0 target)",
         "body": """## Task
-Expand tests for task catalog validation, difficulty behavior, context modifiers, and assignment rejection paths.
+Define and implement the Phase 2 validation matrix spanning catalog extensions, planning logic, UX synchronization, and replay telemetry.
 
 ## Acceptance Criteria
-- [ ] Catalog parser tests
-- [ ] L1 vs L5 duration/risk behavior tests
-- [ ] Low battery + lunar night risk increase tests
-- [ ] No feasible rover deterministic rejection tests
-- [ ] Legacy START_TASK fallback behavior tests
+- [ ] Test matrix covers positive/negative assignment paths for new scenarios
+- [ ] Web dashboard interaction tests cover collapsible panels and preset sync
+- [ ] Regression tests preserve Phase 1 command/task behavior
+- [ ] Release checklist documented for v1.1.0
 """,
         "labels": [
-            "phase-v2-validation",
+            "phase-v2-phase2",
             "type: feature",
             "priority: P0-critical",
             "category: testing",
+            "category: documentation",
             "difficulty: L3",
         ],
-        "milestone": "Chandrayaan v2 - Documentation and Validation",
-    },
-    {
-        "title": "Rewrite README and architecture docs for Chandrayaan swarm-base narrative",
-        "body": """## Task
-Update public docs to Chandrayaan future mission framing while separating real mission basis from future extrapolation.
-
-## Acceptance Criteria
-- [ ] README includes Reality basis section (CY3/CY4/LUPEX)
-- [ ] Development workflow documents main->develop->feature->PR
-- [ ] Architecture docs describe task taxonomy and risk model
-""",
-        "labels": [
-            "phase-v2-docs",
-            "type: enhancement",
-            "priority: P1-high",
-            "category: documentation",
-            "difficulty: L2",
-            "mission-phase: CY4-sample-chain",
-            "mission-phase: base-build",
-        ],
-        "milestone": "Chandrayaan v2 - Documentation and Validation",
+        "milestone": "Phase 2: Chandrayaan Teaching & Base Operations",
     },
 ]
 
+ALL_ISSUES = PHASE2_ISSUES
 
-ALL_ISSUES = CHANDRAYAAN_V2_ISSUES
-
-
+PHASE1_COMPLETED_ISSUES = [38, 39, 40, 41, 42, 43, 44, 45, 46]
 SUPERSCEDED_LEGACY_ISSUES = [2, 16, 17, 18, 19, 20]
 
 
@@ -369,14 +273,24 @@ def generate_github_commands():
             f"--milestone {milestone_num}"
         )
 
-    commands.append("\n# Supersede legacy roadmap issues")
-    for issue_number in SUPERSCEDED_LEGACY_ISSUES:
-        comment = (
-            "Superseded by the Chandrayaan v2 roadmap refresh. "
-            "See the new Chandrayaan v2 epic and linked child issues."
-        )
+    commands.append("\n# Close completed Phase 1 issues")
+    phase1_comment = (
+        "Completed in Phase 1 and released in v1.0.0 (PR #52, tag v1.0.0). "
+        "This issue is now closed as delivered."
+    )
+    for issue_number in PHASE1_COMPLETED_ISSUES:
         commands.append(
-            f"gh issue close {issue_number} --comment \"{comment}\" || true"
+            f"gh issue close {issue_number} --comment \"{phase1_comment}\" || true"
+        )
+
+    commands.append("\n# Ensure legacy roadmap issues stay superseded")
+    legacy_comment = (
+        "Superseded by the Chandrayaan roadmap refresh and completed Phase 1 baseline. "
+        "Track active roadmap work under the Phase 2 epic and child issues."
+    )
+    for issue_number in SUPERSCEDED_LEGACY_ISSUES:
+        commands.append(
+            f"gh issue close {issue_number} --comment \"{legacy_comment}\" || true"
         )
 
     return commands
@@ -389,6 +303,7 @@ def build_payload():
         "labels": LABELS,
         "milestones": MILESTONES,
         "issues": ALL_ISSUES,
+        "phase1_completed_issue_numbers": PHASE1_COMPLETED_ISSUES,
         "superseded_legacy_issue_numbers": SUPERSCEDED_LEGACY_ISSUES,
         "commands": generate_github_commands(),
     }
