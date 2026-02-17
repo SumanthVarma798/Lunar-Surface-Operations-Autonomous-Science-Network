@@ -63,6 +63,7 @@
     if (open) {
       floatingPanel.setAttribute("aria-hidden", "false");
       document.body.classList.add("three-panel-open");
+      syncAccordionLayoutMode(true);
       if (panelTelemetry) panelTelemetry.classList.add("compact-log");
       updateFleetUi();
 
@@ -77,6 +78,7 @@
       hideFleetHoverCard();
       panelLayoutTimer = setTimeout(() => {
         document.body.classList.remove("three-panel-open");
+        syncAccordionLayoutMode(false);
         if (panelTelemetry) {
           panelTelemetry.classList.remove("compact-log");
         }
@@ -106,6 +108,8 @@
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
+    leftDropdownStack: $("#left-dropdown-stack"),
+    rightDropdownStack: $("#right-dropdown-stack"),
     fleetGrid: $("#fleet-grid"),
     fleetGridSummary: $("#fleet-grid-summary"),
     fleetHoverCard: $("#fleet-hover-card"),
@@ -150,6 +154,79 @@
     faultProbValue: $("#fault-prob-value"),
     topologyVisual: $("#topology-visual"),
   };
+
+  function getAccordionBlocks(groupName) {
+    return Array.from(
+      document.querySelectorAll(
+        `.dropdown-block[data-accordion-group="${groupName}"]`,
+      ),
+    );
+  }
+
+  function setAccordionBlockOpen(block, open) {
+    if (!block) return;
+    const content = block.querySelector(".dropdown-content");
+    const toggle = block.querySelector(".dropdown-toggle");
+    block.classList.toggle("is-open", open);
+    if (content) content.hidden = !open;
+    if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && block.id === "left-topology-block") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => drawTopologyLines());
+      });
+    }
+  }
+
+  function toggleAccordionBlock(block) {
+    if (!block) return;
+    const group = String(block.dataset.accordionGroup || "");
+    const singleOpen = block.dataset.singleOpen === "true";
+    const nextOpen = !block.classList.contains("is-open");
+
+    if (singleOpen && nextOpen && group) {
+      getAccordionBlocks(group).forEach((candidate) => {
+        if (candidate !== block) setAccordionBlockOpen(candidate, false);
+      });
+    }
+
+    setAccordionBlockOpen(block, nextOpen);
+  }
+
+  function configureAccordionGroup(groupName, { singleOpen = false } = {}) {
+    getAccordionBlocks(groupName).forEach((block) => {
+      block.dataset.singleOpen = singleOpen ? "true" : "false";
+    });
+  }
+
+  function syncAccordionLayoutMode(compact) {
+    const leftBlocks = getAccordionBlocks("left-orbital");
+    if (leftBlocks.length === 0) return;
+
+    configureAccordionGroup("left-orbital", { singleOpen: compact });
+
+    if (compact) {
+      leftBlocks.forEach((block) => setAccordionBlockOpen(block, false));
+      return;
+    }
+
+    leftBlocks.forEach((block) => {
+      const defaultOpen = block.dataset.defaultOpen !== "false";
+      setAccordionBlockOpen(block, defaultOpen);
+    });
+  }
+
+  function initializeAccordions() {
+    const blocks = Array.from(document.querySelectorAll(".dropdown-block"));
+    blocks.forEach((block) => {
+      const toggle = block.querySelector(".dropdown-toggle");
+      if (!toggle) return;
+      toggle.addEventListener("click", () => toggleAccordionBlock(block));
+      const isOpen = block.classList.contains("is-open");
+      setAccordionBlockOpen(block, isOpen);
+    });
+    configureAccordionGroup("right-controls", { singleOpen: false });
+    syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
+  }
 
   function hydrateTaskSelectorsFromCatalog() {
     if (!taskCatalog || !dom.taskTypeSelect || !dom.taskDifficultySelect) return;
@@ -1296,6 +1373,7 @@
   }
 
   // Initialize fleet cache from simulation startup state
+  initializeAccordions();
   loadPinnedRovers();
   attachFleetInteractions();
 
@@ -1569,7 +1647,9 @@
   // ─── Topology Lines ───
   function drawTopologyLines() {
     const svg = document.getElementById("topology-lines");
+    if (!svg || !dom.topologyVisual) return;
     const containerRect = dom.topologyVisual.getBoundingClientRect();
+    if (containerRect.width <= 0 || containerRect.height <= 0) return;
 
     const nodes = [
       "topo-earth",
@@ -1581,12 +1661,17 @@
 
     nodes.forEach((id) => {
       const el = document.getElementById(id);
+      if (!el) return;
       const rect = el.getBoundingClientRect();
       positions[id] = {
         x: rect.left + rect.width / 2 - containerRect.left,
         y: rect.top + rect.height / 2 - containerRect.top,
       };
     });
+
+    if (!positions["topo-earth"] || !positions["topo-spacelink"] || !positions["topo-rover"] || !positions["topo-telemetry"]) {
+      return;
+    }
 
     svg.innerHTML = "";
     svg.setAttribute(
