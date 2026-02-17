@@ -180,6 +180,7 @@
     const toggle = block.querySelector(".dropdown-toggle");
     block.classList.toggle("is-open", open);
     if (content) content.hidden = !open;
+    if (open && content) content.scrollTop = 0;
     if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
     if (open && block.id === "left-topology-block") {
       requestAnimationFrame(() => {
@@ -209,6 +210,14 @@
     }
 
     setAccordionBlockOpen(block, nextOpen);
+    if (group === "left-orbital") {
+      const topologyBlock = document.getElementById("left-topology-block");
+      if (topologyBlock?.classList.contains("is-open")) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => drawTopologyLines());
+        });
+      }
+    }
   }
 
   function configureAccordionGroup(

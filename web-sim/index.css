@@ -576,6 +576,13 @@ body.three-panel-open #main-grid {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
+}
+
+#telemetry-stream-block .telemetry-feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .dropdown-content[hidden] {
@@ -762,13 +769,41 @@ body.three-panel-open #left-dropdown-stack .dropdown-content {
 }
 
 body.three-panel-open #left-dropdown-stack .topology-visual {
-  padding: var(--sp-sm);
-  gap: var(--sp-md);
-  max-height: 210px;
+  padding: 6px;
+  gap: 6px;
+  max-height: none;
+  min-height: 176px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-content: space-evenly;
 }
 
 body.three-panel-open #left-dropdown-stack .signal-legend {
-  padding: 6px 4px 4px;
+  display: none;
+}
+
+body.three-panel-open #left-topology-block .topo-node {
+  width: calc(50% - 6px);
+  gap: 4px;
+}
+
+body.three-panel-open #left-topology-block .topo-node-ring {
+  width: 40px;
+  height: 40px;
+}
+
+body.three-panel-open #left-topology-block .topo-node-icon {
+  font-size: 16px;
+}
+
+body.three-panel-open #left-topology-block .topo-node-label {
+  font-size: 9px;
+}
+
+body.three-panel-open #left-topology-block .topo-node-state {
+  font-size: 8px;
+  padding: 1px 6px;
 }
 
 body.three-panel-open #left-dropdown-stack .command-log-left {
