@@ -491,17 +491,29 @@ class VisualizationController {
 
     const orbitPath = this.createOrbitPath(def.radius, basis, index, def.color);
     const linkToEarth = this.createBeam({
-      color: 0x67e8f9,
-      blockedColor: 0xfb7185,
-      opacity: 0.48,
-      blockedOpacity: 0.7,
+      clear: {
+        color: 0x38bdf8,
+        opacity: 0.58,
+        dashed: false,
+      },
+      error: {
+        color: 0xef4444,
+        opacity: 0.76,
+        dashed: false,
+      },
       thickness: 0.012,
     });
     const linkToRover = this.createBeam({
-      color: 0xfacc15,
-      blockedColor: 0xf97316,
-      opacity: 0.42,
-      blockedOpacity: 0.66,
+      clear: {
+        color: 0x22c55e,
+        opacity: 0.64,
+        dashed: false,
+      },
+      error: {
+        color: 0xef4444,
+        opacity: 0.82,
+        dashed: true,
+      },
       thickness: 0.009,
     });
 
@@ -540,36 +552,36 @@ class VisualizationController {
     return dashed;
   }
 
-  createBeam({
-    color,
-    blockedColor = 0xfb7185,
-    opacity,
-    blockedOpacity = 0.7,
-    thickness,
-  }) {
+  createBeam({ clear, error, thickness }) {
+    const clearStyle = {
+      color: clear?.color ?? 0x38bdf8,
+      opacity: clear?.opacity ?? 0.6,
+      dashed: Boolean(clear?.dashed),
+      dashSize: clear?.dashSize ?? (0.11 + thickness * 6.5),
+      gapSize: clear?.gapSize ?? (0.06 + thickness * 4.5),
+    };
+    const errorStyle = {
+      color: error?.color ?? 0xef4444,
+      opacity: error?.opacity ?? 0.8,
+      dashed: Boolean(error?.dashed),
+      dashSize: error?.dashSize ?? (0.11 + thickness * 6.5),
+      gapSize: error?.gapSize ?? (0.06 + thickness * 4.5),
+    };
+
     const beam = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(),
         new THREE.Vector3(0, 0.001, 0),
       ]),
-      new THREE.LineDashedMaterial({
-        color,
-        transparent: true,
-        opacity,
-        dashSize: 0.11 + thickness * 6.5,
-        gapSize: 0.06 + thickness * 4.5,
-      }),
+      this.createBeamMaterial(clearStyle),
     );
-    beam.computeLineDistances();
+    if (clearStyle.dashed) beam.computeLineDistances();
     beam.userData = {
-      dashSize: 0.11 + thickness * 6.5,
-      gapSize: 0.06 + thickness * 4.5,
       style: {
-        color,
-        blockedColor,
-        opacity,
-        blockedOpacity,
+        clear: clearStyle,
+        error: errorStyle,
       },
+      activeStyle: "clear",
       blocked: false,
     };
     beam.visible = false;
@@ -584,10 +596,20 @@ class VisualizationController {
         a: i,
         b: next,
         beam: this.createBeam({
-          color: 0x818cf8,
-          blockedColor: 0xf87171,
-          opacity: 0.24,
-          blockedOpacity: 0.58,
+          clear: {
+            color: 0x3b82f6,
+            opacity: 0.42,
+            dashed: true,
+            dashSize: 0.13,
+            gapSize: 0.09,
+          },
+          error: {
+            color: 0xb45309,
+            opacity: 0.54,
+            dashed: true,
+            dashSize: 0.13,
+            gapSize: 0.09,
+          },
           thickness: 0.0062,
         }),
       };
@@ -596,18 +618,54 @@ class VisualizationController {
     }
   }
 
+  createBeamMaterial(style) {
+    if (style.dashed) {
+      return new THREE.LineDashedMaterial({
+        color: style.color,
+        transparent: true,
+        opacity: style.opacity,
+        dashSize: style.dashSize,
+        gapSize: style.gapSize,
+      });
+    }
+
+    return new THREE.LineBasicMaterial({
+      color: style.color,
+      transparent: true,
+      opacity: style.opacity,
+    });
+  }
+
+  applyBeamStyle(beam, styleKey) {
+    if (!beam || !beam.userData?.style) return;
+    const style = beam.userData.style[styleKey];
+    if (!style) return;
+
+    const existing = beam.material;
+    const isDashed = Boolean(existing && existing.type === "LineDashedMaterial");
+    if (isDashed !== style.dashed) {
+      if (existing && typeof existing.dispose === "function") existing.dispose();
+      beam.material = this.createBeamMaterial(style);
+    } else {
+      beam.material.color.setHex(style.color);
+      beam.material.opacity = style.opacity;
+      if (style.dashed) {
+        beam.material.dashSize = style.dashSize;
+        beam.material.gapSize = style.gapSize;
+      }
+      beam.material.needsUpdate = true;
+    }
+
+    if (style.dashed) beam.computeLineDistances();
+    beam.userData.activeStyle = styleKey;
+  }
+
   setBeamBlockedState(beam, blocked) {
     if (!beam || !beam.material || !beam.userData?.style) return;
-    if (beam.userData.blocked === blocked) return;
+    const styleKey = blocked ? "error" : "clear";
+    if (beam.userData.blocked === blocked && beam.userData.activeStyle === styleKey) return;
     beam.userData.blocked = blocked;
-
-    const style = beam.userData.style;
-    const material = beam.material;
-    const color = blocked ? style.blockedColor : style.color;
-    const opacity = blocked ? style.blockedOpacity : style.opacity;
-
-    material.color.setHex(color);
-    material.opacity = opacity;
+    this.applyBeamStyle(beam, styleKey);
   }
 
   isLineOfSightBlocked(
@@ -639,8 +697,10 @@ class VisualizationController {
 
     beam.visible = true;
     beam.geometry.setFromPoints([start, end]);
-    beam.computeLineDistances();
     this.setBeamBlockedState(beam, blocked);
+    if (beam.material && beam.material.type === "LineDashedMaterial") {
+      beam.computeLineDistances();
+    }
   }
 
   upsertFleetSnapshot(fleet) {
