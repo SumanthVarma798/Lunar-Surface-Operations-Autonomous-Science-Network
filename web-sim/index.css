@@ -560,19 +560,19 @@ body.three-panel-open #main-grid {
   flex: 1;
 }
 
-#left-command-log-block .dropdown-content {
+#left-command-log-block .dropdown-content:not([hidden]) {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-#left-pending-ack-block .dropdown-content {
+#left-pending-ack-block .dropdown-content:not([hidden]) {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-#telemetry-stream-block .dropdown-content {
+#telemetry-stream-block .dropdown-content:not([hidden]) {
   display: flex;
   flex-direction: column;
   min-height: 0;
