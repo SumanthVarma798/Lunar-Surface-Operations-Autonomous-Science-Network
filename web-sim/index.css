@@ -461,8 +461,14 @@ body.three-panel-open #main-grid {
   overflow-y: auto;
 }
 
+.right-dropdown-stack > .dropdown-block {
+  flex: 0 0 auto;
+  min-height: fit-content;
+}
+
 .right-dropdown-stack > .dropdown-block > .dropdown-content {
   overflow: visible;
+  max-height: none;
 }
 
 .dropdown-block {
