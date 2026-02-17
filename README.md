@@ -256,6 +256,32 @@ Deployment workflow file:
 
 ---
 
+## Hosted Deployment (Auto on Release)
+
+Web simulation hosting is automated by:
+
+- `.github/workflows/release-web-sim.yml`
+
+Behavior:
+
+- On every GitHub Release (`published`), the workflow deploys `web-sim/` to GitHub Pages.
+- If Cloudflare secrets are configured, the same release also deploys to Cloudflare Pages.
+- You can also run it manually via `workflow_dispatch`.
+
+One-time setup:
+
+1. In repository settings, set GitHub Pages source to **GitHub Actions**.
+2. Optional Cloudflare setup (repository secrets):
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `CLOUDFLARE_PAGES_PROJECT`
+
+Result:
+
+- Creating a release refreshes the hosted simulation automatically.
+
+---
+
 ## Agent Workflows
 
 This repository includes a committed agent playbook so local clones and forks behave consistently.
