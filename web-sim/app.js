@@ -14,19 +14,19 @@
   const sim = new SimulationController();
   const bus = sim.bus;
 
-  // ─── 3D Visualization ───
+  // ─── Orbital Visualization ───
   let viz = null;
   if (window.THREE) {
     try {
       viz = new VisualizationController(bus, "visualization-container");
     } catch (err) {
       // Keep mission control usable even when WebGL is unavailable (e.g. headless test runs).
-      console.warn("3D visualization disabled:", err);
+      console.warn("Orbital visualization disabled:", err);
       viz = null;
     }
   }
 
-  // Toggle 3D Panel
+  // Toggle Orbital Panel
   const floatingPanel = $("#floating-panel");
   const btnToggle = $("#btn-3d-toggle");
   const btnToggleLabel = $("#btn-3d-toggle-label");
@@ -44,7 +44,7 @@
       btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
     if (btnToggleLabel) {
-      btnToggleLabel.textContent = open ? "Close 3D" : "3D View";
+      btnToggleLabel.textContent = open ? "Close Orbital" : "Orbital View";
     }
 
     if (open) {
@@ -137,6 +137,12 @@
   const pinnedRoverIds = new Set();
   let roverTargetMode = AUTO_ROVER_MODE;
   let showAllRovers = false;
+
+  function setVisualizationMode() {
+    if (!viz || typeof viz.setViewMode !== "function") return;
+    viz.setViewMode("orbital");
+  }
+  setVisualizationMode();
 
   function clamp01(value) {
     return Math.max(0, Math.min(1, value));
@@ -597,12 +603,22 @@
     const params = new URLSearchParams(window.location.search || "");
     const scenario = String(params.get("scenario") || "").toLowerCase();
     const taskId = (params.get("task") || dom.taskIdInput?.value || "TASK-001").trim();
+    const requestedView = String(params.get("view") || "").toLowerCase();
+    const open3d = String(params.get("open3d") || "").toLowerCase();
     const delayMs = Math.max(
       0,
       Math.round(Number(params.get("delay_ms")) || 1800),
     );
 
     if (dom.taskIdInput && taskId) dom.taskIdInput.value = taskId;
+
+    if (open3d === "1" || open3d === "true" || open3d === "yes") {
+      setTimeout(() => set3DPanel(true), 80);
+    }
+
+    if (requestedView === "orbital") {
+      setTimeout(() => setVisualizationMode(), 120);
+    }
 
     const theme = String(params.get("theme") || "").toLowerCase();
     if (theme === "light") {
@@ -759,7 +775,7 @@
 
     addFeedLine("tlm", feedText);
 
-    if (dom.lunarMeta && data.position) {
+    if (dom.lunarMeta && data.position && !document.body.classList.contains("three-panel-open")) {
       const lat = Number(data.position.lat || 0).toFixed(2);
       const lon = Number(data.position.lon || 0).toFixed(2);
       dom.lunarMeta.textContent = `Lat ${lat}, Lon ${lon}`;

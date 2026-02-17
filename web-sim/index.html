@@ -67,11 +67,11 @@
         <button
           class="cmd-btn-sm"
           id="btn-3d-toggle"
-          title="Toggle 3D View"
+          title="Toggle Orbital View"
           aria-expanded="false"
         >
           <span class="btn-moon-icon">🌑</span>
-          <span id="btn-3d-toggle-label">3D View</span>
+          <span id="btn-3d-toggle-label">Orbital View</span>
         </button>
         <button
           class="btn-icon"
@@ -225,22 +225,44 @@
         </div>
       </section>
 
-      <!-- ─── Lunar 3D Panel ─── -->
+      <!-- ─── Lunar Orbital Panel ─── -->
       <aside id="floating-panel" aria-hidden="true">
         <div class="floating-panel-shell">
           <div class="floating-panel-header">
-          <div class="floating-panel-title-wrap">
-            <span class="floating-panel-grab" aria-hidden="true"></span>
-            <h3>Lunar Surface View</h3>
-            <span class="floating-panel-meta" id="lunar-meta"
-              >Lat --.--, Lon --.--</span
-            >
-          </div>
+            <div class="floating-panel-title-wrap">
+              <span class="floating-panel-grab" aria-hidden="true"></span>
+              <h3>Orbital Mission View</h3>
+              <span class="floating-panel-meta" id="lunar-meta"
+                >Drag to rotate · Scroll to zoom</span
+              >
+            </div>
+            <div class="floating-panel-kpis" id="lunar-panel-kpis">
+              <div class="lunar-kpi" id="lunar-kpi-rover-card">
+                <span class="lunar-kpi-label">Selected</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-rover">--</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-los-card">
+                <span class="lunar-kpi-label">LOS</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-los">Pending</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-links-card">
+                <span class="lunar-kpi-label">Links</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-links">0 / 0</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Zoom</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-zoom">--</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Fleet</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-fleet">0</span>
+              </div>
+            </div>
             <button
               id="btn-close-3d"
               class="btn-icon floating-close-btn"
-              title="Close 3D panel"
-              aria-label="Close 3D panel"
+              title="Close Orbital View"
+              aria-label="Close Orbital View"
             >
               ✕
             </button>
@@ -404,6 +426,7 @@
     </footer>
 
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
     <script src="lunar3d.js"></script>
     <script src="simulation.js"></script>
     <script src="app.js"></script>
