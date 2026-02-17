@@ -10,15 +10,6 @@ on:
         required: false
         default: "main"
         type: string
-      deploy_target:
-        description: "Where to deploy web-sim"
-        required: true
-        default: "both"
-        type: choice
-        options:
-          - github-pages
-          - cloudflare
-          - both
 
 permissions:
   contents: read
@@ -55,10 +46,7 @@ jobs:
 
   deploy-github-pages:
     name: Deploy to GitHub Pages
-    if: >
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' &&
-      (inputs.deploy_target == 'github-pages' || inputs.deploy_target == 'both'))
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     needs: prepare-artifact
     runs-on: ubuntu-latest
     environment:
@@ -67,26 +55,3 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-
-  deploy-cloudflare-pages:
-    name: Deploy to Cloudflare Pages
-    if: >
-      (github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' &&
-      (inputs.deploy_target == 'cloudflare' || inputs.deploy_target == 'both')))
-      && secrets.CLOUDFLARE_API_TOKEN != ''
-      && secrets.CLOUDFLARE_ACCOUNT_ID != ''
-      && secrets.CLOUDFLARE_PAGES_PROJECT != ''
-    needs: prepare-artifact
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.ref || 'main' }}
-
-      - name: Deploy static site with Wrangler
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy web-sim --project-name ${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --branch production
