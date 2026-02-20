@@ -27,11 +27,19 @@ class VisualizationController {
 
     this.viewMode = "orbital";
     this.orbitalDistance = 6.6;
+    this.cameraDistance = 6.6;
+    this.cameraMinDistance = 1.35;
+    this.cameraMaxDistance = 16.0;
+    this.cameraAzimuth = 0.54;
+    this.cameraPolar = 1.08;
+    this.cameraTarget = new THREE.Vector3(0, 0, 0);
+    this.cameraTargetDesired = new THREE.Vector3(0, 0, 0);
     this.lastFrameTs = performance.now();
 
     this.dragState = {
       active: false,
       button: 0,
+      mode: "orbit",
       x: 0,
       y: 0,
     };
@@ -69,6 +77,7 @@ class VisualizationController {
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
     this.tmpVecC = new THREE.Vector3();
+    this.tmpVecD = new THREE.Vector3();
     this.tmpColor = new THREE.Color();
     this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
     this.earthAnchor = this.earthAnchorOrbital.clone();
@@ -870,16 +879,86 @@ class VisualizationController {
   setViewMode(mode, emitEvent = true) {
     const next = "orbital";
     this.viewMode = next;
+    this.resetView(false);
     this.updateCamera(true);
     this.updateMetaText();
     if (emitEvent) this.bus.emit("viz:view-mode", { mode: next });
   }
 
+  resetView(emitEvent = true) {
+    this.cameraDistance = 6.6;
+    this.orbitalDistance = this.cameraDistance;
+    this.cameraAzimuth = 0.54;
+    this.cameraPolar = 1.08;
+    this.cameraTargetDesired.set(0, 0, 0);
+    this.cameraTarget.copy(this.cameraTargetDesired);
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    if (emitEvent) this.bus.emit("viz:navigation", { action: "reset" });
+  }
+
+  focusSelectedRover() {
+    if (!this.selectedRoverId || !this.rovers.has(this.selectedRoverId)) return;
+    const selected = this.rovers.get(this.selectedRoverId);
+    this.cameraTargetDesired.copy(selected.group.position);
+    this.cameraTarget.copy(this.cameraTargetDesired);
+    this.cameraDistance = THREE.MathUtils.clamp(
+      this.cameraDistance,
+      this.cameraMinDistance,
+      5.8,
+    );
+    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.2, Math.PI - 0.2);
+    this.orbitalDistance = this.cameraDistance;
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    this.bus.emit("viz:navigation", {
+      action: "focus-selected",
+      rover_id: this.selectedRoverId,
+    });
+  }
+
+  setTopView() {
+    this.cameraPolar = 0.16;
+    this.cameraAzimuth = 0.0;
+    if (this.selectedRoverId && this.rovers.has(this.selectedRoverId)) {
+      this.cameraTargetDesired.copy(this.rovers.get(this.selectedRoverId).group.position);
+      this.cameraTarget.copy(this.cameraTargetDesired);
+    }
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    this.bus.emit("viz:navigation", { action: "top-view" });
+  }
+
+  panCamera(dx, dy) {
+    this.tmpVecA.copy(this.camera.position).sub(this.cameraTarget).normalize();
+    this.tmpVecB.crossVectors(this.camera.up, this.tmpVecA).normalize();
+    this.tmpVecC.crossVectors(this.tmpVecA, this.tmpVecB).normalize();
+
+    const panScale = this.cameraDistance * 0.0019;
+    this.cameraTargetDesired.addScaledVector(this.tmpVecB, -dx * panScale);
+    this.cameraTargetDesired.addScaledVector(this.tmpVecC, dy * panScale);
+    this.cameraTarget.copy(this.cameraTargetDesired);
+  }
+
   updateCamera(force = false) {
     if (!this.camera) return;
     this.camera.fov = 35;
-    this.camera.position.set(0, 0, this.orbitalDistance);
-    this.camera.lookAt(0, 0, 0);
+    this.cameraDistance = THREE.MathUtils.clamp(
+      this.cameraDistance,
+      this.cameraMinDistance,
+      this.cameraMaxDistance,
+    );
+    this.orbitalDistance = this.cameraDistance;
+    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.08, Math.PI - 0.08);
+
+    const sinPolar = Math.sin(this.cameraPolar);
+    this.tmpVecA.set(
+      this.cameraDistance * sinPolar * Math.sin(this.cameraAzimuth),
+      this.cameraDistance * Math.cos(this.cameraPolar),
+      this.cameraDistance * sinPolar * Math.cos(this.cameraAzimuth),
+    );
+    this.camera.position.copy(this.cameraTarget).add(this.tmpVecA);
+    this.camera.lookAt(this.cameraTarget);
 
     if (!this.earthAnchor.equals(this.earthAnchorOrbital)) {
       this.earthAnchor.copy(this.earthAnchorOrbital);
@@ -888,6 +967,87 @@ class VisualizationController {
     if (this.earthBase) this.earthBase.scale.setScalar(1.28);
 
     if (force) this.camera.updateProjectionMatrix();
+  }
+
+  syncNavigationTelemetry() {
+    if (!this.camera) return;
+
+    const headingValueEl = document.getElementById("orbital-nav-heading");
+    const pitchValueEl = document.getElementById("orbital-nav-pitch");
+    const distanceValueEl = document.getElementById("orbital-nav-distance");
+    const earthMoonDistanceEl = document.getElementById("orbital-earth-moon-distance");
+    const roverEarthAngleEl = document.getElementById("orbital-rover-earth-angle");
+    const roverSideEl = document.getElementById("orbital-rover-side");
+    const roverCoordsEl = document.getElementById("orbital-rover-coords");
+    const earthBearingEl = document.getElementById("orbital-earth-bearing");
+    const compassNeedleEl = document.getElementById("orbital-compass-needle");
+
+    this.camera.getWorldDirection(this.tmpVecA).normalize();
+    const pitchDeg = Math.round(
+      THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(this.tmpVecA.y, -1, 1))),
+    );
+    this.tmpVecB.copy(this.tmpVecA);
+    this.tmpVecB.y = 0;
+    let headingDeg = 0;
+    if (this.tmpVecB.lengthSq() > 0.0000001) {
+      this.tmpVecB.normalize();
+      headingDeg = (THREE.MathUtils.radToDeg(Math.atan2(this.tmpVecB.x, this.tmpVecB.z)) + 360) % 360;
+    }
+
+    if (headingValueEl) headingValueEl.textContent = `HDG ${String(Math.round(headingDeg)).padStart(3, "0")}°`;
+    if (pitchValueEl) pitchValueEl.textContent = `PITCH ${pitchDeg >= 0 ? "+" : ""}${pitchDeg}°`;
+    if (distanceValueEl) distanceValueEl.textContent = `RANGE ${this.cameraDistance.toFixed(2)} LU`;
+    if (earthMoonDistanceEl) earthMoonDistanceEl.textContent = `Earth-Moon: ${this.earthAnchor.length().toFixed(2)} LU`;
+
+    if (compassNeedleEl) {
+      compassNeedleEl.style.transform = `rotate(${headingDeg}deg)`;
+    }
+
+    const selectedRover = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+      ? this.rovers.get(this.selectedRoverId)
+      : null;
+
+    if (!selectedRover) {
+      if (roverEarthAngleEl) roverEarthAngleEl.textContent = "Rover→Earth angle: --";
+      if (roverSideEl) roverSideEl.textContent = "Lunar side: --";
+      if (roverCoordsEl) roverCoordsEl.textContent = "Lat -- · Lon --";
+      if (earthBearingEl) earthBearingEl.textContent = "--";
+      return;
+    }
+
+    const roverPos = selectedRover.group.position;
+    this.tmpVecC.copy(roverPos).normalize();
+    this.tmpVecD.copy(this.earthAnchor).normalize();
+    const roverEarthAngle = THREE.MathUtils.radToDeg(
+      THREE.MathUtils.clamp(this.tmpVecC.angleTo(this.tmpVecD), 0, Math.PI),
+    );
+    const onNearSide = roverEarthAngle <= 90;
+
+    if (roverEarthAngleEl) {
+      roverEarthAngleEl.textContent = `Rover→Earth angle: ${roverEarthAngle.toFixed(1)}°`;
+    }
+    if (roverSideEl) {
+      roverSideEl.textContent = `Lunar side: ${onNearSide ? "Nearside" : "Farside"}`;
+    }
+    if (roverCoordsEl) {
+      roverCoordsEl.textContent =
+        `Lat ${Number(selectedRover.lat).toFixed(2)}° · Lon ${Number(selectedRover.lon).toFixed(2)}°`;
+    }
+
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    this.tmpVecA.copy(worldUp).cross(this.tmpVecC);
+    if (this.tmpVecA.lengthSq() < 0.000001) {
+      this.tmpVecA.set(1, 0, 0);
+    } else {
+      this.tmpVecA.normalize();
+    }
+    this.tmpVecB.crossVectors(this.tmpVecC, this.tmpVecA).normalize();
+    this.tmpVecD.copy(this.earthAnchor).sub(roverPos).normalize();
+    const bearingRad = Math.atan2(this.tmpVecD.dot(this.tmpVecA), this.tmpVecD.dot(this.tmpVecB));
+    const bearingDeg = (THREE.MathUtils.radToDeg(bearingRad) + 360) % 360;
+    if (earthBearingEl) {
+      earthBearingEl.textContent = `${bearingDeg.toFixed(0)}° from north`;
+    }
   }
 
   updateMetaText() {
@@ -936,8 +1096,9 @@ class VisualizationController {
       setCardState(linksCardEl, null);
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent = "Awaiting stable comm links · Drag to rotate · Scroll to zoom";
+        metaEl.textContent = "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
       }
+      this.syncNavigationTelemetry();
       return;
     }
 
@@ -968,52 +1129,70 @@ class VisualizationController {
     } else {
       setCardState(roverCardEl, null);
     }
+
+    this.syncNavigationTelemetry();
   }
 
   setupInteraction() {
     this.container.addEventListener("contextmenu", (e) => e.preventDefault());
+    this.container.style.cursor = "grab";
 
     this.container.addEventListener("mousedown", (e) => {
+      const panGesture = e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey);
+      const orbitGesture = e.button === 0 && !e.shiftKey;
+      if (!panGesture && !orbitGesture) return;
+
       this.dragState.active = true;
       this.dragState.button = e.button;
+      this.dragState.mode = panGesture ? "pan" : "orbit";
       this.dragState.x = e.clientX;
       this.dragState.y = e.clientY;
+      this.container.style.cursor = panGesture ? "grabbing" : "move";
+      e.preventDefault();
     });
 
     window.addEventListener("mouseup", () => {
       this.dragState.active = false;
+      this.container.style.cursor = "grab";
     });
 
     window.addEventListener("mousemove", (e) => {
-      if (!this.dragState.active || !this.rootGroup) return;
+      if (!this.dragState.active || !this.camera) return;
       const dx = e.clientX - this.dragState.x;
       const dy = e.clientY - this.dragState.y;
       this.dragState.x = e.clientX;
       this.dragState.y = e.clientY;
 
-      const rollGesture = this.dragState.button === 2 || e.shiftKey;
-      if (rollGesture) {
-        this.rootGroup.rotateZ(dx * 0.0065);
+      if (this.dragState.mode === "pan") {
+        this.panCamera(dx, dy);
       } else {
-        this.rootGroup.rotateY(dx * 0.0065);
-        this.rootGroup.rotateX(dy * 0.0065);
+        this.cameraAzimuth -= dx * 0.006;
+        this.cameraPolar += dy * 0.006;
       }
+
+      this.updateCamera();
+      this.syncNavigationTelemetry();
     });
 
     this.container.addEventListener(
       "wheel",
       (e) => {
         e.preventDefault();
-        this.orbitalDistance = THREE.MathUtils.clamp(
-          this.orbitalDistance + e.deltaY * 0.0012,
-          1.35,
-          16.0,
+        const zoomScale = Math.exp(e.deltaY * 0.0011);
+        this.cameraDistance = THREE.MathUtils.clamp(
+          this.cameraDistance * zoomScale,
+          this.cameraMinDistance,
+          this.cameraMaxDistance,
         );
         this.updateCamera();
-        this.updateMetaText();
+        this.syncNavigationTelemetry();
       },
       { passive: false },
     );
+
+    this.container.addEventListener("dblclick", () => {
+      this.focusSelectedRover();
+    });
   }
 
   physicsStep(dt) {

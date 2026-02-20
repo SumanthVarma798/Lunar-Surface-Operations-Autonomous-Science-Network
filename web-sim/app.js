@@ -57,7 +57,7 @@
       btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
     if (btnToggleLabel) {
-      btnToggleLabel.textContent = open ? "Close Orbital" : "Orbital View";
+      btnToggleLabel.textContent = open ? "Close Orbital" : "Open Orbital";
     }
 
     if (open) {
@@ -88,7 +88,12 @@
 
     // Trigger resize after transition allows renderer to catch up
     setTimeout(() => {
-      if (viz) viz.onResize();
+      if (viz) {
+        viz.onResize();
+        if (typeof viz.syncNavigationTelemetry === "function") {
+          viz.syncNavigationTelemetry();
+        }
+      }
     }, 400); // slightly longer than CSS transition
   }
 
@@ -158,6 +163,9 @@
     faultSlider: $("#fault-slider"),
     faultProbValue: $("#fault-prob-value"),
     topologyVisual: $("#topology-visual"),
+    orbitalResetViewBtn: $("#orbital-reset-view-btn"),
+    orbitalFocusRoverBtn: $("#orbital-focus-rover-btn"),
+    orbitalTopViewBtn: $("#orbital-top-view-btn"),
   };
 
   const ACCORDION_GROUP_CONFIG = {
@@ -1821,6 +1829,33 @@
     hideFleetHoverCard();
   });
 
+  function triggerOrbitalAction(action, buttonEl = null) {
+    if (!viz || typeof viz[action] !== "function") return;
+    viz[action]();
+    if (typeof viz.syncNavigationTelemetry === "function") {
+      viz.syncNavigationTelemetry();
+    }
+    if (buttonEl) pulseButton(buttonEl);
+  }
+
+  if (dom.orbitalResetViewBtn) {
+    dom.orbitalResetViewBtn.addEventListener("click", () => {
+      triggerOrbitalAction("resetView", dom.orbitalResetViewBtn);
+    });
+  }
+
+  if (dom.orbitalFocusRoverBtn) {
+    dom.orbitalFocusRoverBtn.addEventListener("click", () => {
+      triggerOrbitalAction("focusSelectedRover", dom.orbitalFocusRoverBtn);
+    });
+  }
+
+  if (dom.orbitalTopViewBtn) {
+    dom.orbitalTopViewBtn.addEventListener("click", () => {
+      triggerOrbitalAction("setTopView", dom.orbitalTopViewBtn);
+    });
+  }
+
   // ─── Command Buttons ───
   if (dom.roverTargetSelect) {
     dom.roverTargetSelect.addEventListener("change", (e) => {
@@ -2051,6 +2086,21 @@
     }
 
     switch (e.key.toLowerCase()) {
+      case "f":
+        if (floatingPanel.classList.contains("panel-open")) {
+          triggerOrbitalAction("focusSelectedRover");
+        }
+        break;
+      case "h":
+        if (floatingPanel.classList.contains("panel-open")) {
+          triggerOrbitalAction("resetView");
+        }
+        break;
+      case "t":
+        if (floatingPanel.classList.contains("panel-open")) {
+          triggerOrbitalAction("setTopView");
+        }
+        break;
       case "s":
         if (e.shiftKey) {
           dispatchCommand("GO_SAFE");
