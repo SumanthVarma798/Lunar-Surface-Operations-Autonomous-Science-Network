@@ -57,7 +57,9 @@
   function refreshOrbitalToggleLabel(open) {
     if (!btnToggleLabel) return;
     const nextLabel = getResponsiveOrbitalToggleLabel();
-    const actionLabel = open ? `Close ${nextLabel}` : `Open ${nextLabel}`;
+    const actionTarget =
+      nextLabel === "OOV" ? "Orbital Operations View (OOV)" : nextLabel;
+    const actionLabel = open ? `Close ${actionTarget}` : `Open ${actionTarget}`;
     btnToggleLabel.textContent = nextLabel;
     if (btnToggle) {
       btnToggle.setAttribute("title", actionLabel);
