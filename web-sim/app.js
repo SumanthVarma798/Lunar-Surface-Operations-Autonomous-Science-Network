@@ -82,6 +82,7 @@
       floatingPanel.setAttribute("aria-hidden", "false");
       document.body.classList.add("three-panel-open");
       syncAccordionLayoutMode(true);
+      syncMobilePanelMode();
       if (panelTelemetry) panelTelemetry.classList.add("compact-log");
       updateFleetUi();
 
@@ -97,6 +98,7 @@
       panelLayoutTimer = setTimeout(() => {
         document.body.classList.remove("three-panel-open");
         syncAccordionLayoutMode(false);
+        syncMobilePanelMode();
         if (panelTelemetry) {
           panelTelemetry.classList.remove("compact-log");
         }
@@ -193,6 +195,91 @@
     "telemetry-orbital": { singleOpen: false, requireOneOpen: true },
     "right-controls": { singleOpen: false, requireOneOpen: true },
   };
+
+  const MOBILE_PANEL_BREAKPOINT = 1024;
+  const MOBILE_PANEL_DEFAULT_KEY = "telemetry";
+  const MOBILE_PANEL_SECTIONS = [
+    { key: "streams", panel: $("#panel-topology"), content: $("#left-dropdown-stack") },
+    { key: "telemetry", panel: $("#panel-telemetry"), content: $("#telemetry-dropdown-stack") },
+    { key: "command", panel: $("#panel-command"), content: $("#right-dropdown-stack") },
+  ].filter((entry) => entry.panel && entry.content);
+  let mobilePanelMode = false;
+  let mobilePanelActiveKey = MOBILE_PANEL_DEFAULT_KEY;
+
+  function isMobilePanelViewport() {
+    return (window.innerWidth || 1280) <= MOBILE_PANEL_BREAKPOINT;
+  }
+
+  function setMobilePanelExpandedState(section, expanded) {
+    if (!section || !section.panel) return;
+    const header = section.panel.querySelector(".panel-header");
+    section.panel.classList.toggle("panel-collapsed", !expanded);
+    section.panel.setAttribute("data-mobile-expanded", expanded ? "true" : "false");
+    if (section.content) section.content.hidden = !expanded;
+    if (header) header.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
+  function openMobilePanelSection(key) {
+    if (!mobilePanelMode) return;
+    const target = MOBILE_PANEL_SECTIONS.find((entry) => entry.key === key);
+    if (!target) return;
+    mobilePanelActiveKey = target.key;
+    MOBILE_PANEL_SECTIONS.forEach((entry) => {
+      setMobilePanelExpandedState(entry, entry.key === mobilePanelActiveKey);
+    });
+    requestAnimationFrame(() => drawTopologyLines());
+  }
+
+  function resetDesktopPanelSections() {
+    MOBILE_PANEL_SECTIONS.forEach((entry) => {
+      if (!entry.panel) return;
+      entry.panel.classList.remove("panel-collapsed");
+      entry.panel.removeAttribute("data-mobile-expanded");
+      if (entry.content) entry.content.hidden = false;
+      const header = entry.panel.querySelector(".panel-header");
+      if (header) header.setAttribute("aria-expanded", "true");
+    });
+  }
+
+  function syncMobilePanelMode() {
+    const shouldEnable = isMobilePanelViewport();
+    const wasEnabled = mobilePanelMode;
+    mobilePanelMode = shouldEnable;
+    document.body.classList.toggle("mobile-panel-mode", shouldEnable);
+
+    if (!shouldEnable) {
+      resetDesktopPanelSections();
+      return;
+    }
+
+    if (!wasEnabled) mobilePanelActiveKey = MOBILE_PANEL_DEFAULT_KEY;
+    openMobilePanelSection(mobilePanelActiveKey);
+  }
+
+  function initializeMobilePanelHeaders() {
+    MOBILE_PANEL_SECTIONS.forEach((entry) => {
+      const header = entry.panel?.querySelector(".panel-header");
+      if (!header || header.dataset.mobilePanelInit === "true") return;
+
+      header.dataset.mobilePanelInit = "true";
+      header.setAttribute("role", "button");
+      header.setAttribute("tabindex", "0");
+      header.setAttribute("aria-expanded", "true");
+
+      header.addEventListener("click", (event) => {
+        if (!mobilePanelMode) return;
+        if (event.target.closest("button, a, input, select, textarea, label")) return;
+        openMobilePanelSection(entry.key);
+      });
+
+      header.addEventListener("keydown", (event) => {
+        if (!mobilePanelMode) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openMobilePanelSection(entry.key);
+      });
+    });
+  }
 
   function getAccordionBlocks(groupName) {
     return Array.from(
@@ -327,7 +414,9 @@
       singleOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].singleOpen,
       requireOneOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
     });
+    initializeMobilePanelHeaders();
     syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
+    syncMobilePanelMode();
     ensureAccordionGroupHasOpen("right-controls");
     ensureAccordionGroupHasOpen("telemetry-orbital");
   }
@@ -1822,12 +1911,13 @@
       `0 0 ${containerRect.width} ${containerRect.height}`,
     );
 
-    // Earth ↔ Space Link
-    addLine(svg, positions["topo-earth"], positions["topo-spacelink"]);
-    // Space Link ↔ Rover
+    // Default X-topology view:
+    // Earth ↔ Telemetry and Space Link ↔ Rover cross at center.
+    addLine(svg, positions["topo-earth"], positions["topo-telemetry"]);
     addLine(svg, positions["topo-spacelink"], positions["topo-rover"]);
-    // Earth ↔ Telemetry Monitor (dashed)
-    addLine(svg, positions["topo-earth"], positions["topo-telemetry"], true);
+    // Side links keep directional context for uplink/downlink flows.
+    addLine(svg, positions["topo-earth"], positions["topo-spacelink"], true);
+    addLine(svg, positions["topo-rover"], positions["topo-telemetry"], true);
   }
 
   function addLine(svg, p1, p2, dashed = false) {
@@ -1847,6 +1937,7 @@
   window.addEventListener("resize", () => {
     requestAnimationFrame(drawTopologyLines);
     hideFleetHoverCard();
+    syncMobilePanelMode();
     refreshOrbitalToggleLabel(floatingPanel.classList.contains("panel-open"));
   });
 
