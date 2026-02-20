@@ -26,8 +26,9 @@ class VisualizationController {
     this.earthBase = null;
 
     this.viewMode = "orbital";
-    this.orbitalDistance = 6.6;
-    this.cameraDistance = 6.6;
+    this.defaultOrbitalDistance = 6.6;
+    this.orbitalDistance = this.defaultOrbitalDistance;
+    this.cameraDistance = this.defaultOrbitalDistance;
     this.cameraMinDistance = 1.35;
     this.cameraMaxDistance = 16.0;
     this.cameraAzimuth = 0.54;
@@ -333,7 +334,9 @@ class VisualizationController {
     rover.modelMesh = model;
     rover.modelMaterial = modelMaterial;
 
-    if (rover.fallbackMesh) {
+    if (rover.fallbackGroup) {
+      rover.fallbackGroup.visible = false;
+    } else if (rover.fallbackMesh) {
       rover.fallbackMesh.visible = false;
     }
 
@@ -469,41 +472,96 @@ class VisualizationController {
       .multiplyScalar(speed);
 
     const group = new THREE.Group();
+
+    const busMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8c3d4,
+      metalness: 0.62,
+      roughness: 0.28,
+      emissive: 0x152030,
+      emissiveIntensity: 0.35,
+    });
     const bus = new THREE.Mesh(
-      new THREE.BoxGeometry(def.size * 1.15, def.size * 0.55, def.size * 0.5),
-      new THREE.MeshStandardMaterial({
-        color: 0xb4bdca,
-        metalness: 0.55,
-        roughness: 0.29,
-        emissive: 0x151f2f,
-      }),
+      new THREE.BoxGeometry(def.size * 1.05, def.size * 0.46, def.size * 0.5),
+      busMaterial,
     );
     group.add(bus);
 
-    const panelMat = new THREE.MeshStandardMaterial({
-      color: def.color,
-      emissive: new THREE.Color(def.color).multiplyScalar(0.45),
-      metalness: 0.65,
-      roughness: 0.35,
-    });
-    const panelGeo = new THREE.BoxGeometry(def.size * 1.8, def.size * 0.08, def.size * 0.7);
-    const panelLeft = new THREE.Mesh(panelGeo, panelMat);
-    panelLeft.position.x = -def.size * 1.2;
-    const panelRight = panelLeft.clone();
-    panelRight.position.x = def.size * 1.2;
-    group.add(panelLeft, panelRight);
-
-    const dish = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0, def.size * 0.28, def.size * 0.36, 14, 1),
+    const serviceRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.23, def.size * 0.23, def.size * 0.58, 14),
       new THREE.MeshStandardMaterial({
-        color: 0xe5e7eb,
-        metalness: 0.5,
-        roughness: 0.25,
+        color: 0xd5dbe6,
+        metalness: 0.54,
+        roughness: 0.34,
       }),
     );
-    dish.rotation.z = Math.PI / 2;
-    dish.position.z = def.size * 0.46;
+    serviceRing.rotation.x = Math.PI / 2;
+    group.add(serviceRing);
+
+    const panelMat = new THREE.MeshStandardMaterial({
+      color: def.color,
+      emissive: new THREE.Color(def.color).multiplyScalar(0.52),
+      metalness: 0.74,
+      roughness: 0.32,
+    });
+    const panelWing = new THREE.BoxGeometry(def.size * 1.85, def.size * 0.06, def.size * 0.64);
+    const panelFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x7f94ac,
+      metalness: 0.5,
+      roughness: 0.4,
+    });
+    const panelFrame = new THREE.BoxGeometry(def.size * 1.9, def.size * 0.02, def.size * 0.72);
+    const panelLeft = new THREE.Mesh(panelWing, panelMat);
+    const panelLeftFrame = new THREE.Mesh(panelFrame, panelFrameMat);
+    panelLeft.position.x = -def.size * 1.22;
+    panelLeftFrame.position.copy(panelLeft.position).setY(panelLeft.position.y + def.size * 0.02);
+    const panelRight = panelLeft.clone();
+    const panelRightFrame = panelLeftFrame.clone();
+    panelRight.position.x = def.size * 1.22;
+    panelRightFrame.position.x = def.size * 1.22;
+    group.add(panelLeft, panelLeftFrame, panelRight, panelRightFrame);
+
+    const antennaMast = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.045, def.size * 0.045, def.size * 0.44, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xd0d8e5,
+        metalness: 0.48,
+        roughness: 0.31,
+      }),
+    );
+    antennaMast.position.set(0, def.size * 0.28, def.size * 0.08);
+    group.add(antennaMast);
+
+    const dish = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.03, def.size * 0.28, def.size * 0.34, 18, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xe5e7eb,
+        metalness: 0.56,
+        roughness: 0.24,
+      }),
+    );
+    dish.rotation.x = Math.PI / 2;
+    dish.position.set(0, def.size * 0.28, def.size * 0.39);
     group.add(dish);
+
+    const sensorPod = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.11, 10, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0x9fb4d0,
+        emissive: 0x1a3350,
+        emissiveIntensity: 0.6,
+        roughness: 0.3,
+        metalness: 0.42,
+      }),
+    );
+    sensorPod.position.set(0, 0, def.size * 0.35);
+    group.add(sensorPod);
+
+    const navBeacon = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.055, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x93c5fd }),
+    );
+    navBeacon.position.set(0, def.size * 0.32, -def.size * 0.28);
+    group.add(navBeacon);
 
     group.position.copy(pos);
 
@@ -768,29 +826,97 @@ class VisualizationController {
 
   createRover(roverId) {
     const group = new THREE.Group();
+    const fallbackGroup = new THREE.Group();
+    group.add(fallbackGroup);
+
     const fallbackMaterial = new THREE.MeshStandardMaterial({
       color: 0x34d399,
       emissive: 0x0a1f16,
-      roughness: 0.48,
-      metalness: 0.26,
+      roughness: 0.46,
+      metalness: 0.28,
     });
-    const fallbackMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, 0.016, 0.02),
+
+    const chassisDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(0.033, 0.008, 0.022),
       fallbackMaterial,
     );
-    group.add(fallbackMesh);
+    chassisDeck.position.y = 0.005;
+    fallbackGroup.add(chassisDeck);
+
+    const fallbackMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.03, 0.008, 0.02),
+      fallbackMaterial,
+    );
+    fallbackGroup.add(fallbackMesh);
+
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.002, 0.026),
+      new THREE.MeshStandardMaterial({
+        color: 0x6aa8dc,
+        emissive: 0x143150,
+        emissiveIntensity: 0.38,
+        roughness: 0.42,
+        metalness: 0.62,
+      }),
+    );
+    panel.position.y = 0.011;
+    fallbackGroup.add(panel);
+
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0016, 0.0016, 0.012, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xc8d2df,
+        metalness: 0.46,
+        roughness: 0.36,
+      }),
+    );
+    mast.position.set(0.006, 0.016, 0.002);
+    fallbackGroup.add(mast);
+
+    const cameraHead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.008, 0.005, 0.006),
+      new THREE.MeshStandardMaterial({
+        color: 0xcdd9e8,
+        metalness: 0.44,
+        roughness: 0.33,
+      }),
+    );
+    cameraHead.position.set(0.006, 0.022, 0.002);
+    fallbackGroup.add(cameraHead);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.0048, 0.0048, 0.0034, 12);
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x4a5868,
+      roughness: 0.84,
+      metalness: 0.1,
+    });
+    const wheelOffsets = [
+      [-0.012, 0.0, -0.011],
+      [0.0, 0.0, -0.011],
+      [0.012, 0.0, -0.011],
+      [-0.012, 0.0, 0.011],
+      [0.0, 0.0, 0.011],
+      [0.012, 0.0, 0.011],
+    ];
+    wheelOffsets.forEach(([x, y, z]) => {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, y, z);
+      fallbackGroup.add(wheel);
+    });
 
     const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x34d399 });
     const beacon = new THREE.Mesh(
       new THREE.SphereGeometry(0.0048, 10, 10),
       beaconMaterial,
     );
-    beacon.position.set(0, 0.024, 0);
-    group.add(beacon);
+    beacon.position.set(0, 0.027, 0);
+    fallbackGroup.add(beacon);
 
     const rover = {
       id: roverId,
       group,
+      fallbackGroup,
       fallbackMesh,
       fallbackMaterial,
       beaconMaterial,
@@ -893,7 +1019,7 @@ class VisualizationController {
   }
 
   resetView(emitEvent = true) {
-    this.cameraDistance = 6.6;
+    this.cameraDistance = this.defaultOrbitalDistance;
     this.orbitalDistance = this.cameraDistance;
     this.cameraAzimuth = 0.54;
     this.cameraPolar = 1.08;
@@ -1188,7 +1314,9 @@ class VisualizationController {
     const roverTotal = this.linkStatus.roverTotal;
     const roverClear = this.linkStatus.roverClear;
     const hasIssue = Boolean(this.linkStatus.hasIssue);
-    const zoomFactor = (8.4 / Math.max(this.orbitalDistance, 0.2)).toFixed(1);
+    const zoomFactor = (
+      this.defaultOrbitalDistance / Math.max(this.orbitalDistance, 0.2)
+    ).toFixed(1);
 
     if (roverValueEl) roverValueEl.textContent = selectedLabel;
     if (linksValueEl) {

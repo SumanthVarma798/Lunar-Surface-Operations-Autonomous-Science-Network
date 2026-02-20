@@ -920,13 +920,14 @@ body.three-panel-open .panel-command {
 .lunar-kpi-value {
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.1;
+  line-height: 1.25;
   color: #dff4ff;
   font-weight: 600;
   letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .lunar-kpi.is-good {
@@ -2556,7 +2557,10 @@ body.three-panel-open .panel-command {
 .orbital-toolbar-group {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .orbital-toolbar-status {
@@ -2571,6 +2575,7 @@ body.three-panel-open .panel-command {
 .orbital-status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 24px;
   padding: 2px 9px;
   border-radius: 999px;
@@ -2580,6 +2585,12 @@ body.three-panel-open .panel-command {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.04em;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .orbital-relative-strip {
@@ -2603,7 +2614,13 @@ body.three-panel-open .panel-command {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.03em;
+  line-height: 1.25;
   text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 #visualization-container {
@@ -2710,12 +2727,14 @@ body.three-panel-open .panel-command {
 
 .orbital-position-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
+  min-width: 0;
 }
 
 .orbital-position-row + .orbital-position-row {
@@ -2725,6 +2744,10 @@ body.three-panel-open .panel-command {
 .orbital-position-row strong {
   color: var(--text-primary);
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: right;
 }
 
 .orbital-controls-hint {
@@ -2745,6 +2768,9 @@ body.three-panel-open .panel-command {
   font-family: var(--font-mono);
   font-size: 10px;
   line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .panel,
