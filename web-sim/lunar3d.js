@@ -963,20 +963,21 @@ class VisualizationController {
   }
 
   updateSignalLossTracking(linkStatus, nowMs = performance.now()) {
-    const hasNoRoverLOS = linkStatus.roverTotal > 0 && linkStatus.roverClear === 0;
+    const hasNoLineOfSight = Boolean(linkStatus.hasIssue);
     const tracker = this.signalLossState;
     let transitioned = false;
 
-    if (hasNoRoverLOS) {
+    if (hasNoLineOfSight) {
       if (!tracker.active) {
         tracker.active = true;
         tracker.startedAtMs = nowMs;
         tracker.currentDurationMs = 0;
         tracker.outageCount += 1;
         transitioned = true;
+        const reason = linkStatus.issueReason || "Issue: no line-of-sight contact";
         this.bus.emit("log", {
           tag: "fault",
-          text: "📡 LOS outage started: selected rover has no satellite line-of-sight",
+          text: `📡 LOS outage started: ${reason}`,
         });
       } else {
         tracker.currentDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
@@ -1025,10 +1026,10 @@ class VisualizationController {
       if (stripValueEl) {
         stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
       }
-      if (metaEl && this.linkStatus.roverTotal > 0 && this.linkStatus.roverClear === 0) {
+      if (metaEl) {
+        const reason = this.linkStatus.issueReason || "Issue: no line-of-sight contact";
         metaEl.classList.add("warning");
-        metaEl.textContent =
-          `${this.linkStatus.issueReason || "Issue: rover has no LOS path"} · Outage ${this.formatDurationMs(activeDurationMs)}`;
+        metaEl.textContent = `${reason} · Outage ${this.formatDurationMs(activeDurationMs)}`;
       }
       return;
     }

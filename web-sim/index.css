@@ -2987,6 +2987,20 @@ body.three-panel-open .panel-command {
   color: #ffb6b6;
 }
 
+#floating-panel .lunar-kpi#lunar-kpi-loss-card.is-alert {
+  border-color: rgba(255, 143, 143, 0.52);
+  background: linear-gradient(180deg, rgba(255, 143, 143, 0.22), rgba(44, 12, 18, 0.62));
+}
+
+#floating-panel .lunar-kpi#lunar-kpi-loss-card.is-good {
+  border-color: rgba(111, 225, 174, 0.58);
+  background: linear-gradient(180deg, rgba(111, 225, 174, 0.2), rgba(8, 36, 28, 0.58));
+}
+
+#floating-panel .lunar-kpi#lunar-kpi-loss-card.is-good .lunar-kpi-value {
+  color: #8ff7c6;
+}
+
 #floating-panel .orbital-toolbar {
   padding: 8px 10px;
   gap: 9px;
