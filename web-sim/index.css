@@ -2258,21 +2258,21 @@ body.three-panel-open .panel-telemetry.compact-log .telemetry-last-line {
 }
 
 .theme-light {
-  --bg-primary: #f2f6fb;
-  --bg-secondary: #e7edf6;
-  --bg-panel: rgba(255, 255, 255, 0.82);
-  --bg-panel-solid: #ffffff;
-  --bg-card: rgba(44, 97, 134, 0.07);
-  --bg-hover: rgba(37, 123, 169, 0.1);
-  --bg-input: rgba(25, 72, 104, 0.06);
+  --bg-primary: #071019;
+  --bg-secondary: #0a1625;
+  --bg-panel: rgba(13, 27, 43, 0.84);
+  --bg-panel-solid: #10253a;
+  --bg-card: rgba(17, 35, 54, 0.62);
+  --bg-hover: rgba(125, 232, 255, 0.09);
+  --bg-input: rgba(125, 232, 255, 0.08);
 
-  --border-subtle: rgba(43, 113, 153, 0.16);
-  --border-medium: rgba(43, 113, 153, 0.24);
-  --border-strong: rgba(43, 113, 153, 0.4);
+  --border-subtle: rgba(125, 232, 255, 0.18);
+  --border-medium: rgba(125, 232, 255, 0.28);
+  --border-strong: rgba(125, 232, 255, 0.44);
 
-  --text-primary: rgba(5, 28, 43, 0.9);
-  --text-secondary: rgba(11, 44, 64, 0.72);
-  --text-tertiary: rgba(25, 68, 97, 0.56);
+  --text-primary: rgba(235, 247, 255, 0.94);
+  --text-secondary: rgba(199, 224, 241, 0.78);
+  --text-tertiary: rgba(152, 193, 222, 0.64);
 }
 
 body {
@@ -2361,7 +2361,7 @@ body::after {
 
 .panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 24%),
+    linear-gradient(180deg, rgba(125, 232, 255, 0.05), transparent 28%),
     var(--bg-panel);
 }
 
@@ -2378,7 +2378,9 @@ body::after {
 .mission-brief-card {
   border-color: var(--border-subtle);
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 30%), var(--bg-card);
+  background:
+    linear-gradient(180deg, rgba(125, 232, 255, 0.06), transparent 34%),
+    var(--bg-card);
 }
 
 .dropdown-toggle {
@@ -2482,7 +2484,7 @@ body::after {
 }
 
 #main-grid {
-  grid-template-columns: 30% 40% 0 30%;
+  grid-template-columns: 25% 50% 0 25%;
 }
 
 .panel-command {
@@ -2491,7 +2493,7 @@ body::after {
 }
 
 body.three-panel-open #main-grid {
-  grid-template-columns: 30% 40% 30%;
+  grid-template-columns: 25% 50% 25%;
   grid-template-rows: auto 1fr;
 }
 
@@ -2763,11 +2765,11 @@ body.three-panel-open .panel-command {
 
 @media (max-width: 1320px) {
   #main-grid {
-    grid-template-columns: 30% 40% 0 30%;
+    grid-template-columns: 25% 50% 0 25%;
   }
 
   body.three-panel-open #main-grid {
-    grid-template-columns: 30% 40% 30%;
+    grid-template-columns: 25% 50% 25%;
   }
 
   .floating-panel-header {
