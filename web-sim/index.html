@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="index.css" />
@@ -67,11 +67,12 @@
         <button
           class="cmd-btn-sm"
           id="btn-3d-toggle"
-          title="Toggle Orbital View"
+          title="Open Orbital Operations View"
+          aria-label="Open Orbital Operations View"
           aria-expanded="false"
         >
           <span class="btn-moon-icon">🌑</span>
-          <span id="btn-3d-toggle-label">Orbital View</span>
+          <span id="btn-3d-toggle-label">Orbital Operations View</span>
         </button>
         <button
           class="btn-icon"
@@ -137,7 +138,7 @@
       <!-- ━━━ LEFT: Operations Streams ━━━ -->
       <section class="panel panel-topology" id="panel-topology">
         <div class="panel-header">
-          <h2>Operations Streams</h2>
+          <h2>Mission Streams</h2>
           <span class="badge badge-live">3 Tabs</span>
         </div>
         <div class="dropdown-stack left-dropdown-stack" id="left-dropdown-stack">
@@ -257,7 +258,7 @@
       <!-- ━━━ CENTER: Telemetry & Details ━━━ -->
       <section class="panel panel-telemetry" id="panel-telemetry">
         <div class="panel-header">
-          <h2>Telemetry Stream</h2>
+          <h2>Fleet Telemetry</h2>
           <div class="panel-header-actions">
             <button class="btn-sm" id="btn-clear-telemetry">Clear</button>
           </div>
@@ -334,9 +335,9 @@
           <div class="floating-panel-header">
             <div class="floating-panel-title-wrap">
               <span class="floating-panel-grab" aria-hidden="true"></span>
-              <h3>Orbital Mission View</h3>
+              <h3>Orbital Operations View</h3>
               <span class="floating-panel-meta" id="lunar-meta"
-                >Drag to rotate · Scroll to zoom</span
+                >LMB Orbit · Shift+LMB Pan · Wheel Zoom</span
               >
             </div>
             <div class="floating-panel-kpis" id="lunar-panel-kpis">
@@ -351,6 +352,10 @@
               <div class="lunar-kpi" id="lunar-kpi-links-card">
                 <span class="lunar-kpi-label">Links</span>
                 <span class="lunar-kpi-value" id="lunar-kpi-links">0 / 0</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-loss-card">
+                <span class="lunar-kpi-label">LOS Outage</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-loss">--</span>
               </div>
               <div class="lunar-kpi">
                 <span class="lunar-kpi-label">Zoom</span>
@@ -370,14 +375,91 @@
               ✕
             </button>
           </div>
-          <div id="visualization-container"></div>
+          <div class="orbital-toolbar" aria-label="Orbital controls">
+            <div class="orbital-toolbar-group">
+              <button
+                class="btn-sm orbital-tool-btn"
+                id="orbital-reset-view-btn"
+                type="button"
+              >
+                Reset View
+              </button>
+              <button
+                class="btn-sm orbital-tool-btn"
+                id="orbital-focus-rover-btn"
+                type="button"
+              >
+                Focus Rover
+              </button>
+              <button
+                class="btn-sm orbital-tool-btn"
+                id="orbital-top-view-btn"
+                type="button"
+              >
+                Top View
+              </button>
+            </div>
+            <div class="orbital-toolbar-group orbital-toolbar-status">
+              <span class="orbital-status-pill" id="orbital-nav-heading"
+                >HDG 000°</span
+              >
+              <span class="orbital-status-pill" id="orbital-nav-pitch"
+                >PITCH 00°</span
+              >
+              <span class="orbital-status-pill" id="orbital-nav-distance"
+                >RANGE --</span
+              >
+            </div>
+          </div>
+          <div class="orbital-relative-strip" id="orbital-relative-strip">
+            <span class="orbital-relative-item" id="orbital-earth-moon-distance"
+              >Earth-Moon: --</span
+            >
+            <span class="orbital-relative-item" id="orbital-rover-earth-angle"
+              >Rover→Earth angle: --</span
+            >
+            <span class="orbital-relative-item" id="orbital-rover-side"
+              >Lunar side: --</span
+            >
+            <span class="orbital-relative-item" id="orbital-last-loss-duration"
+              >Last LOS outage: --</span
+            >
+          </div>
+          <div id="visualization-container">
+            <div class="orbital-overlay orbital-compass" id="orbital-compass">
+              <span class="orbital-compass-label north">N</span>
+              <span class="orbital-compass-label east">E</span>
+              <span class="orbital-compass-label south">S</span>
+              <span class="orbital-compass-label west">W</span>
+              <div class="orbital-compass-ring"></div>
+              <div class="orbital-compass-needle" id="orbital-compass-needle"></div>
+              <div class="orbital-compass-center"></div>
+            </div>
+            <div class="orbital-overlay orbital-position-card" id="orbital-position-card">
+              <div class="orbital-position-row">
+                <span>Selected Rover</span>
+                <strong id="orbital-rover-coords">Lat -- · Lon --</strong>
+              </div>
+              <div class="orbital-position-row">
+                <span>Earth Bearing</span>
+                <strong id="orbital-earth-bearing">--</strong>
+              </div>
+            </div>
+            <div class="orbital-overlay orbital-controls-hint" id="orbital-controls-hint">
+              <span>LMB: Orbit</span>
+              <span>Shift + LMB: Pan</span>
+              <span>Wheel: Zoom</span>
+              <span>F: Focus Rover</span>
+              <span>H: Reset View</span>
+            </div>
+          </div>
         </div>
       </aside>
 
       <!-- ━━━ RIGHT: Command Console ━━━ -->
       <section class="panel panel-command" id="panel-command">
         <div class="panel-header">
-          <h2>Command Console</h2>
+          <h2>Mission Command</h2>
           <span class="badge badge-earth">Earth Station</span>
         </div>
 
@@ -388,7 +470,7 @@
             data-accordion-group="right-controls"
           >
             <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Mission Controls</span>
+              <span class="dropdown-title">Command Planning</span>
               <span class="dropdown-meta">Guide, task setup, and dispatch</span>
               <span class="dropdown-chevron" aria-hidden="true"></span>
             </button>
@@ -402,15 +484,15 @@
                   </button>
                   <button class="cmd-btn cmd-abort" id="cmd-abort">
                     <span class="cmd-icon">⏹</span>
-                    <span class="cmd-label">Abort</span>
+                    <span class="cmd-label">Abort Task</span>
                   </button>
                   <button class="cmd-btn cmd-safe" id="cmd-go-safe">
                     <span class="cmd-icon">🛡</span>
-                    <span class="cmd-label">Safe Mode</span>
+                    <span class="cmd-label">Enter Safe Mode</span>
                   </button>
                   <button class="cmd-btn cmd-reset" id="cmd-reset">
                     <span class="cmd-icon">↻</span>
-                    <span class="cmd-label">Reset</span>
+                    <span class="cmd-label">Reset Rover</span>
                   </button>
                 </div>
 
@@ -571,8 +653,8 @@
             data-accordion-group="right-controls"
           >
             <button class="dropdown-toggle" type="button" aria-expanded="false">
-              <span class="dropdown-title">Mission Explanation</span>
-              <span class="dropdown-meta">Theme and payload context</span>
+              <span class="dropdown-title">Mission Guide</span>
+              <span class="dropdown-meta">Context, presets, and step flow</span>
               <span class="dropdown-chevron" aria-hidden="true"></span>
             </button>
             <div class="dropdown-content" hidden>
