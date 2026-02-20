@@ -46,6 +46,7 @@
   const btnClose = $("#btn-close-3d");
   const panelTelemetry = $("#panel-telemetry");
   let panelLayoutTimer = null;
+  let is3DPanelOpen = false;
 
   function getResponsiveOrbitalToggleLabel() {
     const viewportWidth = window.innerWidth || 1280;
@@ -68,17 +69,18 @@
   }
 
   function set3DPanel(open) {
+    is3DPanelOpen = Boolean(open);
     if (panelLayoutTimer) {
       clearTimeout(panelLayoutTimer);
       panelLayoutTimer = null;
     }
 
     if (btnToggle) {
-      btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      btnToggle.setAttribute("aria-expanded", is3DPanelOpen ? "true" : "false");
     }
-    refreshOrbitalToggleLabel(open);
+    refreshOrbitalToggleLabel(is3DPanelOpen);
 
-    if (open) {
+    if (is3DPanelOpen) {
       floatingPanel.setAttribute("aria-hidden", "false");
       document.body.classList.add("three-panel-open");
       syncAccordionLayoutMode(true);
@@ -118,7 +120,7 @@
   }
 
   function toggle3D() {
-    const shouldOpen = !floatingPanel.classList.contains("panel-open");
+    const shouldOpen = !is3DPanelOpen;
     set3DPanel(shouldOpen);
   }
 
@@ -128,7 +130,7 @@
       set3DPanel(false);
     });
 
-  refreshOrbitalToggleLabel(false);
+  refreshOrbitalToggleLabel(is3DPanelOpen);
 
   const dom = {
     metValue: $("#met-value"),
@@ -1929,7 +1931,7 @@
     requestAnimationFrame(drawTopologyLines);
     hideFleetHoverCard();
     syncMobilePanelMode();
-    refreshOrbitalToggleLabel(floatingPanel.classList.contains("panel-open"));
+    refreshOrbitalToggleLabel(is3DPanelOpen);
   });
 
   function triggerOrbitalAction(action, buttonEl = null) {
@@ -2092,10 +2094,13 @@
   });
 
   function pulseButton(btn) {
-    btn.style.transform = "scale(0.95)";
+    if (!btn) return;
+    btn.classList.remove("btn-press-feedback");
+    void btn.offsetWidth;
+    btn.classList.add("btn-press-feedback");
     setTimeout(() => {
-      btn.style.transform = "";
-    }, 150);
+      btn.classList.remove("btn-press-feedback");
+    }, 190);
   }
 
   // ─── Clear Telemetry ───

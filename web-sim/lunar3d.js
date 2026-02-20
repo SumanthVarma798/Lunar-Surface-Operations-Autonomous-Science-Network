@@ -24,9 +24,16 @@ class VisualizationController {
     this.moon = null;
     this.stars = null;
     this.earthBase = null;
+    this.earthCloudLayer = null;
+    this.sunSurface = null;
+    this.sunGlow = null;
+    this.sunLight = null;
 
     this.viewMode = "orbital";
-    this.defaultOrbitalDistance = 6.6;
+    this.defaultOrbitalDistance = 7.6;
+    this.defaultCameraAzimuth = -2.22;
+    this.defaultCameraPolar = 1.08;
+    this.defaultEarthFrameFactor = 0.22;
     this.orbitalDistance = this.defaultOrbitalDistance;
     this.cameraDistance = this.defaultOrbitalDistance;
     this.cameraMinDistance = 1.35;
@@ -87,8 +94,16 @@ class VisualizationController {
     this.tmpVecC = new THREE.Vector3();
     this.tmpVecD = new THREE.Vector3();
     this.tmpColor = new THREE.Color();
-    this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
+    this.earthAnchorOrbital = new THREE.Vector3(8.2, 0.9, 6.6);
     this.earthAnchor = this.earthAnchorOrbital.clone();
+    this.sunAnchorOrbital = new THREE.Vector3(10.6, 1.4, 5.8);
+    this.earthTextureUrls = {
+      color: "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
+      normal: "https://threejs.org/examples/textures/planets/earth_normal_2048.jpg",
+      specular: "https://threejs.org/examples/textures/planets/earth_specular_2048.jpg",
+      clouds: "https://threejs.org/examples/textures/planets/earth_clouds_1024.png",
+    };
+    this.sunTextureUrl = "https://upload.wikimedia.org/wikipedia/commons/c/c3/Solar_sys8.jpg";
 
     this.init();
     this.bindBus();
@@ -123,6 +138,7 @@ class VisualizationController {
     this.loadCuriosityModel();
     this.createStars();
     this.createEarthBase();
+    this.createSun();
     this.createSatellites();
     this.setupInteraction();
     this.setViewMode("orbital", false);
@@ -146,9 +162,11 @@ class VisualizationController {
     hemi.position.set(0, 6, 0);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xf8fcff, 2.25);
-    sun.position.set(6.2, 4.4, 5.1);
-    this.scene.add(sun);
+    this.sunLight = new THREE.DirectionalLight(0xf8fcff, 2.35);
+    this.sunLight.position.copy(this.sunAnchorOrbital);
+    this.scene.add(this.sunLight);
+    this.scene.add(this.sunLight.target);
+    this.sunLight.target.position.set(0, 0, 0);
 
     const fill = new THREE.PointLight(0x7cc8ff, 0.55, 24, 2);
     fill.position.set(-3.4, 2.1, 2.8);
@@ -384,34 +402,52 @@ class VisualizationController {
 
   createEarthBase() {
     const baseGroup = new THREE.Group();
+    const earthRadius = 0.34;
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 26, 26),
+      new THREE.SphereGeometry(earthRadius, 64, 64),
       new THREE.MeshStandardMaterial({
-        color: 0x93c5fd,
-        emissive: 0x1d4e89,
-        emissiveIntensity: 0.55,
-        roughness: 0.36,
-        metalness: 0.08,
+        color: 0x9fc4eb,
+        emissive: 0x0f2742,
+        emissiveIntensity: 0.46,
+        roughness: 0.82,
+        metalness: 0.02,
       }),
     );
+    core.rotation.y = Math.PI * 0.88;
     baseGroup.add(core);
 
+    const cloudBandMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+      roughness: 1.0,
+      metalness: 0.0,
+    });
     const cloudBand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.312, 20, 20),
+      new THREE.SphereGeometry(earthRadius * 1.02, 52, 52),
+      cloudBandMaterial,
+    );
+    cloudBand.rotation.y = Math.PI * 0.92;
+    baseGroup.add(cloudBand);
+
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(earthRadius * 1.08, 42, 42),
       new THREE.MeshBasicMaterial({
         color: 0xe0f2fe,
         transparent: true,
-        opacity: 0.17,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
       }),
     );
-    baseGroup.add(cloudBand);
+    baseGroup.add(atmosphere);
 
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.44, 18, 18),
+      new THREE.SphereGeometry(earthRadius * 1.34, 26, 26),
       new THREE.MeshBasicMaterial({
-        color: 0x67e8f9,
+        color: 0x8ad8ff,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.17,
         blending: THREE.AdditiveBlending,
       }),
     );
@@ -420,6 +456,161 @@ class VisualizationController {
     baseGroup.position.copy(this.earthAnchor);
     this.rootGroup.add(baseGroup);
     this.earthBase = baseGroup;
+    this.earthCloudLayer = cloudBand;
+
+    this.upgradeEarthTextures(core.material, cloudBandMaterial);
+  }
+
+  upgradeEarthTextures(coreMaterial, cloudMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    const maxAnisotropy = Math.min(
+      14,
+      this.renderer?.capabilities?.getMaxAnisotropy
+        ? this.renderer.capabilities.getMaxAnisotropy()
+        : 14,
+    );
+    const applyMapSettings = (texture, isColor = false) => {
+      if (!texture) return;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = maxAnisotropy;
+      if (isColor) texture.colorSpace = THREE.SRGBColorSpace;
+    };
+
+    textureLoader.load(
+      this.earthTextureUrls.color,
+      (colorMap) => {
+        applyMapSettings(colorMap, true);
+        coreMaterial.map = colorMap;
+        coreMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "⚠️ Earth color texture unavailable, using procedural fallback",
+        });
+      },
+    );
+
+    textureLoader.load(
+      this.earthTextureUrls.normal,
+      (normalMap) => {
+        applyMapSettings(normalMap, false);
+        coreMaterial.normalMap = normalMap;
+        coreMaterial.normalScale = new THREE.Vector2(0.55, 0.55);
+        coreMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {},
+    );
+
+    textureLoader.load(
+      this.earthTextureUrls.specular,
+      (specMap) => {
+        applyMapSettings(specMap, false);
+        coreMaterial.roughnessMap = specMap;
+        coreMaterial.metalness = 0.0;
+        coreMaterial.roughness = 0.78;
+        coreMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {},
+    );
+
+    textureLoader.load(
+      this.earthTextureUrls.clouds,
+      (cloudMap) => {
+        applyMapSettings(cloudMap, false);
+        cloudMaterial.map = cloudMap;
+        cloudMaterial.alphaMap = cloudMap;
+        cloudMaterial.opacity = 0.42;
+        cloudMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "⚠️ Earth cloud texture unavailable, using atmospheric fallback",
+        });
+      },
+    );
+  }
+
+  createSun() {
+    const sunGroup = new THREE.Group();
+    const sunRadius = 0.78;
+    const sunSurfaceMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffcc7a,
+    });
+    const sunSurface = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius, 72, 72),
+      sunSurfaceMaterial,
+    );
+    sunGroup.add(sunSurface);
+
+    const sunCorona = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.2, 40, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0xffa155,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    sunGroup.add(sunCorona);
+
+    const sunHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.55, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffbe74,
+        transparent: true,
+        opacity: 0.13,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+      }),
+    );
+    sunGroup.add(sunHalo);
+
+    sunGroup.position.copy(this.sunAnchorOrbital);
+    this.scene.add(sunGroup);
+    this.sunSurface = sunSurface;
+    this.sunGlow = sunHalo;
+
+    if (this.sunLight) {
+      this.sunLight.position.copy(sunGroup.position);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
+
+    this.upgradeSunTexture(sunSurfaceMaterial);
+  }
+
+  upgradeSunTexture(sunSurfaceMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    textureLoader.load(
+      this.sunTextureUrl,
+      (sunMap) => {
+        sunMap.colorSpace = THREE.SRGBColorSpace;
+        sunMap.wrapS = THREE.ClampToEdgeWrapping;
+        sunMap.wrapT = THREE.ClampToEdgeWrapping;
+        sunSurfaceMaterial.map = sunMap;
+        sunSurfaceMaterial.alphaMap = sunMap;
+        sunSurfaceMaterial.transparent = true;
+        sunSurfaceMaterial.opacity = 0.96;
+        sunSurfaceMaterial.blending = THREE.AdditiveBlending;
+        sunSurfaceMaterial.depthWrite = false;
+        sunSurfaceMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "⚠️ Sun texture unavailable, using emissive fallback",
+        });
+      },
+    );
   }
 
   createSatellites() {
@@ -1021,9 +1212,10 @@ class VisualizationController {
   resetView(emitEvent = true) {
     this.cameraDistance = this.defaultOrbitalDistance;
     this.orbitalDistance = this.cameraDistance;
-    this.cameraAzimuth = 0.54;
-    this.cameraPolar = 1.08;
-    this.cameraTargetDesired.set(0, 0, 0);
+    this.cameraAzimuth = this.defaultCameraAzimuth;
+    this.cameraPolar = this.defaultCameraPolar;
+    this.cameraTargetDesired.copy(this.earthAnchorOrbital).multiplyScalar(this.defaultEarthFrameFactor);
+    this.cameraTargetDesired.y *= 0.42;
     this.cameraTarget.copy(this.cameraTargetDesired);
     this.updateCamera(true);
     this.syncNavigationTelemetry();
@@ -1675,8 +1867,12 @@ class VisualizationController {
     const now = performance.now();
     const dt = (now - this.lastFrameTs) / 1000;
     this.lastFrameTs = now;
+    const clampedDt = Math.min(Math.max(dt, 0), 0.06);
 
     this.physicsStep(dt);
+    if (this.earthBase) this.earthBase.rotation.y += clampedDt * 0.032;
+    if (this.earthCloudLayer) this.earthCloudLayer.rotation.y += clampedDt * 0.065;
+    if (this.sunSurface) this.sunSurface.rotation.y += clampedDt * 0.018;
     this.updateCamera();
     this.updateSignalLossUi(now);
     this.renderer.render(this.scene, this.camera);
