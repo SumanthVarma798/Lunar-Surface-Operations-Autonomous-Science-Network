@@ -1540,15 +1540,6 @@
       setTimeout(() => setVisualizationMode(), 120);
     }
 
-    const theme = String(params.get("theme") || "").toLowerCase();
-    if (theme === "light") {
-      isLight = true;
-      document.body.classList.add("theme-light");
-    } else if (theme === "dark") {
-      isLight = false;
-      document.body.classList.remove("theme-light");
-    }
-
     const explicitTarget = params.get("target");
     if (explicitTarget) {
       setRoverTargetMode(
@@ -2171,13 +2162,6 @@
   }
 
   setInterval(updateMET, 1000);
-
-  // ─── Theme Toggle ───
-  let isLight = false;
-  $("#btn-theme").addEventListener("click", () => {
-    isLight = !isLight;
-    document.body.classList.toggle("theme-light", isLight);
-  });
 
   // ─── Node Click Highlighting ───
   $$(".topo-node").forEach((node) => {
