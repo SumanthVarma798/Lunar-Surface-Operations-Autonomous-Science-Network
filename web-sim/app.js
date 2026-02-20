@@ -47,22 +47,21 @@
   const panelTelemetry = $("#panel-telemetry");
   let panelLayoutTimer = null;
 
-  function getResponsiveOrbitalToggleLabel(open) {
+  function getResponsiveOrbitalToggleLabel() {
     const viewportWidth = window.innerWidth || 1280;
-    if (viewportWidth <= 520) return open ? "Close OOV" : "OOV";
-    if (viewportWidth <= 920) return open ? "Close Orbital View" : "Orbital View";
-    return open
-      ? "Close Orbital Operations View"
-      : "Orbital Operations View";
+    if (viewportWidth <= 520) return "OOV";
+    if (viewportWidth <= 920) return "Orbital View";
+    return "Orbital Operations View";
   }
 
   function refreshOrbitalToggleLabel(open) {
     if (!btnToggleLabel) return;
-    const nextLabel = getResponsiveOrbitalToggleLabel(open);
+    const nextLabel = getResponsiveOrbitalToggleLabel();
+    const actionLabel = open ? `Close ${nextLabel}` : `Open ${nextLabel}`;
     btnToggleLabel.textContent = nextLabel;
     if (btnToggle) {
-      btnToggle.setAttribute("title", nextLabel);
-      btnToggle.setAttribute("aria-label", nextLabel);
+      btnToggle.setAttribute("title", actionLabel);
+      btnToggle.setAttribute("aria-label", actionLabel);
     }
   }
 

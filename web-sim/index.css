@@ -2540,7 +2540,7 @@ body::after {
 }
 
 #main-grid {
-  grid-template-columns: 25% 50% 0 25%;
+  grid-template-columns: 30% 40% 0 30%;
 }
 
 .panel-command {
@@ -2549,7 +2549,7 @@ body::after {
 }
 
 body.three-panel-open #main-grid {
-  grid-template-columns: 25% 50% 25%;
+  grid-template-columns: 30% 40% 30%;
   grid-template-rows: auto 1fr;
 }
 
@@ -2821,11 +2821,11 @@ body.three-panel-open .panel-command {
 
 @media (max-width: 1320px) {
   #main-grid {
-    grid-template-columns: 25% 50% 0 25%;
+    grid-template-columns: 30% 40% 0 30%;
   }
 
   body.three-panel-open #main-grid {
-    grid-template-columns: 25% 50% 25%;
+    grid-template-columns: 30% 40% 30%;
   }
 
   .floating-panel-header {
