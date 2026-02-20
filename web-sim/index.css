@@ -2540,31 +2540,37 @@ body::after {
 }
 
 #main-grid {
-  grid-template-columns: minmax(230px, 0.86fr) minmax(420px, 1.35fr) 0px minmax(304px, 0.95fr);
+  grid-template-columns: 25% 50% 0 25%;
+}
+
+.panel-command {
+  width: auto;
+  min-width: 0;
 }
 
 body.three-panel-open #main-grid {
-  grid-template-columns: minmax(190px, 0.78fr) minmax(420px, 1.38fr) minmax(320px, 1.12fr);
-  grid-template-rows: 1fr;
+  grid-template-columns: 25% 50% 25%;
+  grid-template-rows: auto 1fr;
 }
 
 body.three-panel-open .panel-topology {
+  grid-column: 1;
   grid-row: 1;
 }
 
 body.three-panel-open .panel-telemetry.compact-log {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 2;
 }
 
 body.three-panel-open #floating-panel {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 1 / span 2;
 }
 
 body.three-panel-open .panel-command {
   grid-column: 3;
-  grid-row: 1;
+  grid-row: 1 / span 2;
 }
 
 .floating-panel-header {
@@ -2815,11 +2821,11 @@ body.three-panel-open .panel-command {
 
 @media (max-width: 1320px) {
   #main-grid {
-    grid-template-columns: minmax(200px, 0.75fr) minmax(360px, 1.25fr) 0px minmax(290px, 0.95fr);
+    grid-template-columns: 25% 50% 0 25%;
   }
 
   body.three-panel-open #main-grid {
-    grid-template-columns: minmax(176px, 0.64fr) minmax(350px, 1.18fr) minmax(292px, 1.02fr);
+    grid-template-columns: 25% 50% 25%;
   }
 
   .floating-panel-header {
@@ -2833,41 +2839,40 @@ body.three-panel-open .panel-command {
 }
 
 @media (max-width: 1024px) {
-  #main-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(280px, 0.9fr) minmax(360px, 1.1fr);
+  #main-grid,
+  body.three-panel-open #main-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(320px, 1fr) auto;
+  }
+
+  .panel-topology,
+  .panel-telemetry,
+  .panel-command {
+    grid-column: 1;
   }
 
   .panel-topology {
-    grid-column: 1;
     grid-row: 1;
   }
 
   .panel-telemetry {
-    grid-column: 2;
-    grid-row: 1;
+    grid-row: 2;
   }
 
   .panel-command {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     width: auto;
     min-width: 0;
-  }
-
-  body.three-panel-open #main-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(230px, auto) minmax(300px, 1fr) minmax(320px, auto);
-  }
-
-  body.three-panel-open .panel-topology {
-    grid-column: 1;
-    grid-row: 1;
   }
 
   body.three-panel-open #floating-panel {
     grid-column: 1;
     grid-row: 2;
+  }
+
+  body.three-panel-open .panel-topology {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   body.three-panel-open .panel-command {
@@ -2936,5 +2941,178 @@ body.three-panel-open .panel-command {
 
   .orbital-controls-hint span {
     font-size: 9px;
+  }
+}
+
+/* Orbital View Refinement */
+#floating-panel .floating-panel-shell {
+  border: 1px solid rgba(125, 232, 255, 0.2);
+  background:
+    radial-gradient(circle at 84% 14%, rgba(102, 183, 255, 0.16), transparent 42%),
+    radial-gradient(circle at 8% 108%, rgba(119, 227, 177, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(7, 17, 29, 0.96) 0%, rgba(5, 14, 24, 0.96) 100%);
+  box-shadow: 0 24px 48px rgba(1, 8, 16, 0.54);
+}
+
+#floating-panel .floating-panel-header {
+  grid-template-columns: minmax(150px, 0.9fr) minmax(380px, 1.6fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(125, 232, 255, 0.16);
+  background: linear-gradient(95deg, rgba(7, 18, 31, 0.9), rgba(9, 23, 40, 0.8));
+}
+
+#floating-panel .floating-panel-title-wrap {
+  gap: 4px;
+}
+
+#floating-panel .floating-panel-grab {
+  width: 38px;
+  height: 3px;
+  background: rgba(125, 232, 255, 0.34);
+}
+
+#floating-panel .floating-panel-header h3 {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+}
+
+#floating-panel .floating-panel-meta {
+  color: rgba(190, 220, 240, 0.78);
+}
+
+#floating-panel .floating-panel-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+#floating-panel .lunar-kpi {
+  min-height: 42px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(125, 232, 255, 0.22);
+  background: linear-gradient(180deg, rgba(125, 232, 255, 0.08), rgba(8, 23, 40, 0.5));
+}
+
+#floating-panel .lunar-kpi-label {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+#floating-panel .lunar-kpi-value {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+#floating-panel .lunar-kpi#lunar-kpi-loss-card.is-alert .lunar-kpi-value {
+  color: #ffb6b6;
+}
+
+#floating-panel .orbital-toolbar {
+  padding: 8px 10px;
+  gap: 9px;
+  border-bottom: 1px solid rgba(125, 232, 255, 0.14);
+  background: rgba(6, 16, 28, 0.7);
+}
+
+#floating-panel .orbital-tool-btn {
+  min-height: 28px;
+  padding: 4px 11px;
+  border-color: rgba(125, 232, 255, 0.28);
+  background: rgba(125, 232, 255, 0.09);
+  color: rgba(231, 245, 255, 0.9);
+}
+
+#floating-panel .orbital-tool-btn:hover {
+  background: rgba(125, 232, 255, 0.16);
+}
+
+#floating-panel .orbital-status-pill {
+  min-height: 25px;
+  background: rgba(125, 232, 255, 0.11);
+  border-color: rgba(125, 232, 255, 0.26);
+  color: rgba(218, 237, 251, 0.9);
+}
+
+#floating-panel .orbital-relative-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(125, 232, 255, 0.12);
+  background: rgba(6, 16, 28, 0.62);
+}
+
+#floating-panel .orbital-relative-item {
+  justify-content: flex-start;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(125, 232, 255, 0.22);
+  background: rgba(125, 232, 255, 0.07);
+  font-size: 9px;
+}
+
+#floating-panel #visualization-container {
+  background:
+    radial-gradient(circle at 74% 18%, rgba(102, 183, 255, 0.12), transparent 38%),
+    radial-gradient(circle at 18% 92%, rgba(119, 227, 177, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(4, 11, 18, 0.6), rgba(4, 10, 16, 0.2));
+}
+
+#floating-panel .orbital-compass {
+  top: 12px;
+  right: 12px;
+  width: 82px;
+  height: 82px;
+}
+
+#floating-panel .orbital-position-card {
+  top: 12px;
+  left: 12px;
+  min-width: 228px;
+  padding: 8px 10px;
+  border: 1px solid rgba(125, 232, 255, 0.24);
+  background: rgba(7, 18, 30, 0.72);
+}
+
+#floating-panel .orbital-controls-hint {
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  gap: 5px;
+}
+
+#floating-panel .orbital-controls-hint span {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border-color: rgba(125, 232, 255, 0.2);
+  background: rgba(6, 16, 27, 0.72);
+  font-size: 9px;
+}
+
+@media (max-width: 1320px) {
+  #floating-panel .floating-panel-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  #floating-panel .floating-panel-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  #floating-panel .floating-panel-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #floating-panel .orbital-relative-strip {
+    grid-template-columns: 1fr;
+  }
+
+  #floating-panel .orbital-position-card {
+    width: calc(100% - 98px);
+    min-width: 0;
   }
 }

@@ -69,6 +69,13 @@ class VisualizationController {
       hasIssue: false,
       issueReason: "",
     };
+    this.signalLossState = {
+      active: false,
+      startedAtMs: 0,
+      currentDurationMs: 0,
+      lastDurationMs: null,
+      outageCount: 0,
+    };
     this.curiosityGeometry = null;
     this.curiosityModelReady = false;
     this.curiosityModelFailed = false;
@@ -940,6 +947,106 @@ class VisualizationController {
     this.cameraTarget.copy(this.cameraTargetDesired);
   }
 
+  formatDurationMs(durationMs) {
+    const totalSeconds = Math.max(0, durationMs) / 1000;
+    if (totalSeconds < 60) {
+      const precision = totalSeconds < 10 ? 1 : 0;
+      return `${totalSeconds.toFixed(precision)}s`;
+    }
+
+    const totalWholeSeconds = Math.floor(totalSeconds);
+    const hours = Math.floor(totalWholeSeconds / 3600);
+    const minutes = Math.floor((totalWholeSeconds % 3600) / 60);
+    const seconds = totalWholeSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    return `${minutes}m ${seconds}s`;
+  }
+
+  updateSignalLossTracking(linkStatus, nowMs = performance.now()) {
+    const hasNoRoverLOS = linkStatus.roverTotal > 0 && linkStatus.roverClear === 0;
+    const tracker = this.signalLossState;
+    let transitioned = false;
+
+    if (hasNoRoverLOS) {
+      if (!tracker.active) {
+        tracker.active = true;
+        tracker.startedAtMs = nowMs;
+        tracker.currentDurationMs = 0;
+        tracker.outageCount += 1;
+        transitioned = true;
+        this.bus.emit("log", {
+          tag: "fault",
+          text: "📡 LOS outage started: selected rover has no satellite line-of-sight",
+        });
+      } else {
+        tracker.currentDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      }
+      return transitioned;
+    }
+
+    if (tracker.active) {
+      const durationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      tracker.active = false;
+      tracker.startedAtMs = 0;
+      tracker.currentDurationMs = 0;
+      tracker.lastDurationMs = durationMs;
+      transitioned = true;
+      this.bus.emit("log", {
+        tag: "system",
+        text: `✅ LOS restored after ${this.formatDurationMs(durationMs)}`,
+      });
+    }
+
+    return transitioned;
+  }
+
+  updateSignalLossUi(nowMs = performance.now()) {
+    const tracker = this.signalLossState;
+    const lossValueEl = document.getElementById("lunar-kpi-loss");
+    const lossCardEl = document.getElementById("lunar-kpi-loss-card");
+    const stripValueEl = document.getElementById("orbital-last-loss-duration");
+    const metaEl = document.getElementById("lunar-meta");
+
+    let activeDurationMs = tracker.currentDurationMs;
+    if (tracker.active) {
+      activeDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      tracker.currentDurationMs = activeDurationMs;
+    }
+
+    if (lossCardEl) {
+      lossCardEl.classList.remove("is-good", "is-alert");
+      if (tracker.active) lossCardEl.classList.add("is-alert");
+      else if (tracker.lastDurationMs !== null) lossCardEl.classList.add("is-good");
+    }
+
+    if (tracker.active) {
+      const activeText = `Active ${this.formatDurationMs(activeDurationMs)}`;
+      if (lossValueEl) lossValueEl.textContent = activeText;
+      if (stripValueEl) {
+        stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
+      }
+      if (metaEl && this.linkStatus.roverTotal > 0 && this.linkStatus.roverClear === 0) {
+        metaEl.classList.add("warning");
+        metaEl.textContent =
+          `${this.linkStatus.issueReason || "Issue: rover has no LOS path"} · Outage ${this.formatDurationMs(activeDurationMs)}`;
+      }
+      return;
+    }
+
+    if (tracker.lastDurationMs !== null) {
+      const lastText = `Last ${this.formatDurationMs(tracker.lastDurationMs)}`;
+      if (lossValueEl) lossValueEl.textContent = lastText;
+      if (stripValueEl) {
+        stripValueEl.textContent =
+          `Last LOS outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
+      }
+      return;
+    }
+
+    if (lossValueEl) lossValueEl.textContent = "--";
+    if (stripValueEl) stripValueEl.textContent = "Last LOS outage: --";
+  }
+
   updateCamera(force = false) {
     if (!this.camera) return;
     this.camera.fov = 35;
@@ -1060,6 +1167,7 @@ class VisualizationController {
     const losCardEl = document.getElementById("lunar-kpi-los-card");
     const linksCardEl = document.getElementById("lunar-kpi-links-card");
     const roverCardEl = document.getElementById("lunar-kpi-rover-card");
+    const lossCardEl = document.getElementById("lunar-kpi-loss-card");
 
     const setCardState = (cardEl, state) => {
       if (!cardEl) return;
@@ -1094,11 +1202,13 @@ class VisualizationController {
       if (losValueEl) losValueEl.textContent = "Pending";
       setCardState(losCardEl, null);
       setCardState(linksCardEl, null);
+      if (lossCardEl) lossCardEl.classList.remove("is-good", "is-alert");
       if (metaEl) {
         metaEl.classList.remove("warning");
         metaEl.textContent = "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
       }
       this.syncNavigationTelemetry();
+      this.updateSignalLossUi();
       return;
     }
 
@@ -1131,6 +1241,7 @@ class VisualizationController {
     }
 
     this.syncNavigationTelemetry();
+    this.updateSignalLossUi();
   }
 
   setupInteraction() {
@@ -1413,10 +1524,11 @@ class VisualizationController {
       linkStatus.issueReason = "Issue: Rover unreachable from all satellites";
     }
 
+    const lossTransitioned = this.updateSignalLossTracking(linkStatus, performance.now());
     const prev = this.linkStatus;
     const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
     this.linkStatus = linkStatus;
-    if (changed) this.updateMetaText();
+    if (changed || lossTransitioned) this.updateMetaText();
   }
 
   onResize() {
@@ -1437,6 +1549,7 @@ class VisualizationController {
 
     this.physicsStep(dt);
     this.updateCamera();
+    this.updateSignalLossUi(now);
     this.renderer.render(this.scene, this.camera);
   }
 }

@@ -47,6 +47,25 @@
   const panelTelemetry = $("#panel-telemetry");
   let panelLayoutTimer = null;
 
+  function getResponsiveOrbitalToggleLabel(open) {
+    const viewportWidth = window.innerWidth || 1280;
+    if (viewportWidth <= 520) return open ? "Close OOV" : "OOV";
+    if (viewportWidth <= 920) return open ? "Close Orbital View" : "Orbital View";
+    return open
+      ? "Close Orbital Operations View"
+      : "Orbital Operations View";
+  }
+
+  function refreshOrbitalToggleLabel(open) {
+    if (!btnToggleLabel) return;
+    const nextLabel = getResponsiveOrbitalToggleLabel(open);
+    btnToggleLabel.textContent = nextLabel;
+    if (btnToggle) {
+      btnToggle.setAttribute("title", nextLabel);
+      btnToggle.setAttribute("aria-label", nextLabel);
+    }
+  }
+
   function set3DPanel(open) {
     if (panelLayoutTimer) {
       clearTimeout(panelLayoutTimer);
@@ -56,9 +75,7 @@
     if (btnToggle) {
       btnToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
-    if (btnToggleLabel) {
-      btnToggleLabel.textContent = open ? "Close Orbital" : "Open Orbital";
-    }
+    refreshOrbitalToggleLabel(open);
 
     if (open) {
       floatingPanel.setAttribute("aria-hidden", "false");
@@ -107,6 +124,8 @@
     btnClose.addEventListener("click", () => {
       set3DPanel(false);
     });
+
+  refreshOrbitalToggleLabel(false);
 
   const dom = {
     metValue: $("#met-value"),
@@ -1827,6 +1846,7 @@
   window.addEventListener("resize", () => {
     requestAnimationFrame(drawTopologyLines);
     hideFleetHoverCard();
+    refreshOrbitalToggleLabel(floatingPanel.classList.contains("panel-open"));
   });
 
   function triggerOrbitalAction(action, buttonEl = null) {

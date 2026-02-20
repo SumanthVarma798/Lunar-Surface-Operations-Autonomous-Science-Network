@@ -71,7 +71,7 @@
           aria-expanded="false"
         >
           <span class="btn-moon-icon">🌑</span>
-          <span id="btn-3d-toggle-label">Open Orbital</span>
+          <span id="btn-3d-toggle-label">Orbital Operations View</span>
         </button>
         <button
           class="btn-icon"
@@ -352,6 +352,10 @@
                 <span class="lunar-kpi-label">Links</span>
                 <span class="lunar-kpi-value" id="lunar-kpi-links">0 / 0</span>
               </div>
+              <div class="lunar-kpi" id="lunar-kpi-loss-card">
+                <span class="lunar-kpi-label">LOS Outage</span>
+                <span class="lunar-kpi-value" id="lunar-kpi-loss">--</span>
+              </div>
               <div class="lunar-kpi">
                 <span class="lunar-kpi-label">Zoom</span>
                 <span class="lunar-kpi-value" id="lunar-kpi-zoom">--</span>
@@ -415,6 +419,9 @@
             >
             <span class="orbital-relative-item" id="orbital-rover-side"
               >Lunar side: --</span
+            >
+            <span class="orbital-relative-item" id="orbital-last-loss-duration"
+              >Last LOS outage: --</span
             >
           </div>
           <div id="visualization-container">
