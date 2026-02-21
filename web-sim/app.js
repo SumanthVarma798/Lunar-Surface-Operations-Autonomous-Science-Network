@@ -85,6 +85,7 @@
       document.body.classList.add("three-panel-open");
       syncAccordionLayoutMode(true);
       syncMobilePanelMode();
+      resetAccordionGroupToDefaults("orbital-silos");
       if (panelTelemetry) panelTelemetry.classList.add("compact-log");
       updateFleetUi();
 
@@ -196,6 +197,7 @@
     "left-orbital": { singleOpen: false, requireOneOpen: false },
     "telemetry-orbital": { singleOpen: false, requireOneOpen: true },
     "right-controls": { singleOpen: false, requireOneOpen: true },
+    "orbital-silos": { singleOpen: true, requireOneOpen: false },
   };
 
   const MOBILE_PANEL_BREAKPOINT = 1024;
@@ -359,6 +361,22 @@
     setAccordionBlockOpen(preferred, true);
   }
 
+  function resetAccordionGroupToDefaults(groupName) {
+    const blocks = getAccordionBlocks(groupName);
+    if (blocks.length === 0) return;
+    const singleOpen = blocks[0].dataset.singleOpen === "true";
+    let hasOpenedDefault = false;
+
+    blocks.forEach((block) => {
+      const defaultOpen = block.dataset.defaultOpen === "true";
+      const shouldOpen = defaultOpen && (!singleOpen || !hasOpenedDefault);
+      setAccordionBlockOpen(block, shouldOpen);
+      if (shouldOpen) hasOpenedDefault = true;
+    });
+
+    ensureAccordionGroupHasOpen(groupName);
+  }
+
   function syncAccordionLayoutMode(compact) {
     const leftBlocks = getAccordionBlocks("left-orbital");
     const telemetryBlocks = getAccordionBlocks("telemetry-orbital");
@@ -416,11 +434,16 @@
       singleOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].singleOpen,
       requireOneOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
     });
+    configureAccordionGroup("orbital-silos", {
+      singleOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].singleOpen,
+      requireOneOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].requireOneOpen,
+    });
     initializeMobilePanelHeaders();
     syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
     syncMobilePanelMode();
     ensureAccordionGroupHasOpen("right-controls");
     ensureAccordionGroupHasOpen("telemetry-orbital");
+    ensureAccordionGroupHasOpen("orbital-silos");
   }
 
   function openMissionControlsCard() {
@@ -846,7 +869,7 @@
     if (announce) {
       addFeedLine(
         "system",
-        `📘 Mission step ready: ${step.title} (${step.task_type}/${step.difficulty_level})`,
+        `Mission step ready: ${step.title} (${step.task_type}/${step.difficulty_level})`,
       );
     }
   }
@@ -875,7 +898,7 @@
     });
 
     if (announce) {
-      addFeedLine("system", `🛰️ Mission preset loaded: ${preset.title}`);
+      addFeedLine("system", `Mission preset loaded: ${preset.title}`);
     }
   }
 
@@ -909,7 +932,7 @@
     if (missionGuideState.completedCount >= steps.length) {
       missionGuideState.activeStepIndex = steps.length - 1;
       renderMissionStepList();
-      addFeedLine("system", "✅ Mission guide sequence complete. Use Reset Guide to run again.");
+      addFeedLine("system", "Mission guide sequence complete. Use Reset Guide to run again.");
       return;
     }
 
@@ -1119,7 +1142,7 @@
     const stateClass = stateToClass(state);
     const batteryPct = Math.round((snapshot.battery || 0) * 100);
     const solarExposure = snapshot.solar_exposure || 0;
-    const solarText = solarExposure >= 0.5 ? "☀ Sun" : "🌑 Dark";
+    const solarText = solarExposure >= 0.5 ? "SUNLIT" : "SHADOW";
     const solarPct = Math.round(solarExposure * 100);
     const taskText = snapshot.task_id
       ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/${snapshot.task_total_steps || "?"})` : ""}`
@@ -1138,7 +1161,7 @@
         <div class="fleet-card-metrics">
           <div class="fleet-card-metric">
             <span class="fleet-card-label">Battery</span>
-            <span class="fleet-card-value">🔋 ${batteryPct}%</span>
+            <span class="fleet-card-value">${batteryPct}%</span>
           </div>
           <div class="fleet-card-metric">
             <span class="fleet-card-label">Solar</span>
@@ -1179,8 +1202,20 @@
 
     const entries = getFleetEntries();
     if (entries.length === 0) {
-      dom.fleetGrid.innerHTML =
-        '<div class="feed-empty"><span class="feed-empty-icon">🤖</span><span>Awaiting fleet telemetry…</span></div>';
+      dom.fleetGrid.innerHTML = `
+        <div class="feed-empty">
+          <span class="feed-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="wire-icon">
+              <rect x="6" y="9" width="12" height="7" rx="1.4"></rect>
+              <circle cx="9" cy="18.5" r="1.4"></circle>
+              <circle cx="15" cy="18.5" r="1.4"></circle>
+              <path d="M12 9V6"></path>
+              <path d="M9.5 12.5h5"></path>
+            </svg>
+          </span>
+          <span>Awaiting fleet telemetry...</span>
+        </div>
+      `;
       if (dom.fleetGridSummary) {
         dom.fleetGridSummary.textContent = "Showing 0 of 0 rovers";
       }
@@ -1464,7 +1499,7 @@
         commandType === "START_TASK" && taskOptions
           ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})`
           : "";
-      addFeedLine("system", `🎯 Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`);
+      addFeedLine("system", `Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`);
     }
     if (commandType === "START_TASK" && cmdId) {
       advanceMissionGuideAfterDispatch();
@@ -1479,7 +1514,7 @@
     if (nextMode === AUTO_ROVER_MODE) {
       roverTargetMode = AUTO_ROVER_MODE;
       if (dom.roverTargetSelect) dom.roverTargetSelect.value = AUTO_ROVER_MODE;
-      addFeedLine("system", "🎯 Auto-select enabled for command routing");
+      addFeedLine("system", "Auto-select enabled for command routing");
       return;
     }
 
@@ -1488,7 +1523,7 @@
     roverTargetMode = nextMode;
     if (dom.roverTargetSelect) dom.roverTargetSelect.value = nextMode;
     setSelectedRover(nextMode);
-    addFeedLine("system", `🎮 Manual rover selection: ${formatRoverLabel(nextMode)}`);
+    addFeedLine("system", `Manual rover selection: ${formatRoverLabel(nextMode)}`);
   }
 
   function applyScenarioFromUrl() {
@@ -1614,11 +1649,21 @@
   let feedInitialized = false;
   const MAX_FEED_LINES = 200;
 
+  function isTelemetryFeedNearBottom(thresholdPx = 18) {
+    if (!dom.telemetryFeed) return true;
+    const distanceFromBottom =
+      dom.telemetryFeed.scrollHeight -
+      dom.telemetryFeed.scrollTop -
+      dom.telemetryFeed.clientHeight;
+    return distanceFromBottom <= thresholdPx;
+  }
+
   function addFeedLine(tag, text) {
     if (!feedInitialized) {
       dom.telemetryFeed.innerHTML = "";
       feedInitialized = true;
     }
+    const shouldFollowLatest = isTelemetryFeedNearBottom();
 
     const line = document.createElement("div");
     line.className = "feed-line";
@@ -1637,11 +1682,21 @@
 
     // Trim old lines
     while (dom.telemetryFeed.children.length > MAX_FEED_LINES) {
+      const firstChild = dom.telemetryFeed.firstElementChild;
+      const removedHeight = firstChild ? firstChild.offsetHeight : 0;
       dom.telemetryFeed.removeChild(dom.telemetryFeed.firstChild);
+      if (!shouldFollowLatest && removedHeight > 0) {
+        dom.telemetryFeed.scrollTop = Math.max(
+          0,
+          dom.telemetryFeed.scrollTop - removedHeight,
+        );
+      }
     }
 
-    // Auto-scroll
-    dom.telemetryFeed.scrollTop = dom.telemetryFeed.scrollHeight;
+    // Auto-scroll only when user is already reading the latest entries.
+    if (shouldFollowLatest) {
+      dom.telemetryFeed.scrollTop = dom.telemetryFeed.scrollHeight;
+    }
   }
 
   function escapeHtml(text) {
@@ -1668,30 +1723,23 @@
     dom.roverState.className = `topo-node-state ${stateClass}`;
 
     // Add telemetry to feed
-    const stateIcons = {
-      IDLE: "🟢",
-      EXECUTING: "🔵",
-      SAFE_MODE: "🟡",
-      ERROR: "🔴",
-    };
     const normalizedState = normalizeState(data.state);
-    const icon = stateIcons[normalizedState] || "⚪";
     const batteryValue = Number(data.battery || 0);
     const batteryPct = Math.round(batteryValue * 100);
-    const batteryIcon = batteryValue < 0.2 ? "🔋❗" : batteryValue < 0.5 ? "🔋⚠️" : "🔋";
+    const batteryStatus = batteryValue < 0.2 ? "LOW" : batteryValue < 0.5 ? "MID" : "OK";
 
     let feedText =
-      `${icon} ${normalizedState} | ${batteryIcon} ${batteryPct}%` +
-      `${roverId ? ` | 🤖 ${formatRoverLabel(roverId)}` : ""}`;
-    if (data.task_id) feedText += ` | 📋 ${data.task_id}`;
+      `${normalizedState} | BAT ${batteryPct}% (${batteryStatus})` +
+      `${roverId ? ` | ROVER ${formatRoverLabel(roverId)}` : ""}`;
+    if (data.task_id) feedText += ` | TASK ${data.task_id}`;
     if (data.task_progress) feedText += ` (${data.task_progress}/${data.task_total_steps || "?"})`;
     if (data.active_task_type && data.active_task_difficulty) {
-      feedText += ` | 🧭 ${data.active_task_type}/${data.active_task_difficulty}`;
+      feedText += ` | MODE ${data.active_task_type}/${data.active_task_difficulty}`;
     }
     if (Number.isFinite(Number(data.predicted_fault_probability))) {
-      feedText += ` | 📉 risk ${(Number(data.predicted_fault_probability) * 100).toFixed(1)}%`;
+      feedText += ` | RISK ${(Number(data.predicted_fault_probability) * 100).toFixed(1)}%`;
     }
-    if (data.fault) feedText += ` | ⚠️ ${data.fault}`;
+    if (data.fault) feedText += ` | FAULT ${data.fault}`;
 
     addFeedLine("tlm", feedText);
 
@@ -1760,13 +1808,13 @@
 
     const statusEl = entry.querySelector(".cmd-log-status");
     if (data.status === "ACCEPTED") {
-      statusEl.textContent = `✅ ACCEPTED (${data.rtt?.toFixed(2) || "?"}s)`;
+      statusEl.textContent = `ACCEPTED (${data.rtt?.toFixed(2) || "?"}s)`;
       statusEl.className = "cmd-log-status accepted";
     } else if (data.status === "TIMEOUT") {
-      statusEl.textContent = "⏰ TIMEOUT";
+      statusEl.textContent = "TIMEOUT";
       statusEl.className = "cmd-log-status timeout";
     } else {
-      statusEl.textContent = `❌ REJECTED`;
+      statusEl.textContent = "REJECTED";
       statusEl.className = "cmd-log-status rejected";
     }
   });
@@ -1791,10 +1839,16 @@
       .map((id) => {
         const info = pending[id];
         const elapsed = (Date.now() / 1000 - info.sentAt).toFixed(1);
+        const bufferedFor = info.bufferedAt
+          ? (Date.now() / 1000 - info.bufferedAt).toFixed(1)
+          : elapsed;
+        const timerText = info.buffered ? `BUF ${bufferedFor}s` : `${elapsed}s`;
+        const timerClass = info.buffered ? "pending-timer buffered" : "pending-timer";
+        const modeText = info.buffered ? "relay queue" : "in-flight";
         return `<div class="pending-item">
         <span class="pending-id">${id}</span>
-        <span>${info.cmdType} [${formatRoverLabel(info.roverId)}]</span>
-        <span class="pending-timer">${elapsed}s</span>
+        <span>${info.cmdType} [${formatRoverLabel(info.roverId)}] · ${modeText}</span>
+        <span class="${timerClass}">${timerText}</span>
       </div>`;
       })
       .join("");
@@ -1969,10 +2023,10 @@
         setSelectedRover(roverTargetMode);
         addFeedLine(
           "system",
-          `🎮 Manual rover selection: ${formatRoverLabel(roverTargetMode)}`,
+          `Manual rover selection: ${formatRoverLabel(roverTargetMode)}`,
         );
       } else {
-        addFeedLine("system", "🎯 Auto-select enabled for command routing");
+        addFeedLine("system", "Auto-select enabled for command routing");
       }
     });
   }
@@ -2105,11 +2159,23 @@
 
   // ─── Clear Telemetry ───
   $("#btn-clear-telemetry").addEventListener("click", () => {
-    dom.telemetryFeed.innerHTML =
-      '<div class="feed-empty"><span class="feed-empty-icon">📡</span><span>Awaiting telemetry…</span></div>';
+    dom.telemetryFeed.innerHTML = `
+      <div class="feed-empty">
+        <span class="feed-empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="wire-icon">
+            <path d="M6 17l5-5"></path>
+            <path d="M8 19h7"></path>
+            <path d="M14 10a4 4 0 0 1 0 5.7"></path>
+            <path d="M16.6 7.4a7.5 7.5 0 0 1 0 10.6"></path>
+            <circle cx="6" cy="17" r="1.3"></circle>
+          </svg>
+        </span>
+        <span>Awaiting telemetry...</span>
+      </div>
+    `;
     feedInitialized = false;
     if (dom.telemetryLastValue) {
-      dom.telemetryLastValue.textContent = "Awaiting telemetry…";
+      dom.telemetryLastValue.textContent = "Awaiting telemetry...";
     }
   });
 
@@ -2224,10 +2290,10 @@
   });
 
   // ─── Initial Log ───
-  addFeedLine("system", "🌍 Earth Station online");
-  addFeedLine("system", "🛰️ Space Link relay initialized");
-  addFeedLine("system", "🤖 Rover fleet active — awaiting commands");
-  addFeedLine("system", "📡 Telemetry monitor listening");
+  addFeedLine("system", "Earth Station online");
+  addFeedLine("system", "Space Link relay initialized");
+  addFeedLine("system", "Rover fleet active - awaiting commands");
+  addFeedLine("system", "Telemetry monitor listening");
   addFeedLine("system", "───────────────────────────────");
   applyScenarioFromUrl();
 

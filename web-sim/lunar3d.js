@@ -27,7 +27,11 @@ class VisualizationController {
     this.earthCloudLayer = null;
     this.sunSurface = null;
     this.sunGlow = null;
+    this.sunGroup = null;
     this.sunLight = null;
+    this.latestCelestialFrame = null;
+    this.displayEarthMoonDistanceLu = 10.8;
+    this.displaySunDistanceClampLu = { min: 88, max: 320 };
 
     this.viewMode = "orbital";
     this.defaultOrbitalDistance = 7.6;
@@ -94,16 +98,14 @@ class VisualizationController {
     this.tmpVecC = new THREE.Vector3();
     this.tmpVecD = new THREE.Vector3();
     this.tmpColor = new THREE.Color();
-    this.earthAnchorOrbital = new THREE.Vector3(8.2, 0.9, 6.6);
+    this.earthAnchorOrbital = new THREE.Vector3(8.2, 1.0, 6.6);
     this.earthAnchor = this.earthAnchorOrbital.clone();
-    this.sunAnchorOrbital = new THREE.Vector3(10.6, 1.4, 5.8);
+    this.sunAnchorOrbital = new THREE.Vector3(20.6, 2.1, 15.8);
     this.earthTextureUrls = {
-      color: "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
-      normal: "https://threejs.org/examples/textures/planets/earth_normal_2048.jpg",
-      specular: "https://threejs.org/examples/textures/planets/earth_specular_2048.jpg",
-      clouds: "https://threejs.org/examples/textures/planets/earth_clouds_1024.png",
+      color: "assets/nasa/earth-blue-marble-2048.png",
+      clouds: "assets/nasa/earth-clouds-2048.jpg",
     };
-    this.sunTextureUrl = "https://upload.wikimedia.org/wikipedia/commons/c/c3/Solar_sys8.jpg";
+    this.sunTextureUrl = "assets/nasa/sun-sdo-2048-0171.jpg";
 
     this.init();
     this.bindBus();
@@ -121,7 +123,7 @@ class VisualizationController {
       42,
       this.width / this.height,
       0.003,
-      100,
+      420,
     );
 
     this.renderer = new THREE.WebGLRenderer({
@@ -149,6 +151,7 @@ class VisualizationController {
   bindBus() {
     this.bus.on("earth:telemetry", (data) => this.upsertRoverFromTelemetry(data));
     this.bus.on("fleet:update", (fleet) => this.upsertFleetSnapshot(fleet));
+    this.bus.on("celestial:ephemeris", (frame) => this.setCelestialFrame(frame));
     this.bus.on("earth:selected-rover", (data) => {
       if (data?.rover_id) this.setSelectedRover(data.rover_id);
     });
@@ -282,7 +285,7 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ External moon texture unavailable, using procedural lunar albedo",
+          text: "WARN: External moon texture unavailable, using procedural lunar albedo",
         });
       },
     );
@@ -293,7 +296,7 @@ class VisualizationController {
       this.curiosityModelFailed = true;
       this.bus.emit("log", {
         tag: "system",
-        text: "⚠️ STL loader unavailable, using fallback rover mesh",
+        text: "WARN: STL loader unavailable, using fallback rover mesh",
       });
       return;
     }
@@ -311,7 +314,7 @@ class VisualizationController {
         this.curiosityModelFailed = true;
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Curiosity model failed to load, using fallback rover mesh",
+          text: "WARN: Curiosity model failed to load, using fallback rover mesh",
         });
       },
     );
@@ -489,35 +492,39 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Earth color texture unavailable, using procedural fallback",
+          text: "WARN: Earth color texture unavailable, using procedural fallback",
         });
       },
     );
 
-    textureLoader.load(
-      this.earthTextureUrls.normal,
-      (normalMap) => {
-        applyMapSettings(normalMap, false);
-        coreMaterial.normalMap = normalMap;
-        coreMaterial.normalScale = new THREE.Vector2(0.55, 0.55);
-        coreMaterial.needsUpdate = true;
-      },
-      undefined,
-      () => {},
-    );
+    if (this.earthTextureUrls.normal) {
+      textureLoader.load(
+        this.earthTextureUrls.normal,
+        (normalMap) => {
+          applyMapSettings(normalMap, false);
+          coreMaterial.normalMap = normalMap;
+          coreMaterial.normalScale = new THREE.Vector2(0.55, 0.55);
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
 
-    textureLoader.load(
-      this.earthTextureUrls.specular,
-      (specMap) => {
-        applyMapSettings(specMap, false);
-        coreMaterial.roughnessMap = specMap;
-        coreMaterial.metalness = 0.0;
-        coreMaterial.roughness = 0.78;
-        coreMaterial.needsUpdate = true;
-      },
-      undefined,
-      () => {},
-    );
+    if (this.earthTextureUrls.specular) {
+      textureLoader.load(
+        this.earthTextureUrls.specular,
+        (specMap) => {
+          applyMapSettings(specMap, false);
+          coreMaterial.roughnessMap = specMap;
+          coreMaterial.metalness = 0.0;
+          coreMaterial.roughness = 0.78;
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
 
     textureLoader.load(
       this.earthTextureUrls.clouds,
@@ -532,7 +539,7 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Earth cloud texture unavailable, using atmospheric fallback",
+          text: "WARN: Earth cloud texture unavailable, using atmospheric fallback",
         });
       },
     );
@@ -540,7 +547,7 @@ class VisualizationController {
 
   createSun() {
     const sunGroup = new THREE.Group();
-    const sunRadius = 0.78;
+    const sunRadius = 2.35;
     const sunSurfaceMaterial = new THREE.MeshBasicMaterial({
       color: 0xffcc7a,
     });
@@ -575,6 +582,7 @@ class VisualizationController {
 
     sunGroup.position.copy(this.sunAnchorOrbital);
     this.scene.add(sunGroup);
+    this.sunGroup = sunGroup;
     this.sunSurface = sunSurface;
     this.sunGlow = sunHalo;
 
@@ -607,10 +615,51 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Sun texture unavailable, using emissive fallback",
+          text: "WARN: Sun texture unavailable, using emissive fallback",
         });
       },
     );
+  }
+
+  setCelestialFrame(frame) {
+    if (!frame || !frame.earth_from_moon_km || !frame.sun_from_moon_km) return;
+    this.latestCelestialFrame = frame;
+
+    const earthKmVec = frame.earth_from_moon_km;
+    const sunKmVec = frame.sun_from_moon_km;
+    const earthDistKm = Math.max(
+      Number(frame.earth_distance_km) || this.tmpVecA.set(earthKmVec.x, earthKmVec.y, earthKmVec.z).length(),
+      1,
+    );
+    const sunDistKmRaw = Math.max(
+      Number(frame.sun_distance_km) || this.tmpVecB.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).length(),
+      1,
+    );
+
+    const earthScale = this.displayEarthMoonDistanceLu / earthDistKm;
+    this.earthAnchorOrbital.set(
+      earthKmVec.x * earthScale,
+      earthKmVec.y * earthScale,
+      earthKmVec.z * earthScale,
+    );
+
+    const ratioRaw = sunDistKmRaw / earthDistKm;
+    const compressedRatio = Math.max(9, Math.log10(ratioRaw + 1) * 9.2);
+    const sunDistanceLu = THREE.MathUtils.clamp(
+      this.displayEarthMoonDistanceLu * compressedRatio,
+      this.displaySunDistanceClampLu.min,
+      this.displaySunDistanceClampLu.max,
+    );
+
+    this.tmpVecC.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).normalize().multiplyScalar(sunDistanceLu);
+    this.sunAnchorOrbital.copy(this.tmpVecC);
+
+    if (this.earthBase) this.earthBase.position.copy(this.earthAnchorOrbital);
+    if (this.sunGroup) this.sunGroup.position.copy(this.sunAnchorOrbital);
+    if (this.sunLight) {
+      this.sunLight.position.copy(this.sunAnchorOrbital);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
   }
 
   createSatellites() {
@@ -990,6 +1039,7 @@ class VisualizationController {
   upsertRoverFromTelemetry(data) {
     const roverId = data?.rover_id;
     if (!roverId) return;
+    if (data?.celestial) this.setCelestialFrame(data.celestial);
 
     let rover = this.rovers.get(roverId);
     if (!rover) {
@@ -1295,7 +1345,7 @@ class VisualizationController {
         const reason = linkStatus.issueReason || "Issue: no line-of-sight contact";
         this.bus.emit("log", {
           tag: "fault",
-          text: `📡 LOS outage started: ${reason}`,
+          text: `LOS outage started: ${reason}`,
         });
       } else {
         tracker.currentDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
@@ -1312,7 +1362,7 @@ class VisualizationController {
       transitioned = true;
       this.bus.emit("log", {
         tag: "system",
-        text: `✅ LOS restored after ${this.formatDurationMs(durationMs)}`,
+        text: `LOS restored after ${this.formatDurationMs(durationMs)}`,
       });
     }
 
@@ -1755,7 +1805,7 @@ class VisualizationController {
     this.updateMetaText();
     this.bus.emit("log", {
       tag: "system",
-      text: `🛰 Physics collision: ${message}`,
+      text: `Physics collision: ${message}`,
     });
   }
 
@@ -1849,7 +1899,17 @@ class VisualizationController {
     const prev = this.linkStatus;
     const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
     this.linkStatus = linkStatus;
-    if (changed || lossTransitioned) this.updateMetaText();
+    if (changed || lossTransitioned) {
+      this.bus.emit("orbital:los-status", {
+        hasIssue: linkStatus.hasIssue,
+        issueReason: linkStatus.issueReason,
+        earthClear: linkStatus.earthClear,
+        earthTotal: linkStatus.earthTotal,
+        roverClear: linkStatus.roverClear,
+        roverTotal: linkStatus.roverTotal,
+      });
+      this.updateMetaText();
+    }
   }
 
   onResize() {
