@@ -188,6 +188,131 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 }
 
+const TAU = Math.PI * 2;
+
+function degToRad(value) {
+  return (Number(value) * Math.PI) / 180;
+}
+
+function vectorLength(vec) {
+  const x = Number(vec?.x) || 0;
+  const y = Number(vec?.y) || 0;
+  const z = Number(vec?.z) || 0;
+  return Math.sqrt(x * x + y * y + z * z);
+}
+
+function normalizeVec(vec) {
+  const length = vectorLength(vec);
+  if (length <= 1e-9) return { x: 0, y: 0, z: 1 };
+  return {
+    x: vec.x / length,
+    y: vec.y / length,
+    z: vec.z / length,
+  };
+}
+
+function dotVec(a, b) {
+  return (Number(a?.x) || 0) * (Number(b?.x) || 0) +
+    (Number(a?.y) || 0) * (Number(b?.y) || 0) +
+    (Number(a?.z) || 0) * (Number(b?.z) || 0);
+}
+
+function latLonToLunarUnit(lat, lon) {
+  const phi = degToRad(90 - Number(lat || 0));
+  const theta = degToRad(Number(lon || 0) + 180);
+  const sinPhi = Math.sin(phi);
+  return {
+    x: sinPhi * Math.cos(theta),
+    y: Math.cos(phi),
+    z: sinPhi * Math.sin(theta),
+  };
+}
+
+class CelestialDynamics {
+  constructor() {
+    this.earthMoonDistanceKm = 384400;
+    this.sunEarthDistanceKm = 149597870;
+    this.earthOrbitPeriodDays = 365.256;
+    this.moonOrbitPeriodDays = 27.321661;
+    this.moonOrbitInclinationRad = degToRad(5.145);
+    this.simDaysPerSecond = 0.35;
+    this.phaseOffsetRad = -1.05;
+    this.startEpochMs = Date.now();
+  }
+
+  getElapsedDays(nowMs = Date.now()) {
+    return ((nowMs - this.startEpochMs) / 1000) * this.simDaysPerSecond;
+  }
+
+  computeFrame(nowMs = Date.now()) {
+    const elapsedDays = this.getElapsedDays(nowMs);
+    const earthOrbitAngle = TAU * (elapsedDays / this.earthOrbitPeriodDays);
+    const moonOrbitAngle = TAU * (elapsedDays / this.moonOrbitPeriodDays) + this.phaseOffsetRad;
+
+    const earthPosSun = {
+      x: this.sunEarthDistanceKm * Math.cos(earthOrbitAngle),
+      y: this.sunEarthDistanceKm * Math.sin(earthOrbitAngle),
+      z: 0,
+    };
+    const moonGeo = {
+      x: this.earthMoonDistanceKm * Math.cos(moonOrbitAngle),
+      y: this.earthMoonDistanceKm * Math.sin(moonOrbitAngle) * Math.cos(this.moonOrbitInclinationRad),
+      z: this.earthMoonDistanceKm * Math.sin(moonOrbitAngle) * Math.sin(this.moonOrbitInclinationRad),
+    };
+    const moonPosSun = {
+      x: earthPosSun.x + moonGeo.x,
+      y: earthPosSun.y + moonGeo.y,
+      z: earthPosSun.z + moonGeo.z,
+    };
+
+    const earthFromMoon = {
+      x: -moonGeo.x,
+      y: -moonGeo.y,
+      z: -moonGeo.z,
+    };
+    const sunFromMoon = {
+      x: -moonPosSun.x,
+      y: -moonPosSun.y,
+      z: -moonPosSun.z,
+    };
+
+    const earthDistanceKm = vectorLength(earthFromMoon);
+    const sunDistanceKm = vectorLength(sunFromMoon);
+
+    return {
+      ts: nowMs / 1000,
+      sim_elapsed_days: Number(elapsedDays.toFixed(5)),
+      earth_distance_km: Number(earthDistanceKm.toFixed(0)),
+      sun_distance_km: Number(sunDistanceKm.toFixed(0)),
+      distance_ratio_sun_to_earth: Number((sunDistanceKm / Math.max(earthDistanceKm, 1)).toFixed(2)),
+      earth_from_moon_km: {
+        x: Number(earthFromMoon.x.toFixed(3)),
+        y: Number(earthFromMoon.y.toFixed(3)),
+        z: Number(earthFromMoon.z.toFixed(3)),
+      },
+      sun_from_moon_km: {
+        x: Number(sunFromMoon.x.toFixed(3)),
+        y: Number(sunFromMoon.y.toFixed(3)),
+        z: Number(sunFromMoon.z.toFixed(3)),
+      },
+      earth_dir_from_moon: normalizeVec(earthFromMoon),
+      sun_dir_from_moon: normalizeVec(sunFromMoon),
+    };
+  }
+
+  computeSolarExposureForLatLon(lat, lon, frame) {
+    if (!frame?.sun_dir_from_moon) return 0.5;
+    const normal = latLonToLunarUnit(lat, lon);
+    const incidence = dotVec(normal, frame.sun_dir_from_moon);
+    if (incidence <= 0) return 0;
+
+    const horizonWeighted = Math.pow(incidence, 0.82);
+    const distanceScale = this.sunEarthDistanceKm / Math.max(frame.sun_distance_km || this.sunEarthDistanceKm, 1);
+    const inverseSquare = Math.pow(distanceScale, 2);
+    return clamp01(horizonWeighted * inverseSquare);
+  }
+}
+
 function getLunarTimeState(solarIntensity) {
   const solar = clamp01(solarIntensity);
   if (solar >= 0.55) return "DAYLIGHT";
@@ -414,10 +539,19 @@ class RoverNode {
     this.telemetryTopic = roverTopic(this.roverId, "telemetry");
     this.ackTopic = roverTopic(this.roverId, "ack");
     this.capabilities = getRoverCapabilities(this.roverId);
+    this.celestialDynamics = this.config.celestialDynamics || null;
+    this.latestCelestialFrame = this.config.latestCelestialFrame || null;
 
     // Initial position (Near crater Tycho, offset by rover)
     this.position = startPosition || { lat: -43.3, lon: -11.2 };
-    this.solarExposure = clamp01(0.6 + Math.random() * 0.4);
+    this.solarExposure = this.celestialDynamics
+      ? this.celestialDynamics.computeSolarExposureForLatLon(
+          this.position.lat,
+          this.position.lon,
+          this.latestCelestialFrame ||
+            this.celestialDynamics.computeFrame(Date.now()),
+        )
+      : clamp01(0.6 + Math.random() * 0.4);
     this.lunarTimeState = getLunarTimeState(this.solarExposure);
     this.terrainDifficulty = clamp01(0.2 + Math.random() * 0.45);
     this.commQuality = clamp01(0.72 + Math.random() * 0.22);
@@ -476,7 +610,26 @@ class RoverNode {
     this.predictedFaultProbability = 0;
   }
 
-  _updateSolarExposure() {
+  _updateSolarExposure(nowMs = Date.now()) {
+    if (this.celestialDynamics) {
+      const frame =
+        this.config.latestCelestialFrame ||
+        this.celestialDynamics.computeFrame(nowMs);
+      this.latestCelestialFrame = frame;
+      const baseExposure = this.celestialDynamics.computeSolarExposureForLatLon(
+        this.position.lat,
+        this.position.lon,
+        frame,
+      );
+      const microVariation =
+        this.state === RoverNode.STATE_EXECUTING
+          ? Math.random() * 0.012 - 0.006
+          : Math.random() * 0.008 - 0.004;
+      this.solarExposure = clamp01(baseExposure + microVariation);
+      this.lunarTimeState = getLunarTimeState(this.solarExposure);
+      return;
+    }
+
     this._solarPhase += 0.02;
     const base = 0.5 + 0.5 * Math.sin(this._solarPhase);
     const noise = (Math.random() * 0.1) - 0.05;
@@ -557,7 +710,7 @@ class RoverNode {
         : risk.predicted_fault_probability;
     this.bus.emit("log", {
       tag: "task",
-      text: `✅ [${this.roverId}] Started ${this.currentTaskId} (${this.activeTaskType}/${this.activeTaskDifficulty}, steps=${this.taskTotalSteps}, risk=${this.predictedFaultProbability.toFixed(3)})`,
+      text: `[${this.roverId}] Started ${this.currentTaskId} (${this.activeTaskType}/${this.activeTaskDifficulty}, steps=${this.taskTotalSteps}, risk=${this.predictedFaultProbability.toFixed(3)})`,
     });
     return [true, null];
   }
@@ -566,7 +719,7 @@ class RoverNode {
     if (this.state === RoverNode.STATE_EXECUTING) {
       this.bus.emit("log", {
         tag: "system",
-        text: `⏹ [${this.roverId}] Aborting task: ${this.currentTaskId}`,
+        text: `[${this.roverId}] Aborting task: ${this.currentTaskId}`,
       });
       this.state = RoverNode.STATE_IDLE;
       this._clearActiveTask();
@@ -580,7 +733,7 @@ class RoverNode {
     if (!this.lastFault) this.lastFault = "Commanded to SAFE_MODE";
     this.bus.emit("log", {
       tag: "system",
-      text: `🛡 [${this.roverId}] entering SAFE_MODE`,
+      text: `[${this.roverId}] Entering SAFE_MODE`,
     });
     return [true, null];
   }
@@ -592,7 +745,7 @@ class RoverNode {
       this.lastFault = null;
       this.bus.emit("log", {
         tag: "system",
-        text: `↻ [${this.roverId}] RESET: SAFE_MODE → IDLE`,
+        text: `[${this.roverId}] RESET: SAFE_MODE -> IDLE`,
       });
     }
     return [true, null];
@@ -668,7 +821,7 @@ class RoverNode {
     if (this.taskCounter >= Math.max(1, this.taskTotalSteps)) {
       this.bus.emit("log", {
         tag: "task",
-        text: `✅ [${this.roverId}] Task ${this.currentTaskId} completed!`,
+        text: `[${this.roverId}] Task ${this.currentTaskId} completed`,
       });
       this.state = RoverNode.STATE_IDLE;
       this._clearActiveTask();
@@ -681,7 +834,8 @@ class RoverNode {
   }
 
   publishTelemetry() {
-    this._updateSolarExposure();
+    this._updateSolarExposure(Date.now());
+    const frame = this.latestCelestialFrame;
     const telemetry = {
       ts: Date.now() / 1000,
       rover_id: this.roverId,
@@ -704,6 +858,18 @@ class RoverNode {
       thermal_stress: Number(this.thermalStress.toFixed(2)),
       capabilities: [...this.capabilities],
       position: { lat: this.position.lat, lon: this.position.lon },
+      celestial: frame
+        ? {
+            sim_elapsed_days: frame.sim_elapsed_days,
+            earth_distance_km: frame.earth_distance_km,
+            sun_distance_km: frame.sun_distance_km,
+            distance_ratio_sun_to_earth: frame.distance_ratio_sun_to_earth,
+            earth_from_moon_km: frame.earth_from_moon_km,
+            sun_from_moon_km: frame.sun_from_moon_km,
+            earth_dir_from_moon: frame.earth_dir_from_moon,
+            sun_dir_from_moon: frame.sun_dir_from_moon,
+          }
+        : null,
     };
     this.bus.emit(this.telemetryTopic, telemetry);
   }
@@ -723,11 +889,15 @@ class SpaceLinkNode {
     this.stats = { sent: 0, received: 0, dropped: 0 };
     this.defaultRoverId = (config.roverIds || [DEFAULT_ROVER_IDS[0]])[0];
     this.subscribedRovers = new Set();
+    this.commandBuffer = new Map();
+    this.losOutageActive = false;
+    this.losIssueReason = "";
 
     // Uplink: earth:uplink_cmd → (delay) → <rover-id>:command
     this.bus.on("earth:uplink_cmd", (data) =>
       this.relayCommand(data),
     );
+    this.bus.on("orbital:los-status", (status) => this.handleLosStatus(status));
 
     (this.config.roverIds || [this.defaultRoverId]).forEach((roverId) =>
       this.ensureRoverSubscriptions(roverId),
@@ -760,12 +930,104 @@ class SpaceLinkNode {
   relayCommand(data) {
     const roverId = data?.rover_id || this.defaultRoverId;
     this.ensureRoverSubscriptions(roverId);
+    if (this.losOutageActive) {
+      this.bufferCommand({ ...data, rover_id: roverId }, roverId);
+      return;
+    }
     this.relay(
       { ...data, rover_id: roverId },
       roverTopic(roverId, "command"),
       "UPLINK",
       roverId,
     );
+  }
+
+  handleLosStatus(status) {
+    const hasIssue = Boolean(status?.hasIssue);
+    const issueReason = String(status?.issueReason || "").trim();
+    if (hasIssue === this.losOutageActive && issueReason === this.losIssueReason) return;
+
+    const wasOutage = this.losOutageActive;
+    this.losOutageActive = hasIssue;
+    this.losIssueReason = issueReason;
+
+    if (!wasOutage && hasIssue) {
+      this.bus.emit("log", {
+        tag: "fault",
+        text: `Uplink buffering enabled: ${issueReason || "LOS outage detected"}`,
+      });
+      return;
+    }
+
+    if (wasOutage && !hasIssue) {
+      this.bus.emit("log", {
+        tag: "system",
+        text: "LOS restored. Releasing buffered uplink commands.",
+      });
+      this.flushBufferedCommands();
+    }
+  }
+
+  bufferCommand(data, roverId) {
+    const cmdId = String(data?.cmd_id || "");
+    if (!cmdId) return;
+
+    const existing = this.commandBuffer.get(cmdId);
+    if (existing) {
+      existing.data = { ...data };
+      existing.roverId = roverId;
+      this.bus.emit("spacelink:command-buffered", {
+        cmdId,
+        roverId,
+        queueDepth: this.commandBuffer.size,
+        issueReason: this.losIssueReason,
+      });
+      return;
+    }
+
+    this.commandBuffer.set(cmdId, {
+      data: { ...data },
+      roverId,
+      bufferedAt: Date.now() / 1000,
+    });
+    this.bus.emit("spacelink:command-buffered", {
+      cmdId,
+      roverId,
+      queueDepth: this.commandBuffer.size,
+      issueReason: this.losIssueReason,
+    });
+    this.bus.emit("log", {
+      tag: "relay",
+      text: `Buffered ${cmdId} [${roverId}] until LOS recovery`,
+    });
+  }
+
+  flushBufferedCommands() {
+    if (this.commandBuffer.size === 0) return;
+    const queuedEntries = Array.from(this.commandBuffer.values());
+    this.commandBuffer.clear();
+
+    queuedEntries.forEach((entry, index) => {
+      setTimeout(() => {
+        if (this.losOutageActive) {
+          this.bufferCommand(entry.data, entry.roverId);
+          return;
+        }
+
+        this.bus.emit("spacelink:command-released", {
+          cmdId: entry.data?.cmd_id || null,
+          roverId: entry.roverId,
+          bufferedFor: Math.max(0, Date.now() / 1000 - Number(entry.bufferedAt || 0)),
+          queueDepth: Math.max(0, queuedEntries.length - index - 1),
+        });
+        this.relay(
+          { ...entry.data, rover_id: entry.roverId },
+          roverTopic(entry.roverId, "command"),
+          "UPLINK",
+          entry.roverId,
+        );
+      }, index * 120);
+    });
   }
 
   relay(data, targetEvent, direction, roverId = null) {
@@ -776,7 +1038,7 @@ class SpaceLinkNode {
       this.stats.dropped++;
       this.bus.emit("log", {
         tag: "drop",
-        text: `❌ ${direction}${roverId ? ` [${roverId}]` : ""} DROPPED`,
+        text: `${direction}${roverId ? ` [${roverId}]` : ""} DROPPED`,
       });
       this.bus.emit("stats:update", this.stats);
       return;
@@ -789,7 +1051,7 @@ class SpaceLinkNode {
 
     this.bus.emit("log", {
       tag: "relay",
-      text: `📡 ${direction}${roverId ? ` [${roverId}]` : ""} relay (${delay.toFixed(2)}s delay)`,
+      text: `${direction}${roverId ? ` [${roverId}]` : ""} relay (${delay.toFixed(2)}s delay)`,
     });
     this.bus.emit("signal:active", { direction, delay, rover_id: roverId });
 
@@ -824,6 +1086,12 @@ class EarthNode {
     // Listen for ACKs arriving at Earth
     this.bus.on("earth:ack", (data) => this.ackCallback(data));
     this.bus.on("earth:telemetry", (data) => this.telemetryCallback(data));
+    this.bus.on("spacelink:command-buffered", (data) =>
+      this.handleBufferedCommand(data),
+    );
+    this.bus.on("spacelink:command-released", (data) =>
+      this.handleReleasedCommand(data),
+    );
 
     // Check for timeouts every 1s
     this.timeoutInterval = setInterval(() => this.checkTimeouts(), 1000);
@@ -897,7 +1165,7 @@ class EarthNode {
     this.bus.emit("earth:selected-rover", { rover_id: roverId });
     this.bus.emit("log", {
       tag: "system",
-      text: `🎯 Selected rover set to [${roverId}]`,
+      text: `Selected rover set to [${roverId}]`,
     });
     return true;
   }
@@ -950,12 +1218,12 @@ class EarthNode {
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
           tag: "ack",
-          text: `✅ ACK ${ackId} [${roverId}]: ACCEPTED (RTT: ${rtt.toFixed(2)}s)`,
+          text: `ACK ${ackId} [${roverId}]: ACCEPTED (RTT: ${rtt.toFixed(2)}s)`,
         });
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
+          text: `ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
         });
       }
 
@@ -971,16 +1239,53 @@ class EarthNode {
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
           tag: "ack",
-          text: `✅ ACK ${ackId} [${roverId}]: ACCEPTED (late)`,
+          text: `ACK ${ackId} [${roverId}]: ACCEPTED (late)`,
         });
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
+          text: `ACK ${ackId} [${roverId}]: REJECTED${reason ? ` (${reason})` : ""}`,
         });
       }
     }
 
+    this.bus.emit("pending:update", this.pendingCommands);
+  }
+
+  handleBufferedCommand(data) {
+    const cmdId = data?.cmdId;
+    if (!cmdId || !this.pendingCommands[cmdId]) return;
+
+    const info = this.pendingCommands[cmdId];
+    const roverId = data?.roverId || info.roverId;
+    const transitioned = !info.buffered;
+    info.buffered = true;
+    info.bufferedAt = Date.now() / 1000;
+
+    if (transitioned) {
+      this.bus.emit("log", {
+        tag: "system",
+        text: `${cmdId} [${roverId}] queued at relay until LOS returns`,
+      });
+    }
+    this.bus.emit("pending:update", this.pendingCommands);
+  }
+
+  handleReleasedCommand(data) {
+    const cmdId = data?.cmdId;
+    if (!cmdId || !this.pendingCommands[cmdId]) return;
+
+    const info = this.pendingCommands[cmdId];
+    if (!info.buffered) return;
+    const roverId = data?.roverId || info.roverId;
+
+    info.buffered = false;
+    info.sentAt = Date.now() / 1000;
+    info.bufferedAt = null;
+    this.bus.emit("log", {
+      tag: "system",
+      text: `${cmdId} [${roverId}] released from relay buffer`,
+    });
     this.bus.emit("pending:update", this.pendingCommands);
   }
 
@@ -989,6 +1294,7 @@ class EarthNode {
     const timedOut = [];
 
     for (const [cmdId, info] of Object.entries(this.pendingCommands)) {
+      if (info.buffered) continue;
       if (now - info.sentAt > this.ackTimeout) {
         timedOut.push(cmdId);
       }
@@ -1001,13 +1307,13 @@ class EarthNode {
         info.sentAt = Date.now() / 1000;
         this.bus.emit("log", {
           tag: "system",
-          text: `⏰ No ACK for ${cmdId} [${info.roverId}], retrying (attempt ${info.attempt}/${this.maxRetries})`,
+          text: `No ACK for ${cmdId} [${info.roverId}], retrying (attempt ${info.attempt}/${this.maxRetries})`,
         });
         this.bus.emit("earth:uplink_cmd", info.cmdData);
       } else {
         this.bus.emit("log", {
           tag: "ack-fail",
-          text: `❌ Command ${cmdId} [${info.roverId}] failed after ${this.maxRetries} attempts`,
+          text: `Command ${cmdId} [${info.roverId}] failed after ${this.maxRetries} attempts`,
         });
         this.bus.emit("ack:resolved", {
           cmdId,
@@ -1064,13 +1370,15 @@ class EarthNode {
       attempt: 1,
       cmdData,
       roverId: targetRoverId,
+      buffered: false,
+      bufferedAt: null,
     };
 
     // Send to space link
     this.bus.emit("earth:uplink_cmd", cmdData);
     this.bus.emit("log", {
       tag: "cmd",
-      text: `📤 Sent ${cmdId} -> [${targetRoverId}]: ${cmdType}${taskId ? " " + taskId : ""}${taskOptions ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})` : ""}`,
+      text: `Sent ${cmdId} -> [${targetRoverId}]: ${cmdType}${taskId ? " " + taskId : ""}${taskOptions ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})` : ""}`,
     });
     this.bus.emit("cmd:sent", {
       cmdId,
@@ -1131,6 +1439,7 @@ class SimulationController {
     const roverIds = resolveRoverIds();
     const runtimeOptions = resolveRuntimeOptions();
     const taskCatalog = options.taskCatalog || FALLBACK_TASK_CATALOG;
+    this.celestialDynamics = new CelestialDynamics();
     this.bus = new EventBus();
     this.config = {
       baseLatency: runtimeOptions.baseLatency,
@@ -1139,6 +1448,8 @@ class SimulationController {
       faultProbability: runtimeOptions.faultProbability,
       roverIds,
       taskCatalog,
+      celestialDynamics: this.celestialDynamics,
+      latestCelestialFrame: this.celestialDynamics.computeFrame(Date.now()),
     };
 
     this.startTime = Date.now();
@@ -1155,6 +1466,14 @@ class SimulationController {
     this.spaceLink = new SpaceLinkNode(this.bus, this.config);
     this.earth = new EarthNode(this.bus, this.config);
     this.telemetryMonitor = new TelemetryMonitor(this.bus, this.earth);
+    this.publishCelestialFrame();
+    this.celestialInterval = setInterval(() => this.publishCelestialFrame(), 1000);
+  }
+
+  publishCelestialFrame(nowMs = Date.now()) {
+    const frame = this.celestialDynamics.computeFrame(nowMs);
+    this.config.latestCelestialFrame = frame;
+    this.bus.emit("celestial:ephemeris", frame);
   }
 
   applyRoverRuntimeOverrides(runtimeOptions) {
@@ -1253,6 +1572,7 @@ class SimulationController {
   destroy() {
     this.rovers.forEach((rover) => rover.destroy());
     this.earth.destroy();
+    clearInterval(this.celestialInterval);
   }
 }
 

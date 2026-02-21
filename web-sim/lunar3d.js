@@ -24,10 +24,22 @@ class VisualizationController {
     this.moon = null;
     this.stars = null;
     this.earthBase = null;
+    this.earthCloudLayer = null;
+    this.sunSurface = null;
+    this.sunGlow = null;
+    this.sunGroup = null;
+    this.sunLight = null;
+    this.latestCelestialFrame = null;
+    this.displayEarthMoonDistanceLu = 10.8;
+    this.displaySunDistanceClampLu = { min: 88, max: 320 };
 
     this.viewMode = "orbital";
-    this.orbitalDistance = 6.6;
-    this.cameraDistance = 6.6;
+    this.defaultOrbitalDistance = 7.6;
+    this.defaultCameraAzimuth = -2.22;
+    this.defaultCameraPolar = 1.08;
+    this.defaultEarthFrameFactor = 0.22;
+    this.orbitalDistance = this.defaultOrbitalDistance;
+    this.cameraDistance = this.defaultOrbitalDistance;
     this.cameraMinDistance = 1.35;
     this.cameraMaxDistance = 16.0;
     this.cameraAzimuth = 0.54;
@@ -86,8 +98,14 @@ class VisualizationController {
     this.tmpVecC = new THREE.Vector3();
     this.tmpVecD = new THREE.Vector3();
     this.tmpColor = new THREE.Color();
-    this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
+    this.earthAnchorOrbital = new THREE.Vector3(8.2, 1.0, 6.6);
     this.earthAnchor = this.earthAnchorOrbital.clone();
+    this.sunAnchorOrbital = new THREE.Vector3(20.6, 2.1, 15.8);
+    this.earthTextureUrls = {
+      color: "assets/nasa/earth-blue-marble-2048.png",
+      clouds: "assets/nasa/earth-clouds-2048.jpg",
+    };
+    this.sunTextureUrl = "assets/nasa/sun-sdo-2048-0171.jpg";
 
     this.init();
     this.bindBus();
@@ -105,7 +123,7 @@ class VisualizationController {
       42,
       this.width / this.height,
       0.003,
-      100,
+      420,
     );
 
     this.renderer = new THREE.WebGLRenderer({
@@ -122,6 +140,7 @@ class VisualizationController {
     this.loadCuriosityModel();
     this.createStars();
     this.createEarthBase();
+    this.createSun();
     this.createSatellites();
     this.setupInteraction();
     this.setViewMode("orbital", false);
@@ -132,6 +151,7 @@ class VisualizationController {
   bindBus() {
     this.bus.on("earth:telemetry", (data) => this.upsertRoverFromTelemetry(data));
     this.bus.on("fleet:update", (fleet) => this.upsertFleetSnapshot(fleet));
+    this.bus.on("celestial:ephemeris", (frame) => this.setCelestialFrame(frame));
     this.bus.on("earth:selected-rover", (data) => {
       if (data?.rover_id) this.setSelectedRover(data.rover_id);
     });
@@ -145,9 +165,11 @@ class VisualizationController {
     hemi.position.set(0, 6, 0);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xf8fcff, 2.25);
-    sun.position.set(6.2, 4.4, 5.1);
-    this.scene.add(sun);
+    this.sunLight = new THREE.DirectionalLight(0xf8fcff, 2.35);
+    this.sunLight.position.copy(this.sunAnchorOrbital);
+    this.scene.add(this.sunLight);
+    this.scene.add(this.sunLight.target);
+    this.sunLight.target.position.set(0, 0, 0);
 
     const fill = new THREE.PointLight(0x7cc8ff, 0.55, 24, 2);
     fill.position.set(-3.4, 2.1, 2.8);
@@ -263,7 +285,7 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ External moon texture unavailable, using procedural lunar albedo",
+          text: "WARN: External moon texture unavailable, using procedural lunar albedo",
         });
       },
     );
@@ -274,7 +296,7 @@ class VisualizationController {
       this.curiosityModelFailed = true;
       this.bus.emit("log", {
         tag: "system",
-        text: "⚠️ STL loader unavailable, using fallback rover mesh",
+        text: "WARN: STL loader unavailable, using fallback rover mesh",
       });
       return;
     }
@@ -292,7 +314,7 @@ class VisualizationController {
         this.curiosityModelFailed = true;
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Curiosity model failed to load, using fallback rover mesh",
+          text: "WARN: Curiosity model failed to load, using fallback rover mesh",
         });
       },
     );
@@ -333,7 +355,9 @@ class VisualizationController {
     rover.modelMesh = model;
     rover.modelMaterial = modelMaterial;
 
-    if (rover.fallbackMesh) {
+    if (rover.fallbackGroup) {
+      rover.fallbackGroup.visible = false;
+    } else if (rover.fallbackMesh) {
       rover.fallbackMesh.visible = false;
     }
 
@@ -381,34 +405,52 @@ class VisualizationController {
 
   createEarthBase() {
     const baseGroup = new THREE.Group();
+    const earthRadius = 0.34;
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 26, 26),
+      new THREE.SphereGeometry(earthRadius, 64, 64),
       new THREE.MeshStandardMaterial({
-        color: 0x93c5fd,
-        emissive: 0x1d4e89,
-        emissiveIntensity: 0.55,
-        roughness: 0.36,
-        metalness: 0.08,
+        color: 0x9fc4eb,
+        emissive: 0x0f2742,
+        emissiveIntensity: 0.46,
+        roughness: 0.82,
+        metalness: 0.02,
       }),
     );
+    core.rotation.y = Math.PI * 0.88;
     baseGroup.add(core);
 
+    const cloudBandMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+      roughness: 1.0,
+      metalness: 0.0,
+    });
     const cloudBand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.312, 20, 20),
+      new THREE.SphereGeometry(earthRadius * 1.02, 52, 52),
+      cloudBandMaterial,
+    );
+    cloudBand.rotation.y = Math.PI * 0.92;
+    baseGroup.add(cloudBand);
+
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(earthRadius * 1.08, 42, 42),
       new THREE.MeshBasicMaterial({
         color: 0xe0f2fe,
         transparent: true,
-        opacity: 0.17,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
       }),
     );
-    baseGroup.add(cloudBand);
+    baseGroup.add(atmosphere);
 
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.44, 18, 18),
+      new THREE.SphereGeometry(earthRadius * 1.34, 26, 26),
       new THREE.MeshBasicMaterial({
-        color: 0x67e8f9,
+        color: 0x8ad8ff,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.17,
         blending: THREE.AdditiveBlending,
       }),
     );
@@ -417,6 +459,207 @@ class VisualizationController {
     baseGroup.position.copy(this.earthAnchor);
     this.rootGroup.add(baseGroup);
     this.earthBase = baseGroup;
+    this.earthCloudLayer = cloudBand;
+
+    this.upgradeEarthTextures(core.material, cloudBandMaterial);
+  }
+
+  upgradeEarthTextures(coreMaterial, cloudMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    const maxAnisotropy = Math.min(
+      14,
+      this.renderer?.capabilities?.getMaxAnisotropy
+        ? this.renderer.capabilities.getMaxAnisotropy()
+        : 14,
+    );
+    const applyMapSettings = (texture, isColor = false) => {
+      if (!texture) return;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = maxAnisotropy;
+      if (isColor) texture.colorSpace = THREE.SRGBColorSpace;
+    };
+
+    textureLoader.load(
+      this.earthTextureUrls.color,
+      (colorMap) => {
+        applyMapSettings(colorMap, true);
+        coreMaterial.map = colorMap;
+        coreMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Earth color texture unavailable, using procedural fallback",
+        });
+      },
+    );
+
+    if (this.earthTextureUrls.normal) {
+      textureLoader.load(
+        this.earthTextureUrls.normal,
+        (normalMap) => {
+          applyMapSettings(normalMap, false);
+          coreMaterial.normalMap = normalMap;
+          coreMaterial.normalScale = new THREE.Vector2(0.55, 0.55);
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
+
+    if (this.earthTextureUrls.specular) {
+      textureLoader.load(
+        this.earthTextureUrls.specular,
+        (specMap) => {
+          applyMapSettings(specMap, false);
+          coreMaterial.roughnessMap = specMap;
+          coreMaterial.metalness = 0.0;
+          coreMaterial.roughness = 0.78;
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
+
+    textureLoader.load(
+      this.earthTextureUrls.clouds,
+      (cloudMap) => {
+        applyMapSettings(cloudMap, false);
+        cloudMaterial.map = cloudMap;
+        cloudMaterial.alphaMap = cloudMap;
+        cloudMaterial.opacity = 0.42;
+        cloudMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Earth cloud texture unavailable, using atmospheric fallback",
+        });
+      },
+    );
+  }
+
+  createSun() {
+    const sunGroup = new THREE.Group();
+    const sunRadius = 2.35;
+    const sunSurfaceMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffcc7a,
+    });
+    const sunSurface = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius, 72, 72),
+      sunSurfaceMaterial,
+    );
+    sunGroup.add(sunSurface);
+
+    const sunCorona = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.2, 40, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0xffa155,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    sunGroup.add(sunCorona);
+
+    const sunHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.55, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffbe74,
+        transparent: true,
+        opacity: 0.13,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+      }),
+    );
+    sunGroup.add(sunHalo);
+
+    sunGroup.position.copy(this.sunAnchorOrbital);
+    this.scene.add(sunGroup);
+    this.sunGroup = sunGroup;
+    this.sunSurface = sunSurface;
+    this.sunGlow = sunHalo;
+
+    if (this.sunLight) {
+      this.sunLight.position.copy(sunGroup.position);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
+
+    this.upgradeSunTexture(sunSurfaceMaterial);
+  }
+
+  upgradeSunTexture(sunSurfaceMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    textureLoader.load(
+      this.sunTextureUrl,
+      (sunMap) => {
+        sunMap.colorSpace = THREE.SRGBColorSpace;
+        sunMap.wrapS = THREE.ClampToEdgeWrapping;
+        sunMap.wrapT = THREE.ClampToEdgeWrapping;
+        sunSurfaceMaterial.map = sunMap;
+        sunSurfaceMaterial.alphaMap = sunMap;
+        sunSurfaceMaterial.transparent = true;
+        sunSurfaceMaterial.opacity = 0.96;
+        sunSurfaceMaterial.blending = THREE.AdditiveBlending;
+        sunSurfaceMaterial.depthWrite = false;
+        sunSurfaceMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Sun texture unavailable, using emissive fallback",
+        });
+      },
+    );
+  }
+
+  setCelestialFrame(frame) {
+    if (!frame || !frame.earth_from_moon_km || !frame.sun_from_moon_km) return;
+    this.latestCelestialFrame = frame;
+
+    const earthKmVec = frame.earth_from_moon_km;
+    const sunKmVec = frame.sun_from_moon_km;
+    const earthDistKm = Math.max(
+      Number(frame.earth_distance_km) || this.tmpVecA.set(earthKmVec.x, earthKmVec.y, earthKmVec.z).length(),
+      1,
+    );
+    const sunDistKmRaw = Math.max(
+      Number(frame.sun_distance_km) || this.tmpVecB.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).length(),
+      1,
+    );
+
+    const earthScale = this.displayEarthMoonDistanceLu / earthDistKm;
+    this.earthAnchorOrbital.set(
+      earthKmVec.x * earthScale,
+      earthKmVec.y * earthScale,
+      earthKmVec.z * earthScale,
+    );
+
+    const ratioRaw = sunDistKmRaw / earthDistKm;
+    const compressedRatio = Math.max(9, Math.log10(ratioRaw + 1) * 9.2);
+    const sunDistanceLu = THREE.MathUtils.clamp(
+      this.displayEarthMoonDistanceLu * compressedRatio,
+      this.displaySunDistanceClampLu.min,
+      this.displaySunDistanceClampLu.max,
+    );
+
+    this.tmpVecC.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).normalize().multiplyScalar(sunDistanceLu);
+    this.sunAnchorOrbital.copy(this.tmpVecC);
+
+    if (this.earthBase) this.earthBase.position.copy(this.earthAnchorOrbital);
+    if (this.sunGroup) this.sunGroup.position.copy(this.sunAnchorOrbital);
+    if (this.sunLight) {
+      this.sunLight.position.copy(this.sunAnchorOrbital);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
   }
 
   createSatellites() {
@@ -469,41 +712,96 @@ class VisualizationController {
       .multiplyScalar(speed);
 
     const group = new THREE.Group();
+
+    const busMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8c3d4,
+      metalness: 0.62,
+      roughness: 0.28,
+      emissive: 0x152030,
+      emissiveIntensity: 0.35,
+    });
     const bus = new THREE.Mesh(
-      new THREE.BoxGeometry(def.size * 1.15, def.size * 0.55, def.size * 0.5),
-      new THREE.MeshStandardMaterial({
-        color: 0xb4bdca,
-        metalness: 0.55,
-        roughness: 0.29,
-        emissive: 0x151f2f,
-      }),
+      new THREE.BoxGeometry(def.size * 1.05, def.size * 0.46, def.size * 0.5),
+      busMaterial,
     );
     group.add(bus);
 
-    const panelMat = new THREE.MeshStandardMaterial({
-      color: def.color,
-      emissive: new THREE.Color(def.color).multiplyScalar(0.45),
-      metalness: 0.65,
-      roughness: 0.35,
-    });
-    const panelGeo = new THREE.BoxGeometry(def.size * 1.8, def.size * 0.08, def.size * 0.7);
-    const panelLeft = new THREE.Mesh(panelGeo, panelMat);
-    panelLeft.position.x = -def.size * 1.2;
-    const panelRight = panelLeft.clone();
-    panelRight.position.x = def.size * 1.2;
-    group.add(panelLeft, panelRight);
-
-    const dish = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0, def.size * 0.28, def.size * 0.36, 14, 1),
+    const serviceRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.23, def.size * 0.23, def.size * 0.58, 14),
       new THREE.MeshStandardMaterial({
-        color: 0xe5e7eb,
-        metalness: 0.5,
-        roughness: 0.25,
+        color: 0xd5dbe6,
+        metalness: 0.54,
+        roughness: 0.34,
       }),
     );
-    dish.rotation.z = Math.PI / 2;
-    dish.position.z = def.size * 0.46;
+    serviceRing.rotation.x = Math.PI / 2;
+    group.add(serviceRing);
+
+    const panelMat = new THREE.MeshStandardMaterial({
+      color: def.color,
+      emissive: new THREE.Color(def.color).multiplyScalar(0.52),
+      metalness: 0.74,
+      roughness: 0.32,
+    });
+    const panelWing = new THREE.BoxGeometry(def.size * 1.85, def.size * 0.06, def.size * 0.64);
+    const panelFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x7f94ac,
+      metalness: 0.5,
+      roughness: 0.4,
+    });
+    const panelFrame = new THREE.BoxGeometry(def.size * 1.9, def.size * 0.02, def.size * 0.72);
+    const panelLeft = new THREE.Mesh(panelWing, panelMat);
+    const panelLeftFrame = new THREE.Mesh(panelFrame, panelFrameMat);
+    panelLeft.position.x = -def.size * 1.22;
+    panelLeftFrame.position.copy(panelLeft.position).setY(panelLeft.position.y + def.size * 0.02);
+    const panelRight = panelLeft.clone();
+    const panelRightFrame = panelLeftFrame.clone();
+    panelRight.position.x = def.size * 1.22;
+    panelRightFrame.position.x = def.size * 1.22;
+    group.add(panelLeft, panelLeftFrame, panelRight, panelRightFrame);
+
+    const antennaMast = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.045, def.size * 0.045, def.size * 0.44, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xd0d8e5,
+        metalness: 0.48,
+        roughness: 0.31,
+      }),
+    );
+    antennaMast.position.set(0, def.size * 0.28, def.size * 0.08);
+    group.add(antennaMast);
+
+    const dish = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.03, def.size * 0.28, def.size * 0.34, 18, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xe5e7eb,
+        metalness: 0.56,
+        roughness: 0.24,
+      }),
+    );
+    dish.rotation.x = Math.PI / 2;
+    dish.position.set(0, def.size * 0.28, def.size * 0.39);
     group.add(dish);
+
+    const sensorPod = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.11, 10, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0x9fb4d0,
+        emissive: 0x1a3350,
+        emissiveIntensity: 0.6,
+        roughness: 0.3,
+        metalness: 0.42,
+      }),
+    );
+    sensorPod.position.set(0, 0, def.size * 0.35);
+    group.add(sensorPod);
+
+    const navBeacon = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.055, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x93c5fd }),
+    );
+    navBeacon.position.set(0, def.size * 0.32, -def.size * 0.28);
+    group.add(navBeacon);
 
     group.position.copy(pos);
 
@@ -741,6 +1039,7 @@ class VisualizationController {
   upsertRoverFromTelemetry(data) {
     const roverId = data?.rover_id;
     if (!roverId) return;
+    if (data?.celestial) this.setCelestialFrame(data.celestial);
 
     let rover = this.rovers.get(roverId);
     if (!rover) {
@@ -768,29 +1067,97 @@ class VisualizationController {
 
   createRover(roverId) {
     const group = new THREE.Group();
+    const fallbackGroup = new THREE.Group();
+    group.add(fallbackGroup);
+
     const fallbackMaterial = new THREE.MeshStandardMaterial({
       color: 0x34d399,
       emissive: 0x0a1f16,
-      roughness: 0.48,
-      metalness: 0.26,
+      roughness: 0.46,
+      metalness: 0.28,
     });
-    const fallbackMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, 0.016, 0.02),
+
+    const chassisDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(0.033, 0.008, 0.022),
       fallbackMaterial,
     );
-    group.add(fallbackMesh);
+    chassisDeck.position.y = 0.005;
+    fallbackGroup.add(chassisDeck);
+
+    const fallbackMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.03, 0.008, 0.02),
+      fallbackMaterial,
+    );
+    fallbackGroup.add(fallbackMesh);
+
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.002, 0.026),
+      new THREE.MeshStandardMaterial({
+        color: 0x6aa8dc,
+        emissive: 0x143150,
+        emissiveIntensity: 0.38,
+        roughness: 0.42,
+        metalness: 0.62,
+      }),
+    );
+    panel.position.y = 0.011;
+    fallbackGroup.add(panel);
+
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0016, 0.0016, 0.012, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xc8d2df,
+        metalness: 0.46,
+        roughness: 0.36,
+      }),
+    );
+    mast.position.set(0.006, 0.016, 0.002);
+    fallbackGroup.add(mast);
+
+    const cameraHead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.008, 0.005, 0.006),
+      new THREE.MeshStandardMaterial({
+        color: 0xcdd9e8,
+        metalness: 0.44,
+        roughness: 0.33,
+      }),
+    );
+    cameraHead.position.set(0.006, 0.022, 0.002);
+    fallbackGroup.add(cameraHead);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.0048, 0.0048, 0.0034, 12);
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x4a5868,
+      roughness: 0.84,
+      metalness: 0.1,
+    });
+    const wheelOffsets = [
+      [-0.012, 0.0, -0.011],
+      [0.0, 0.0, -0.011],
+      [0.012, 0.0, -0.011],
+      [-0.012, 0.0, 0.011],
+      [0.0, 0.0, 0.011],
+      [0.012, 0.0, 0.011],
+    ];
+    wheelOffsets.forEach(([x, y, z]) => {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, y, z);
+      fallbackGroup.add(wheel);
+    });
 
     const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x34d399 });
     const beacon = new THREE.Mesh(
       new THREE.SphereGeometry(0.0048, 10, 10),
       beaconMaterial,
     );
-    beacon.position.set(0, 0.024, 0);
-    group.add(beacon);
+    beacon.position.set(0, 0.027, 0);
+    fallbackGroup.add(beacon);
 
     const rover = {
       id: roverId,
       group,
+      fallbackGroup,
       fallbackMesh,
       fallbackMaterial,
       beaconMaterial,
@@ -893,11 +1260,12 @@ class VisualizationController {
   }
 
   resetView(emitEvent = true) {
-    this.cameraDistance = 6.6;
+    this.cameraDistance = this.defaultOrbitalDistance;
     this.orbitalDistance = this.cameraDistance;
-    this.cameraAzimuth = 0.54;
-    this.cameraPolar = 1.08;
-    this.cameraTargetDesired.set(0, 0, 0);
+    this.cameraAzimuth = this.defaultCameraAzimuth;
+    this.cameraPolar = this.defaultCameraPolar;
+    this.cameraTargetDesired.copy(this.earthAnchorOrbital).multiplyScalar(this.defaultEarthFrameFactor);
+    this.cameraTargetDesired.y *= 0.42;
     this.cameraTarget.copy(this.cameraTargetDesired);
     this.updateCamera(true);
     this.syncNavigationTelemetry();
@@ -963,20 +1331,21 @@ class VisualizationController {
   }
 
   updateSignalLossTracking(linkStatus, nowMs = performance.now()) {
-    const hasNoRoverLOS = linkStatus.roverTotal > 0 && linkStatus.roverClear === 0;
+    const hasNoLineOfSight = Boolean(linkStatus.hasIssue);
     const tracker = this.signalLossState;
     let transitioned = false;
 
-    if (hasNoRoverLOS) {
+    if (hasNoLineOfSight) {
       if (!tracker.active) {
         tracker.active = true;
         tracker.startedAtMs = nowMs;
         tracker.currentDurationMs = 0;
         tracker.outageCount += 1;
         transitioned = true;
+        const reason = linkStatus.issueReason || "Issue: no line-of-sight contact";
         this.bus.emit("log", {
           tag: "fault",
-          text: "📡 LOS outage started: selected rover has no satellite line-of-sight",
+          text: `LOS outage started: ${reason}`,
         });
       } else {
         tracker.currentDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
@@ -993,7 +1362,7 @@ class VisualizationController {
       transitioned = true;
       this.bus.emit("log", {
         tag: "system",
-        text: `✅ LOS restored after ${this.formatDurationMs(durationMs)}`,
+        text: `LOS restored after ${this.formatDurationMs(durationMs)}`,
       });
     }
 
@@ -1025,10 +1394,10 @@ class VisualizationController {
       if (stripValueEl) {
         stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
       }
-      if (metaEl && this.linkStatus.roverTotal > 0 && this.linkStatus.roverClear === 0) {
+      if (metaEl) {
+        const reason = this.linkStatus.issueReason || "Issue: no line-of-sight contact";
         metaEl.classList.add("warning");
-        metaEl.textContent =
-          `${this.linkStatus.issueReason || "Issue: rover has no LOS path"} · Outage ${this.formatDurationMs(activeDurationMs)}`;
+        metaEl.textContent = `${reason} · Outage ${this.formatDurationMs(activeDurationMs)}`;
       }
       return;
     }
@@ -1187,7 +1556,9 @@ class VisualizationController {
     const roverTotal = this.linkStatus.roverTotal;
     const roverClear = this.linkStatus.roverClear;
     const hasIssue = Boolean(this.linkStatus.hasIssue);
-    const zoomFactor = (8.4 / Math.max(this.orbitalDistance, 0.2)).toFixed(1);
+    const zoomFactor = (
+      this.defaultOrbitalDistance / Math.max(this.orbitalDistance, 0.2)
+    ).toFixed(1);
 
     if (roverValueEl) roverValueEl.textContent = selectedLabel;
     if (linksValueEl) {
@@ -1434,7 +1805,7 @@ class VisualizationController {
     this.updateMetaText();
     this.bus.emit("log", {
       tag: "system",
-      text: `🛰 Physics collision: ${message}`,
+      text: `Physics collision: ${message}`,
     });
   }
 
@@ -1528,7 +1899,17 @@ class VisualizationController {
     const prev = this.linkStatus;
     const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
     this.linkStatus = linkStatus;
-    if (changed || lossTransitioned) this.updateMetaText();
+    if (changed || lossTransitioned) {
+      this.bus.emit("orbital:los-status", {
+        hasIssue: linkStatus.hasIssue,
+        issueReason: linkStatus.issueReason,
+        earthClear: linkStatus.earthClear,
+        earthTotal: linkStatus.earthTotal,
+        roverClear: linkStatus.roverClear,
+        roverTotal: linkStatus.roverTotal,
+      });
+      this.updateMetaText();
+    }
   }
 
   onResize() {
@@ -1546,8 +1927,12 @@ class VisualizationController {
     const now = performance.now();
     const dt = (now - this.lastFrameTs) / 1000;
     this.lastFrameTs = now;
+    const clampedDt = Math.min(Math.max(dt, 0), 0.06);
 
     this.physicsStep(dt);
+    if (this.earthBase) this.earthBase.rotation.y += clampedDt * 0.032;
+    if (this.earthCloudLayer) this.earthCloudLayer.rotation.y += clampedDt * 0.065;
+    if (this.sunSurface) this.sunSurface.rotation.y += clampedDt * 0.018;
     this.updateCamera();
     this.updateSignalLossUi(now);
     this.renderer.render(this.scene, this.camera);
