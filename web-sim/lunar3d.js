@@ -149,9 +149,13 @@ class VisualizationController {
   }
 
   bindBus() {
-    this.bus.on("earth:telemetry", (data) => this.upsertRoverFromTelemetry(data));
+    this.bus.on("earth:telemetry", (data) =>
+      this.upsertRoverFromTelemetry(data),
+    );
     this.bus.on("fleet:update", (fleet) => this.upsertFleetSnapshot(fleet));
-    this.bus.on("celestial:ephemeris", (frame) => this.setCelestialFrame(frame));
+    this.bus.on("celestial:ephemeris", (frame) =>
+      this.setCelestialFrame(frame),
+    );
     this.bus.on("earth:selected-rover", (data) => {
       if (data?.rover_id) this.setSelectedRover(data.rover_id);
     });
@@ -233,7 +237,9 @@ class VisualizationController {
       for (let x = 0; x < width; x += 1) {
         const i = (y * width + x) * 4;
         const u = x / width;
-        const grain = 10 * (Math.sin(u * 85) + Math.cos(v * 51)) + 12 * Math.sin((u + v) * 41);
+        const grain =
+          10 * (Math.sin(u * 85) + Math.cos(v * 51)) +
+          12 * Math.sin((u + v) * 41);
         const shade = Math.round(112 + grain + Math.random() * 18);
         data[i] = shade;
         data[i + 1] = shade;
@@ -261,7 +267,9 @@ class VisualizationController {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(
       14,
-      this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
+      this.renderer.capabilities.getMaxAnisotropy
+        ? this.renderer.capabilities.getMaxAnisotropy()
+        : 14,
     );
     return texture;
   }
@@ -274,7 +282,9 @@ class VisualizationController {
         colorMap.colorSpace = THREE.SRGBColorSpace;
         colorMap.anisotropy = Math.min(
           14,
-          this.renderer.capabilities.getMaxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 14,
+          this.renderer.capabilities.getMaxAnisotropy
+            ? this.renderer.capabilities.getMaxAnisotropy()
+            : 14,
         );
         material.map = colorMap;
         material.bumpMap = colorMap;
@@ -628,11 +638,13 @@ class VisualizationController {
     const earthKmVec = frame.earth_from_moon_km;
     const sunKmVec = frame.sun_from_moon_km;
     const earthDistKm = Math.max(
-      Number(frame.earth_distance_km) || this.tmpVecA.set(earthKmVec.x, earthKmVec.y, earthKmVec.z).length(),
+      Number(frame.earth_distance_km) ||
+        this.tmpVecA.set(earthKmVec.x, earthKmVec.y, earthKmVec.z).length(),
       1,
     );
     const sunDistKmRaw = Math.max(
-      Number(frame.sun_distance_km) || this.tmpVecB.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).length(),
+      Number(frame.sun_distance_km) ||
+        this.tmpVecB.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).length(),
       1,
     );
 
@@ -651,7 +663,10 @@ class VisualizationController {
       this.displaySunDistanceClampLu.max,
     );
 
-    this.tmpVecC.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).normalize().multiplyScalar(sunDistanceLu);
+    this.tmpVecC
+      .set(sunKmVec.x, sunKmVec.y, sunKmVec.z)
+      .normalize()
+      .multiplyScalar(sunDistanceLu);
     this.sunAnchorOrbital.copy(this.tmpVecC);
 
     if (this.earthBase) this.earthBase.position.copy(this.earthAnchorOrbital);
@@ -664,9 +679,30 @@ class VisualizationController {
 
   createSatellites() {
     const orbitDefs = [
-      { radius: 3.4, tiltX: 0.16, tiltZ: -0.06, phase: 0.0, size: 0.048, color: 0x4fd1f9 },
-      { radius: 4.55, tiltX: 0.78, tiltZ: 0.46, phase: 2.1, size: 0.054, color: 0xa78bfa },
-      { radius: 5.95, tiltX: 0.52, tiltZ: -0.86, phase: 4.35, size: 0.061, color: 0x93c5fd },
+      {
+        radius: 3.4,
+        tiltX: 0.16,
+        tiltZ: -0.06,
+        phase: 0.0,
+        size: 0.048,
+        color: 0x4fd1f9,
+      },
+      {
+        radius: 4.55,
+        tiltX: 0.78,
+        tiltZ: 0.46,
+        phase: 2.1,
+        size: 0.054,
+        color: 0xa78bfa,
+      },
+      {
+        radius: 5.95,
+        tiltX: 0.52,
+        tiltZ: -0.86,
+        phase: 4.35,
+        size: 0.061,
+        color: 0x93c5fd,
+      },
     ];
 
     orbitDefs.forEach((def, index) => {
@@ -689,12 +725,15 @@ class VisualizationController {
     normal.applyAxisAngle(new THREE.Vector3(0, 0, 1), tiltZ);
     normal.normalize();
 
-    const ref = Math.abs(normal.y) > 0.92
-      ? new THREE.Vector3(1, 0, 0)
-      : new THREE.Vector3(0, 1, 0);
+    const ref =
+      Math.abs(normal.y) > 0.92
+        ? new THREE.Vector3(1, 0, 0)
+        : new THREE.Vector3(0, 1, 0);
 
     const tangentA = new THREE.Vector3().crossVectors(ref, normal).normalize();
-    const tangentB = new THREE.Vector3().crossVectors(normal, tangentA).normalize();
+    const tangentB = new THREE.Vector3()
+      .crossVectors(normal, tangentA)
+      .normalize();
     return { normal, tangentA, tangentB };
   }
 
@@ -727,7 +766,12 @@ class VisualizationController {
     group.add(bus);
 
     const serviceRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(def.size * 0.23, def.size * 0.23, def.size * 0.58, 14),
+      new THREE.CylinderGeometry(
+        def.size * 0.23,
+        def.size * 0.23,
+        def.size * 0.58,
+        14,
+      ),
       new THREE.MeshStandardMaterial({
         color: 0xd5dbe6,
         metalness: 0.54,
@@ -743,17 +787,27 @@ class VisualizationController {
       metalness: 0.74,
       roughness: 0.32,
     });
-    const panelWing = new THREE.BoxGeometry(def.size * 1.85, def.size * 0.06, def.size * 0.64);
+    const panelWing = new THREE.BoxGeometry(
+      def.size * 1.85,
+      def.size * 0.06,
+      def.size * 0.64,
+    );
     const panelFrameMat = new THREE.MeshStandardMaterial({
       color: 0x7f94ac,
       metalness: 0.5,
       roughness: 0.4,
     });
-    const panelFrame = new THREE.BoxGeometry(def.size * 1.9, def.size * 0.02, def.size * 0.72);
+    const panelFrame = new THREE.BoxGeometry(
+      def.size * 1.9,
+      def.size * 0.02,
+      def.size * 0.72,
+    );
     const panelLeft = new THREE.Mesh(panelWing, panelMat);
     const panelLeftFrame = new THREE.Mesh(panelFrame, panelFrameMat);
     panelLeft.position.x = -def.size * 1.22;
-    panelLeftFrame.position.copy(panelLeft.position).setY(panelLeft.position.y + def.size * 0.02);
+    panelLeftFrame.position
+      .copy(panelLeft.position)
+      .setY(panelLeft.position.y + def.size * 0.02);
     const panelRight = panelLeft.clone();
     const panelRightFrame = panelLeftFrame.clone();
     panelRight.position.x = def.size * 1.22;
@@ -761,7 +815,12 @@ class VisualizationController {
     group.add(panelLeft, panelLeftFrame, panelRight, panelRightFrame);
 
     const antennaMast = new THREE.Mesh(
-      new THREE.CylinderGeometry(def.size * 0.045, def.size * 0.045, def.size * 0.44, 10),
+      new THREE.CylinderGeometry(
+        def.size * 0.045,
+        def.size * 0.045,
+        def.size * 0.44,
+        10,
+      ),
       new THREE.MeshStandardMaterial({
         color: 0xd0d8e5,
         metalness: 0.48,
@@ -772,7 +831,13 @@ class VisualizationController {
     group.add(antennaMast);
 
     const dish = new THREE.Mesh(
-      new THREE.CylinderGeometry(def.size * 0.03, def.size * 0.28, def.size * 0.34, 18, 1),
+      new THREE.CylinderGeometry(
+        def.size * 0.03,
+        def.size * 0.28,
+        def.size * 0.34,
+        18,
+        1,
+      ),
       new THREE.MeshStandardMaterial({
         color: 0xe5e7eb,
         metalness: 0.56,
@@ -886,15 +951,15 @@ class VisualizationController {
       color: clear?.color ?? 0x38bdf8,
       opacity: clear?.opacity ?? 0.6,
       dashed: Boolean(clear?.dashed),
-      dashSize: clear?.dashSize ?? (0.11 + thickness * 6.5),
-      gapSize: clear?.gapSize ?? (0.06 + thickness * 4.5),
+      dashSize: clear?.dashSize ?? 0.11 + thickness * 6.5,
+      gapSize: clear?.gapSize ?? 0.06 + thickness * 4.5,
     };
     const errorStyle = {
       color: error?.color ?? 0xef4444,
       opacity: error?.opacity ?? 0.8,
       dashed: Boolean(error?.dashed),
-      dashSize: error?.dashSize ?? (0.11 + thickness * 6.5),
-      gapSize: error?.gapSize ?? (0.06 + thickness * 4.5),
+      dashSize: error?.dashSize ?? 0.11 + thickness * 6.5,
+      gapSize: error?.gapSize ?? 0.06 + thickness * 4.5,
     };
 
     const beam = new THREE.Line(
@@ -971,9 +1036,12 @@ class VisualizationController {
     if (!style) return;
 
     const existing = beam.material;
-    const isDashed = Boolean(existing && existing.type === "LineDashedMaterial");
+    const isDashed = Boolean(
+      existing && existing.type === "LineDashedMaterial",
+    );
     if (isDashed !== style.dashed) {
-      if (existing && typeof existing.dispose === "function") existing.dispose();
+      if (existing && typeof existing.dispose === "function")
+        existing.dispose();
       beam.material = this.createBeamMaterial(style);
     } else {
       beam.material.color.setHex(style.color);
@@ -992,7 +1060,11 @@ class VisualizationController {
   setBeamBlockedState(beam, blocked) {
     if (!beam || !beam.material || !beam.userData?.style) return;
     const styleKey = blocked ? "error" : "clear";
-    if (beam.userData.blocked === blocked && beam.userData.activeStyle === styleKey) return;
+    if (
+      beam.userData.blocked === blocked &&
+      beam.userData.activeStyle === styleKey
+    )
+      return;
     beam.userData.blocked = blocked;
     this.applyBeamStyle(beam, styleKey);
   }
@@ -1010,7 +1082,8 @@ class VisualizationController {
     if (t <= 0 || t >= 1) return false;
 
     if (allowStartSurfaceTouch && t < this.LOS_ENDPOINT_TOLERANCE) return false;
-    if (allowEndSurfaceTouch && t > 1 - this.LOS_ENDPOINT_TOLERANCE) return false;
+    if (allowEndSurfaceTouch && t > 1 - this.LOS_ENDPOINT_TOLERANCE)
+      return false;
 
     this.tmpVecB.copy(start).addScaledVector(this.tmpVecA, t);
     return this.tmpVecB.length() < this.MOON_RADIUS + this.LOS_MARGIN;
@@ -1033,7 +1106,9 @@ class VisualizationController {
   }
 
   upsertFleetSnapshot(fleet) {
-    Object.values(fleet || {}).forEach((entry) => this.upsertRoverFromTelemetry(entry));
+    Object.values(fleet || {}).forEach((entry) =>
+      this.upsertRoverFromTelemetry(entry),
+    );
   }
 
   upsertRoverFromTelemetry(data) {
@@ -1055,10 +1130,18 @@ class VisualizationController {
       ? Number(data.battery)
       : rover.battery;
 
-    if (data.position && Number.isFinite(Number(data.position.lat)) && Number.isFinite(Number(data.position.lon))) {
-      rover.lat = Number(data.position.lat);
-      rover.lon = Number(data.position.lon);
-      this.placeRover(rover);
+    if (
+      data.position &&
+      Number.isFinite(Number(data.position.lat)) &&
+      Number.isFinite(Number(data.position.lon))
+    ) {
+      if (rover.targetLat === undefined) {
+        rover.lat = Number(data.position.lat);
+        rover.lon = Number(data.position.lon);
+        this.placeRover(rover);
+      }
+      rover.targetLat = Number(data.position.lat);
+      rover.targetLon = Number(data.position.lon);
     }
 
     this.updateRoverStateStyle(rover);
@@ -1154,6 +1237,18 @@ class VisualizationController {
     beacon.position.set(0, 0.027, 0);
     fallbackGroup.add(beacon);
 
+    const execRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.018, 0.002, 8, 24),
+      new THREE.MeshBasicMaterial({
+        color: 0x3b82f6,
+        transparent: true,
+        opacity: 0,
+      }),
+    );
+    execRing.rotation.x = Math.PI / 2;
+    execRing.position.y = 0.005;
+    group.add(execRing);
+
     const rover = {
       id: roverId,
       group,
@@ -1161,10 +1256,14 @@ class VisualizationController {
       fallbackMesh,
       fallbackMaterial,
       beaconMaterial,
+      execRing,
+      execPhase: 0,
       modelMesh: null,
       modelMaterial: null,
       lat: -43.3,
       lon: -11.2,
+      targetLat: undefined,
+      targetLon: undefined,
       battery: 1.0,
       state: "IDLE",
       staticCollider: {
@@ -1211,7 +1310,8 @@ class VisualizationController {
       rover.group.scale.setScalar(selected ? 1.25 : 1.12);
       rover.group.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return;
-        if (!Object.prototype.hasOwnProperty.call(obj.material, "emissive")) return;
+        if (!Object.prototype.hasOwnProperty.call(obj.material, "emissive"))
+          return;
         obj.material.emissiveIntensity = selected ? 0.5 : 0.24;
       });
     });
@@ -1264,7 +1364,9 @@ class VisualizationController {
     this.orbitalDistance = this.cameraDistance;
     this.cameraAzimuth = this.defaultCameraAzimuth;
     this.cameraPolar = this.defaultCameraPolar;
-    this.cameraTargetDesired.copy(this.earthAnchorOrbital).multiplyScalar(this.defaultEarthFrameFactor);
+    this.cameraTargetDesired
+      .copy(this.earthAnchorOrbital)
+      .multiplyScalar(this.defaultEarthFrameFactor);
     this.cameraTargetDesired.y *= 0.42;
     this.cameraTarget.copy(this.cameraTargetDesired);
     this.updateCamera(true);
@@ -1282,7 +1384,11 @@ class VisualizationController {
       this.cameraMinDistance,
       5.8,
     );
-    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.2, Math.PI - 0.2);
+    this.cameraPolar = THREE.MathUtils.clamp(
+      this.cameraPolar,
+      0.2,
+      Math.PI - 0.2,
+    );
     this.orbitalDistance = this.cameraDistance;
     this.updateCamera(true);
     this.syncNavigationTelemetry();
@@ -1296,7 +1402,9 @@ class VisualizationController {
     this.cameraPolar = 0.16;
     this.cameraAzimuth = 0.0;
     if (this.selectedRoverId && this.rovers.has(this.selectedRoverId)) {
-      this.cameraTargetDesired.copy(this.rovers.get(this.selectedRoverId).group.position);
+      this.cameraTargetDesired.copy(
+        this.rovers.get(this.selectedRoverId).group.position,
+      );
       this.cameraTarget.copy(this.cameraTargetDesired);
     }
     this.updateCamera(true);
@@ -1342,7 +1450,8 @@ class VisualizationController {
         tracker.currentDurationMs = 0;
         tracker.outageCount += 1;
         transitioned = true;
-        const reason = linkStatus.issueReason || "Issue: no line-of-sight contact";
+        const reason =
+          linkStatus.issueReason || "Issue: no line-of-sight contact";
         this.bus.emit("log", {
           tag: "fault",
           text: `LOS outage started: ${reason}`,
@@ -1385,7 +1494,8 @@ class VisualizationController {
     if (lossCardEl) {
       lossCardEl.classList.remove("is-good", "is-alert");
       if (tracker.active) lossCardEl.classList.add("is-alert");
-      else if (tracker.lastDurationMs !== null) lossCardEl.classList.add("is-good");
+      else if (tracker.lastDurationMs !== null)
+        lossCardEl.classList.add("is-good");
     }
 
     if (tracker.active) {
@@ -1395,7 +1505,8 @@ class VisualizationController {
         stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
       }
       if (metaEl) {
-        const reason = this.linkStatus.issueReason || "Issue: no line-of-sight contact";
+        const reason =
+          this.linkStatus.issueReason || "Issue: no line-of-sight contact";
         metaEl.classList.add("warning");
         metaEl.textContent = `${reason} · Outage ${this.formatDurationMs(activeDurationMs)}`;
       }
@@ -1406,8 +1517,7 @@ class VisualizationController {
       const lastText = `Last ${this.formatDurationMs(tracker.lastDurationMs)}`;
       if (lossValueEl) lossValueEl.textContent = lastText;
       if (stripValueEl) {
-        stripValueEl.textContent =
-          `Last LOS outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
+        stripValueEl.textContent = `Last LOS outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
       }
       return;
     }
@@ -1425,7 +1535,11 @@ class VisualizationController {
       this.cameraMaxDistance,
     );
     this.orbitalDistance = this.cameraDistance;
-    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.08, Math.PI - 0.08);
+    this.cameraPolar = THREE.MathUtils.clamp(
+      this.cameraPolar,
+      0.08,
+      Math.PI - 0.08,
+    );
 
     const sinPolar = Math.sin(this.cameraPolar);
     this.tmpVecA.set(
@@ -1451,8 +1565,12 @@ class VisualizationController {
     const headingValueEl = document.getElementById("orbital-nav-heading");
     const pitchValueEl = document.getElementById("orbital-nav-pitch");
     const distanceValueEl = document.getElementById("orbital-nav-distance");
-    const earthMoonDistanceEl = document.getElementById("orbital-earth-moon-distance");
-    const roverEarthAngleEl = document.getElementById("orbital-rover-earth-angle");
+    const earthMoonDistanceEl = document.getElementById(
+      "orbital-earth-moon-distance",
+    );
+    const roverEarthAngleEl = document.getElementById(
+      "orbital-rover-earth-angle",
+    );
     const roverSideEl = document.getElementById("orbital-rover-side");
     const roverCoordsEl = document.getElementById("orbital-rover-coords");
     const earthBearingEl = document.getElementById("orbital-earth-bearing");
@@ -1460,31 +1578,42 @@ class VisualizationController {
 
     this.camera.getWorldDirection(this.tmpVecA).normalize();
     const pitchDeg = Math.round(
-      THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(this.tmpVecA.y, -1, 1))),
+      THREE.MathUtils.radToDeg(
+        Math.asin(THREE.MathUtils.clamp(this.tmpVecA.y, -1, 1)),
+      ),
     );
     this.tmpVecB.copy(this.tmpVecA);
     this.tmpVecB.y = 0;
     let headingDeg = 0;
     if (this.tmpVecB.lengthSq() > 0.0000001) {
       this.tmpVecB.normalize();
-      headingDeg = (THREE.MathUtils.radToDeg(Math.atan2(this.tmpVecB.x, this.tmpVecB.z)) + 360) % 360;
+      headingDeg =
+        (THREE.MathUtils.radToDeg(Math.atan2(this.tmpVecB.x, this.tmpVecB.z)) +
+          360) %
+        360;
     }
 
-    if (headingValueEl) headingValueEl.textContent = `HDG ${String(Math.round(headingDeg)).padStart(3, "0")}°`;
-    if (pitchValueEl) pitchValueEl.textContent = `PITCH ${pitchDeg >= 0 ? "+" : ""}${pitchDeg}°`;
-    if (distanceValueEl) distanceValueEl.textContent = `RANGE ${this.cameraDistance.toFixed(2)} LU`;
-    if (earthMoonDistanceEl) earthMoonDistanceEl.textContent = `Earth-Moon: ${this.earthAnchor.length().toFixed(2)} LU`;
+    if (headingValueEl)
+      headingValueEl.textContent = `HDG ${String(Math.round(headingDeg)).padStart(3, "0")}°`;
+    if (pitchValueEl)
+      pitchValueEl.textContent = `PITCH ${pitchDeg >= 0 ? "+" : ""}${pitchDeg}°`;
+    if (distanceValueEl)
+      distanceValueEl.textContent = `RANGE ${this.cameraDistance.toFixed(2)} LU`;
+    if (earthMoonDistanceEl)
+      earthMoonDistanceEl.textContent = `Earth-Moon: ${this.earthAnchor.length().toFixed(2)} LU`;
 
     if (compassNeedleEl) {
       compassNeedleEl.style.transform = `rotate(${headingDeg}deg)`;
     }
 
-    const selectedRover = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
-      ? this.rovers.get(this.selectedRoverId)
-      : null;
+    const selectedRover =
+      this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+        ? this.rovers.get(this.selectedRoverId)
+        : null;
 
     if (!selectedRover) {
-      if (roverEarthAngleEl) roverEarthAngleEl.textContent = "Rover→Earth angle: --";
+      if (roverEarthAngleEl)
+        roverEarthAngleEl.textContent = "Rover→Earth angle: --";
       if (roverSideEl) roverSideEl.textContent = "Lunar side: --";
       if (roverCoordsEl) roverCoordsEl.textContent = "Lat -- · Lon --";
       if (earthBearingEl) earthBearingEl.textContent = "--";
@@ -1506,8 +1635,7 @@ class VisualizationController {
       roverSideEl.textContent = `Lunar side: ${onNearSide ? "Nearside" : "Farside"}`;
     }
     if (roverCoordsEl) {
-      roverCoordsEl.textContent =
-        `Lat ${Number(selectedRover.lat).toFixed(2)}° · Lon ${Number(selectedRover.lon).toFixed(2)}°`;
+      roverCoordsEl.textContent = `Lat ${Number(selectedRover.lat).toFixed(2)}° · Lon ${Number(selectedRover.lon).toFixed(2)}°`;
     }
 
     const worldUp = new THREE.Vector3(0, 1, 0);
@@ -1519,7 +1647,10 @@ class VisualizationController {
     }
     this.tmpVecB.crossVectors(this.tmpVecC, this.tmpVecA).normalize();
     this.tmpVecD.copy(this.earthAnchor).sub(roverPos).normalize();
-    const bearingRad = Math.atan2(this.tmpVecD.dot(this.tmpVecA), this.tmpVecD.dot(this.tmpVecB));
+    const bearingRad = Math.atan2(
+      this.tmpVecD.dot(this.tmpVecA),
+      this.tmpVecD.dot(this.tmpVecB),
+    );
     const bearingDeg = (THREE.MathUtils.radToDeg(bearingRad) + 360) % 360;
     if (earthBearingEl) {
       earthBearingEl.textContent = `${bearingDeg.toFixed(0)}° from north`;
@@ -1545,10 +1676,13 @@ class VisualizationController {
       else if (state === "alert") cardEl.classList.add("is-alert");
     };
 
-    const selectedRover = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
-      ? this.rovers.get(this.selectedRoverId)
-      : null;
-    const selectedLabel = selectedRover ? selectedRover.id.toUpperCase() : "ROVER --";
+    const selectedRover =
+      this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+        ? this.rovers.get(this.selectedRoverId)
+        : null;
+    const selectedLabel = selectedRover
+      ? selectedRover.id.toUpperCase()
+      : "ROVER --";
     const roverCount = this.rovers.size;
     const total = this.linkStatus.total;
     const earthTotal = this.linkStatus.earthTotal;
@@ -1562,9 +1696,10 @@ class VisualizationController {
 
     if (roverValueEl) roverValueEl.textContent = selectedLabel;
     if (linksValueEl) {
-      linksValueEl.textContent = total > 0
-        ? `E ${earthClear}/${earthTotal} · R ${roverClear}/${roverTotal}`
-        : "E 0/0 · R 0/0";
+      linksValueEl.textContent =
+        total > 0
+          ? `E ${earthClear}/${earthTotal} · R ${roverClear}/${roverTotal}`
+          : "E 0/0 · R 0/0";
     }
     if (zoomValueEl) zoomValueEl.textContent = `${zoomFactor}x`;
     if (fleetValueEl) fleetValueEl.textContent = String(roverCount);
@@ -1576,7 +1711,8 @@ class VisualizationController {
       if (lossCardEl) lossCardEl.classList.remove("is-good", "is-alert");
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent = "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
+        metaEl.textContent =
+          "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
       }
       this.syncNavigationTelemetry();
       this.updateSignalLossUi();
@@ -1589,7 +1725,9 @@ class VisualizationController {
       setCardState(linksCardEl, "alert");
       if (metaEl) {
         metaEl.classList.add("warning");
-        metaEl.textContent = this.linkStatus.issueReason || "Issue detected · Check relay geometry";
+        metaEl.textContent =
+          this.linkStatus.issueReason ||
+          "Issue detected · Check relay geometry";
       }
     } else {
       if (losValueEl) losValueEl.textContent = "Nominal";
@@ -1597,8 +1735,7 @@ class VisualizationController {
       setCardState(linksCardEl, "good");
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent =
-          `Nominal network geometry · Earth ${earthClear}/${earthTotal} · Rover ${roverClear}/${roverTotal}`;
+        metaEl.textContent = `Nominal network geometry · Earth ${earthClear}/${earthTotal} · Rover ${roverClear}/${roverTotal}`;
       }
     }
 
@@ -1620,7 +1757,8 @@ class VisualizationController {
     this.container.style.cursor = "grab";
 
     this.container.addEventListener("mousedown", (e) => {
-      const panGesture = e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey);
+      const panGesture =
+        e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey);
       const orbitGesture = e.button === 0 && !e.shiftKey;
       if (!panGesture && !orbitGesture) return;
 
@@ -1693,7 +1831,10 @@ class VisualizationController {
       body.group.lookAt(0, 0, 0);
 
       if (body.collisionCooldown > 0) {
-        body.collisionCooldown = Math.max(0, body.collisionCooldown - clampedDt);
+        body.collisionCooldown = Math.max(
+          0,
+          body.collisionCooldown - clampedDt,
+        );
       }
 
       this.resolveMoonCollision(body);
@@ -1718,10 +1859,7 @@ class VisualizationController {
     this.tmpVecA.copy(body.position).normalize();
     const vN = body.velocity.dot(this.tmpVecA);
     if (vN < 0) {
-      body.velocity.addScaledVector(
-        this.tmpVecA,
-        -(1 + body.restitution) * vN,
-      );
+      body.velocity.addScaledVector(this.tmpVecA, -(1 + body.restitution) * vN);
     }
 
     if (body.collisionCooldown <= 0) {
@@ -1784,8 +1922,7 @@ class VisualizationController {
 
         const restitution = Math.min(a.restitution, b.restitution);
         const impulseMag =
-          (-(1 + restitution) * velAlongNormal) /
-          (1 / a.mass + 1 / b.mass);
+          (-(1 + restitution) * velAlongNormal) / (1 / a.mass + 1 / b.mass);
 
         this.tmpVecC.copy(normal).multiplyScalar(impulseMag);
         a.velocity.addScaledVector(this.tmpVecC, -1 / a.mass);
@@ -1871,8 +2008,16 @@ class VisualizationController {
       const satA = this.satellites[link.a];
       const satB = this.satellites[link.b];
       if (!satA || !satB) return;
-      const blocked = this.isLineOfSightBlocked(satA.body.position, satB.body.position);
-      this.updateBeam(link.beam, satA.body.position, satB.body.position, blocked);
+      const blocked = this.isLineOfSightBlocked(
+        satA.body.position,
+        satB.body.position,
+      );
+      this.updateBeam(
+        link.beam,
+        satA.body.position,
+        satB.body.position,
+        blocked,
+      );
       linkStatus.total += 1;
       linkStatus.interTotal += 1;
       if (blocked) {
@@ -1888,16 +2033,22 @@ class VisualizationController {
     const roverIssue = linkStatus.roverTotal > 0 && linkStatus.roverClear === 0;
     linkStatus.hasIssue = earthIssue || roverIssue;
     if (earthIssue && roverIssue) {
-      linkStatus.issueReason = "Issue: Earth relays degraded (>2 lost) and rover unreachable";
+      linkStatus.issueReason =
+        "Issue: Earth relays degraded (>2 lost) and rover unreachable";
     } else if (earthIssue) {
       linkStatus.issueReason = "Issue: More than 2 satellites lost Earth LOS";
     } else if (roverIssue) {
       linkStatus.issueReason = "Issue: Rover unreachable from all satellites";
     }
 
-    const lossTransitioned = this.updateSignalLossTracking(linkStatus, performance.now());
+    const lossTransitioned = this.updateSignalLossTracking(
+      linkStatus,
+      performance.now(),
+    );
     const prev = this.linkStatus;
-    const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
+    const changed = Object.keys(linkStatus).some(
+      (k) => linkStatus[k] !== prev[k],
+    );
     this.linkStatus = linkStatus;
     if (changed || lossTransitioned) {
       this.bus.emit("orbital:los-status", {
@@ -1931,8 +2082,48 @@ class VisualizationController {
 
     this.physicsStep(dt);
     if (this.earthBase) this.earthBase.rotation.y += clampedDt * 0.032;
-    if (this.earthCloudLayer) this.earthCloudLayer.rotation.y += clampedDt * 0.065;
+    if (this.earthCloudLayer)
+      this.earthCloudLayer.rotation.y += clampedDt * 0.065;
     if (this.sunSurface) this.sunSurface.rotation.y += clampedDt * 0.018;
+
+    this.rovers.forEach((rover) => {
+      // Smoothly interpolate rover positions
+      if (rover.targetLat !== undefined && rover.targetLon !== undefined) {
+        const dLat = rover.targetLat - rover.lat;
+        const dLon = rover.targetLon - rover.lon;
+        if (Math.abs(dLat) > 1e-6 || Math.abs(dLon) > 1e-6) {
+          rover.lat += dLat * clampedDt * 3.0;
+          rover.lon += dLon * clampedDt * 3.0;
+          this.placeRover(rover);
+        }
+      }
+
+      // Animate execution ring
+      if (rover.state === "EXECUTING" && rover.execRing) {
+        rover.execPhase += clampedDt * 1.5;
+        const scale = 1 + (rover.execPhase % 1) * 2;
+        rover.execRing.scale.set(scale, scale, scale);
+        rover.execRing.material.opacity = 0.8 * (1.0 - (rover.execPhase % 1));
+      } else if (rover.execRing) {
+        rover.execRing.material.opacity = 0;
+        rover.execPhase = 0;
+      }
+    });
+
+    // Animate satellite beam dash offsets to simulate data flow
+    if (this.rootGroup) {
+      this.rootGroup.traverse((obj) => {
+        if (
+          obj.isLine &&
+          obj.material &&
+          obj.material.type === "LineDashedMaterial"
+        ) {
+          obj.material.dashOffset =
+            (obj.material.dashOffset || 0) - clampedDt * 0.8;
+        }
+      });
+    }
+
     this.updateCamera();
     this.updateSignalLossUi(now);
     this.renderer.render(this.scene, this.camera);
