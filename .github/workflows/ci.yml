@@ -213,3 +213,35 @@ jobs:
             echo "  ⚠️  Potential secrets found (review manually):"
             echo "$HITS" | head -10
           fi
+
+  # ── 6. Publish Web Simulation to GitHub Pages ────────────────────────────
+  deploy-pages:
+    name: 🚀 Publish Web Sim to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [web-health, repo-health]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate static app files
+        run: |
+          test -f web-sim/index.html
+          test -f web-sim/app.js
+          test -f web-sim/simulation.js
+          test -f web-sim/index.css
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-sim
+
+      - id: deployment
+        name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

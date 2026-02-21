@@ -3,6 +3,82 @@
    Ports all ROS node logic to in-browser JavaScript.
    ═══════════════════════════════════════════════════════ */
 
+window.LSOASTime = new (class {
+  constructor() {
+    this.multiplier = 1.0;
+    this.baseReal = Date.now();
+    this.baseSim = this.baseReal;
+    this.timers = new Map();
+    this.timerId = 1;
+
+    // Start tick loop
+    this.tick = this.tick.bind(this);
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(this.tick);
+    } else {
+      setInterval(this.tick, 16);
+    }
+  }
+
+  now() {
+    return this.baseSim + (Date.now() - this.baseReal) * this.multiplier;
+  }
+
+  setMultiplier(m) {
+    this.baseSim = this.now();
+    this.baseReal = Date.now();
+    this.multiplier = m;
+  }
+
+  setTimeout(fn, delayRealMs) {
+    const id = this.timerId++;
+    const targetSimTime = this.now() + delayRealMs;
+    this.timers.set(id, { type: "timeout", target: targetSimTime, fn });
+    return id;
+  }
+
+  setInterval(fn, intervalRealMs) {
+    const id = this.timerId++;
+    this.timers.set(id, {
+      type: "interval",
+      interval: intervalRealMs,
+      next: this.now() + intervalRealMs,
+      fn,
+    });
+    return id;
+  }
+
+  clearTimeout(id) {
+    this.timers.delete(id);
+  }
+  clearInterval(id) {
+    this.timers.delete(id);
+  }
+
+  tick() {
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(this.tick);
+    }
+    const currentSim = this.now();
+
+    for (const [id, timer] of Array.from(this.timers.entries())) {
+      if (timer.type === "timeout") {
+        if (currentSim >= timer.target) {
+          this.timers.delete(id);
+          timer.fn();
+        }
+      } else if (timer.type === "interval") {
+        if (currentSim >= timer.next) {
+          // Trigger once and advance next target. To handle high multipliers gracefully,
+          // ensure next is strictly monotonic without triggering 100 times per tick.
+          timer.next = currentSim + timer.interval;
+          timer.fn();
+        }
+      }
+    }
+  }
+})();
+
 const DEFAULT_ROVER_IDS = ["rover-1", "rover-2", "rover-3"];
 const MIN_ROVER_COUNT = 1;
 const MAX_ROVER_COUNT = 8;
@@ -84,11 +160,36 @@ function resolveRuntimeOptions() {
 const FALLBACK_TASK_CATALOG = {
   schema_version: "2.0.0",
   difficulty_levels: {
-    L1: { base_fault_rate: 0.01, duration_multiplier: 0.7, min_battery: 0.12, energy_drain_per_step: 0.002 },
-    L2: { base_fault_rate: 0.03, duration_multiplier: 0.9, min_battery: 0.18, energy_drain_per_step: 0.003 },
-    L3: { base_fault_rate: 0.06, duration_multiplier: 1.1, min_battery: 0.25, energy_drain_per_step: 0.004 },
-    L4: { base_fault_rate: 0.1, duration_multiplier: 1.35, min_battery: 0.32, energy_drain_per_step: 0.0055 },
-    L5: { base_fault_rate: 0.18, duration_multiplier: 1.7, min_battery: 0.42, energy_drain_per_step: 0.007 },
+    L1: {
+      base_fault_rate: 0.01,
+      duration_multiplier: 0.7,
+      min_battery: 0.12,
+      energy_drain_per_step: 0.002,
+    },
+    L2: {
+      base_fault_rate: 0.03,
+      duration_multiplier: 0.9,
+      min_battery: 0.18,
+      energy_drain_per_step: 0.003,
+    },
+    L3: {
+      base_fault_rate: 0.06,
+      duration_multiplier: 1.1,
+      min_battery: 0.25,
+      energy_drain_per_step: 0.004,
+    },
+    L4: {
+      base_fault_rate: 0.1,
+      duration_multiplier: 1.35,
+      min_battery: 0.32,
+      energy_drain_per_step: 0.0055,
+    },
+    L5: {
+      base_fault_rate: 0.18,
+      duration_multiplier: 1.7,
+      min_battery: 0.42,
+      energy_drain_per_step: 0.007,
+    },
   },
   task_types: {
     movement: {
@@ -185,7 +286,10 @@ const FALLBACK_TASK_CATALOG = {
 };
 
 function clamp01(value) {
-  return Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
+  return Math.max(
+    0,
+    Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0),
+  );
 }
 
 const TAU = Math.PI * 2;
@@ -212,9 +316,11 @@ function normalizeVec(vec) {
 }
 
 function dotVec(a, b) {
-  return (Number(a?.x) || 0) * (Number(b?.x) || 0) +
+  return (
+    (Number(a?.x) || 0) * (Number(b?.x) || 0) +
     (Number(a?.y) || 0) * (Number(b?.y) || 0) +
-    (Number(a?.z) || 0) * (Number(b?.z) || 0);
+    (Number(a?.z) || 0) * (Number(b?.z) || 0)
+  );
 }
 
 function latLonToLunarUnit(lat, lon) {
@@ -235,19 +341,20 @@ class CelestialDynamics {
     this.earthOrbitPeriodDays = 365.256;
     this.moonOrbitPeriodDays = 27.321661;
     this.moonOrbitInclinationRad = degToRad(5.145);
-    this.simDaysPerSecond = 0.35;
+    this.simDaysPerSecond = 1.2;
     this.phaseOffsetRad = -1.05;
-    this.startEpochMs = Date.now();
+    this.startEpochMs = LSOASTime.now();
   }
 
-  getElapsedDays(nowMs = Date.now()) {
+  getElapsedDays(nowMs = LSOASTime.now()) {
     return ((nowMs - this.startEpochMs) / 1000) * this.simDaysPerSecond;
   }
 
-  computeFrame(nowMs = Date.now()) {
+  computeFrame(nowMs = LSOASTime.now()) {
     const elapsedDays = this.getElapsedDays(nowMs);
     const earthOrbitAngle = TAU * (elapsedDays / this.earthOrbitPeriodDays);
-    const moonOrbitAngle = TAU * (elapsedDays / this.moonOrbitPeriodDays) + this.phaseOffsetRad;
+    const moonOrbitAngle =
+      TAU * (elapsedDays / this.moonOrbitPeriodDays) + this.phaseOffsetRad;
 
     const earthPosSun = {
       x: this.sunEarthDistanceKm * Math.cos(earthOrbitAngle),
@@ -256,8 +363,14 @@ class CelestialDynamics {
     };
     const moonGeo = {
       x: this.earthMoonDistanceKm * Math.cos(moonOrbitAngle),
-      y: this.earthMoonDistanceKm * Math.sin(moonOrbitAngle) * Math.cos(this.moonOrbitInclinationRad),
-      z: this.earthMoonDistanceKm * Math.sin(moonOrbitAngle) * Math.sin(this.moonOrbitInclinationRad),
+      y:
+        this.earthMoonDistanceKm *
+        Math.sin(moonOrbitAngle) *
+        Math.cos(this.moonOrbitInclinationRad),
+      z:
+        this.earthMoonDistanceKm *
+        Math.sin(moonOrbitAngle) *
+        Math.sin(this.moonOrbitInclinationRad),
     };
     const moonPosSun = {
       x: earthPosSun.x + moonGeo.x,
@@ -284,7 +397,9 @@ class CelestialDynamics {
       sim_elapsed_days: Number(elapsedDays.toFixed(5)),
       earth_distance_km: Number(earthDistanceKm.toFixed(0)),
       sun_distance_km: Number(sunDistanceKm.toFixed(0)),
-      distance_ratio_sun_to_earth: Number((sunDistanceKm / Math.max(earthDistanceKm, 1)).toFixed(2)),
+      distance_ratio_sun_to_earth: Number(
+        (sunDistanceKm / Math.max(earthDistanceKm, 1)).toFixed(2),
+      ),
       earth_from_moon_km: {
         x: Number(earthFromMoon.x.toFixed(3)),
         y: Number(earthFromMoon.y.toFixed(3)),
@@ -307,7 +422,9 @@ class CelestialDynamics {
     if (incidence <= 0) return 0;
 
     const horizonWeighted = Math.pow(incidence, 0.82);
-    const distanceScale = this.sunEarthDistanceKm / Math.max(frame.sun_distance_km || this.sunEarthDistanceKm, 1);
+    const distanceScale =
+      this.sunEarthDistanceKm /
+      Math.max(frame.sun_distance_km || this.sunEarthDistanceKm, 1);
     const inverseSquare = Math.pow(distanceScale, 2);
     return clamp01(horizonWeighted * inverseSquare);
   }
@@ -326,20 +443,34 @@ function getRoverCapabilities(roverId) {
   const mod = roverIndex % 3;
   if (mod === 1) return ["mobility", "imaging", "science"];
   if (mod === 2) return ["mobility", "science", "sample-logistics", "imaging"];
-  return ["mobility", "excavation", "manipulation", "sample-logistics", "imaging"];
+  return [
+    "mobility",
+    "excavation",
+    "manipulation",
+    "sample-logistics",
+    "imaging",
+  ];
 }
 
 function normalizeTaskRequest(taskCatalog, taskId, taskOptions = {}) {
-  const taskType = String(taskOptions.task_type || "movement").trim().toLowerCase();
-  const difficulty = String(taskOptions.difficulty_level || "L2").trim().toUpperCase();
-  const safeTaskType =
-    taskCatalog.task_types[taskType] ? taskType : "movement";
-  const safeDifficulty =
-    taskCatalog.difficulty_levels[difficulty] ? difficulty : "L2";
+  const taskType = String(taskOptions.task_type || "movement")
+    .trim()
+    .toLowerCase();
+  const difficulty = String(taskOptions.difficulty_level || "L2")
+    .trim()
+    .toUpperCase();
+  const safeTaskType = taskCatalog.task_types[taskType] ? taskType : "movement";
+  const safeDifficulty = taskCatalog.difficulty_levels[difficulty]
+    ? difficulty
+    : "L2";
   const taskConfig = taskCatalog.task_types[safeTaskType];
   const requestedCapabilities = Array.isArray(taskOptions.required_capabilities)
     ? taskOptions.required_capabilities
-        .map((item) => String(item || "").trim().toLowerCase())
+        .map((item) =>
+          String(item || "")
+            .trim()
+            .toLowerCase(),
+        )
         .filter(Boolean)
     : [...(taskConfig.required_capabilities || [])];
 
@@ -347,7 +478,8 @@ function normalizeTaskRequest(taskCatalog, taskId, taskOptions = {}) {
     task_id: String(taskId || `${safeTaskType}-${safeDifficulty}`),
     task_type: safeTaskType,
     difficulty_level: safeDifficulty,
-    mission_phase: taskOptions.mission_phase || taskConfig.mission_phase || "CY3-ops",
+    mission_phase:
+      taskOptions.mission_phase || taskConfig.mission_phase || "CY3-ops",
     required_capabilities: requestedCapabilities,
     target_site: taskOptions.target_site || null,
   };
@@ -358,12 +490,19 @@ function computeTaskDurationSteps(taskCatalog, taskRequest, context) {
   const diffCfg = taskCatalog.difficulty_levels[taskRequest.difficulty_level];
   const terrain = clamp01(context.terrain_difficulty ?? 0.3);
   const commQuality = clamp01(context.comm_quality ?? 0.8);
-  const terrainFactor = 1 + terrain * Number(taskCfg.terrain_duration_sensitivity ?? 0.3);
+  const terrainFactor =
+    1 + terrain * Number(taskCfg.terrain_duration_sensitivity ?? 0.3);
   const commFactor = 1 + (1 - commQuality) * 0.2;
   const raw = Math.round(
-    Number(taskCfg.base_steps || 8) * Number(diffCfg.duration_multiplier || 1) * terrainFactor * commFactor,
+    Number(taskCfg.base_steps || 8) *
+      Number(diffCfg.duration_multiplier || 1) *
+      terrainFactor *
+      commFactor,
   );
-  return Math.max(Number(taskCfg.min_steps || 3), Math.min(Number(taskCfg.max_steps || 60), raw));
+  return Math.max(
+    Number(taskCfg.min_steps || 3),
+    Math.min(Number(taskCfg.max_steps || 60), raw),
+  );
 }
 
 function computeFaultProbability(taskCatalog, taskRequest, context) {
@@ -372,21 +511,31 @@ function computeFaultProbability(taskCatalog, taskRequest, context) {
   const baseRisk = Number(diffCfg.base_fault_rate ?? 0.03);
 
   const battery = clamp01(context.battery ?? 1);
-  const solar = clamp01(context.solar_intensity ?? context.solar_exposure ?? 0.5);
+  const solar = clamp01(
+    context.solar_intensity ?? context.solar_exposure ?? 0.5,
+  );
   const terrain = clamp01(context.terrain_difficulty ?? 0.3);
   const commQuality = clamp01(context.comm_quality ?? 0.8);
   const thermalStress = clamp01(context.thermal_stress ?? 0.3);
-  const lunarState = String(context.lunar_time_state || getLunarTimeState(solar)).toUpperCase();
+  const lunarState = String(
+    context.lunar_time_state || getLunarTimeState(solar),
+  ).toUpperCase();
   const capabilityMatch = Boolean(context.capability_match ?? true);
 
   const batteryPenalty =
-    Math.max(0, 0.45 - battery) * Number(taskCfg.battery_sensitivity ?? 0.8) * 0.22;
+    Math.max(0, 0.45 - battery) *
+    Number(taskCfg.battery_sensitivity ?? 0.8) *
+    0.22;
   const solarPenalty =
     Math.max(0, 0.4 - solar) * Number(taskCfg.solar_sensitivity ?? 0.6) * 0.18;
-  const terrainPenalty = terrain * Number(taskCfg.terrain_sensitivity ?? 0.6) * 0.12;
-  const commPenalty = (1 - commQuality) * Number(taskCfg.comm_sensitivity ?? 0.5) * 0.1;
-  const thermalPenalty = thermalStress * Number(taskCfg.thermal_sensitivity ?? 0.6) * 0.1;
-  const lunarPenalty = lunarState === "NIGHT" ? 0.06 : lunarState === "TERMINATOR" ? 0.02 : 0;
+  const terrainPenalty =
+    terrain * Number(taskCfg.terrain_sensitivity ?? 0.6) * 0.12;
+  const commPenalty =
+    (1 - commQuality) * Number(taskCfg.comm_sensitivity ?? 0.5) * 0.1;
+  const thermalPenalty =
+    thermalStress * Number(taskCfg.thermal_sensitivity ?? 0.6) * 0.1;
+  const lunarPenalty =
+    lunarState === "NIGHT" ? 0.06 : lunarState === "TERMINATOR" ? 0.02 : 0;
   const capabilityPenalty = capabilityMatch ? 0 : 0.12;
   const batteryBonus = Math.max(0, battery - 0.8) * 0.03;
   const solarBonus = Math.max(0, solar - 0.85) * 0.02;
@@ -427,13 +576,15 @@ function computeFaultProbability(taskCatalog, taskRequest, context) {
 function scoreRoverForTask(taskCatalog, roverId, roverStatus, taskRequest) {
   const state = String(roverStatus?.state || "UNKNOWN").toUpperCase();
   const battery = clamp01(roverStatus?.battery ?? 0);
-  const solar = clamp01(roverStatus?.solar_exposure ?? roverStatus?.solar_intensity ?? 0.5);
+  const solar = clamp01(
+    roverStatus?.solar_exposure ?? roverStatus?.solar_intensity ?? 0.5,
+  );
   const terrainDifficulty = clamp01(roverStatus?.terrain_difficulty ?? 0.3);
   const commQuality = clamp01(roverStatus?.comm_quality ?? 0.8);
   const thermalStress = clamp01(roverStatus?.thermal_stress ?? 0.3);
   const capabilities = getRoverCapabilities(roverId);
-  const capabilityMatch = (taskRequest.required_capabilities || []).every((cap) =>
-    capabilities.includes(cap),
+  const capabilityMatch = (taskRequest.required_capabilities || []).every(
+    (cap) => capabilities.includes(cap),
   );
 
   const risk = computeFaultProbability(taskCatalog, taskRequest, {
@@ -464,23 +615,31 @@ function scoreRoverForTask(taskCatalog, roverId, roverStatus, taskRequest) {
     scoreBreakdown.solar_margin * 0.12 +
     scoreBreakdown.thermal_margin * 0.1 +
     scoreBreakdown.comm_margin * 0.1 +
-    ((scoreBreakdown.distance_margin + scoreBreakdown.accessibility_margin) / 2) * 0.1 +
+    ((scoreBreakdown.distance_margin + scoreBreakdown.accessibility_margin) /
+      2) *
+      0.1 +
     scoreBreakdown.risk_margin * 0.1;
 
   const minBattery = Number(
-    taskCatalog.difficulty_levels[taskRequest.difficulty_level]?.min_battery ?? 0,
+    taskCatalog.difficulty_levels[taskRequest.difficulty_level]?.min_battery ??
+      0,
   );
   const rejectReasons = [];
   if (state !== "IDLE") rejectReasons.push(`state=${state}`);
-  if (battery < minBattery) rejectReasons.push(`battery<${minBattery.toFixed(2)}`);
+  if (battery < minBattery)
+    rejectReasons.push(`battery<${minBattery.toFixed(2)}`);
   if (!capabilityMatch) rejectReasons.push("capability_mismatch");
-  if (risk.predicted_fault_probability > 0.45) rejectReasons.push("predicted_risk_too_high");
+  if (risk.predicted_fault_probability > 0.45)
+    rejectReasons.push("predicted_risk_too_high");
 
   return {
     rover_id: roverId,
     score: Number(score.toFixed(4)),
     score_breakdown: Object.fromEntries(
-      Object.entries(scoreBreakdown).map(([key, value]) => [key, Number(value.toFixed(4))]),
+      Object.entries(scoreBreakdown).map(([key, value]) => [
+        key,
+        Number(value.toFixed(4)),
+      ]),
     ),
     capabilities,
     predicted_fault_probability: risk.predicted_fault_probability,
@@ -549,7 +708,7 @@ class RoverNode {
           this.position.lat,
           this.position.lon,
           this.latestCelestialFrame ||
-            this.celestialDynamics.computeFrame(Date.now()),
+            this.celestialDynamics.computeFrame(LSOASTime.now()),
         )
       : clamp01(0.6 + Math.random() * 0.4);
     this.lunarTimeState = getLunarTimeState(this.solarExposure);
@@ -562,9 +721,15 @@ class RoverNode {
     this.bus.on(this.commandTopic, this.commandListener);
 
     // Start telemetry publishing (every 2s)
-    this.telemetryInterval = setInterval(() => this.publishTelemetry(), 2000);
+    this.telemetryInterval = LSOASTime.setInterval(
+      () => this.publishTelemetry(),
+      2000,
+    );
     // Start task execution tick (every 1s)
-    this.taskInterval = setInterval(() => this.executeTaskStep(), 1000);
+    this.taskInterval = LSOASTime.setInterval(
+      () => this.executeTaskStep(),
+      1000,
+    );
   }
 
   commandCallback(cmdData) {
@@ -610,7 +775,7 @@ class RoverNode {
     this.predictedFaultProbability = 0;
   }
 
-  _updateSolarExposure(nowMs = Date.now()) {
+  _updateSolarExposure(nowMs = LSOASTime.now()) {
     if (this.celestialDynamics) {
       const frame =
         this.config.latestCelestialFrame ||
@@ -632,16 +797,22 @@ class RoverNode {
 
     this._solarPhase += 0.02;
     const base = 0.5 + 0.5 * Math.sin(this._solarPhase);
-    const noise = (Math.random() * 0.1) - 0.05;
+    const noise = Math.random() * 0.1 - 0.05;
     this.solarExposure = clamp01(base + noise);
     this.lunarTimeState = getLunarTimeState(this.solarExposure);
   }
 
   _updateEnvironmentals() {
-    this.commQuality = clamp01(this.commQuality + (Math.random() * 0.05 - 0.03));
-    this.terrainDifficulty = clamp01(this.terrainDifficulty + (Math.random() * 0.04 - 0.02));
+    this.commQuality = clamp01(
+      this.commQuality + (Math.random() * 0.05 - 0.03),
+    );
+    this.terrainDifficulty = clamp01(
+      this.terrainDifficulty + (Math.random() * 0.04 - 0.02),
+    );
     const thermalDelta = this.lunarTimeState === "DAYLIGHT" ? 0.04 : -0.02;
-    this.thermalStress = clamp01(this.thermalStress + thermalDelta + (Math.random() * 0.06 - 0.03));
+    this.thermalStress = clamp01(
+      this.thermalStress + thermalDelta + (Math.random() * 0.06 - 0.03),
+    );
   }
 
   handleStartTask(cmdData) {
@@ -664,9 +835,9 @@ class RoverNode {
       ];
     }
 
-    const missingCapabilities = (taskRequest.required_capabilities || []).filter(
-      (cap) => !this.capabilities.includes(cap),
-    );
+    const missingCapabilities = (
+      taskRequest.required_capabilities || []
+    ).filter((cap) => !this.capabilities.includes(cap));
     if (missingCapabilities.length > 0) {
       return [
         false,
@@ -701,13 +872,16 @@ class RoverNode {
     this.activeTaskType = taskRequest.task_type;
     this.activeTaskDifficulty = taskRequest.difficulty_level;
     this.activeTaskMissionPhase = taskRequest.mission_phase;
-    this.activeTaskRequiredCapabilities = [...taskRequest.required_capabilities];
+    this.activeTaskRequiredCapabilities = [
+      ...taskRequest.required_capabilities,
+    ];
     this.assignmentScoreBreakdown = cmdData.assignment_score_breakdown || null;
     this.taskCounter = 0;
-    this.predictedFaultProbability =
-      Number.isFinite(Number(cmdData.predicted_fault_probability))
-        ? Number(cmdData.predicted_fault_probability)
-        : risk.predicted_fault_probability;
+    this.predictedFaultProbability = Number.isFinite(
+      Number(cmdData.predicted_fault_probability),
+    )
+      ? Number(cmdData.predicted_fault_probability)
+      : risk.predicted_fault_probability;
     this.bus.emit("log", {
       tag: "task",
       text: `[${this.roverId}] Started ${this.currentTaskId} (${this.activeTaskType}/${this.activeTaskDifficulty}, steps=${this.taskTotalSteps}, risk=${this.predictedFaultProbability.toFixed(3)})`,
@@ -757,7 +931,7 @@ class RoverNode {
       rover_id: this.roverId,
       status: success ? "ACCEPTED" : "REJECTED",
       reason,
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
     };
     this.bus.emit(this.ackTopic, ackData);
   }
@@ -834,10 +1008,10 @@ class RoverNode {
   }
 
   publishTelemetry() {
-    this._updateSolarExposure(Date.now());
+    this._updateSolarExposure(LSOASTime.now());
     const frame = this.latestCelestialFrame;
     const telemetry = {
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
       rover_id: this.roverId,
       state: this.state,
       task_id: this.currentTaskId,
@@ -847,7 +1021,8 @@ class RoverNode {
       fault: this.lastFault,
       task_progress:
         this.state === RoverNode.STATE_EXECUTING ? this.taskCounter : null,
-      task_total_steps: this.state === RoverNode.STATE_EXECUTING ? this.taskTotalSteps : null,
+      task_total_steps:
+        this.state === RoverNode.STATE_EXECUTING ? this.taskTotalSteps : null,
       predicted_fault_probability: this.predictedFaultProbability,
       assignment_score_breakdown: this.assignmentScoreBreakdown,
       lunar_time_state: this.lunarTimeState,
@@ -875,8 +1050,8 @@ class RoverNode {
   }
 
   destroy() {
-    clearInterval(this.telemetryInterval);
-    clearInterval(this.taskInterval);
+    LSOASTime.clearInterval(this.telemetryInterval);
+    LSOASTime.clearInterval(this.taskInterval);
     this.bus.off(this.commandTopic, this.commandListener);
   }
 }
@@ -894,9 +1069,7 @@ class SpaceLinkNode {
     this.losIssueReason = "";
 
     // Uplink: earth:uplink_cmd → (delay) → <rover-id>:command
-    this.bus.on("earth:uplink_cmd", (data) =>
-      this.relayCommand(data),
-    );
+    this.bus.on("earth:uplink_cmd", (data) => this.relayCommand(data));
     this.bus.on("orbital:los-status", (status) => this.handleLosStatus(status));
 
     (this.config.roverIds || [this.defaultRoverId]).forEach((roverId) =>
@@ -945,7 +1118,11 @@ class SpaceLinkNode {
   handleLosStatus(status) {
     const hasIssue = Boolean(status?.hasIssue);
     const issueReason = String(status?.issueReason || "").trim();
-    if (hasIssue === this.losOutageActive && issueReason === this.losIssueReason) return;
+    if (
+      hasIssue === this.losOutageActive &&
+      issueReason === this.losIssueReason
+    )
+      return;
 
     const wasOutage = this.losOutageActive;
     this.losOutageActive = hasIssue;
@@ -988,7 +1165,7 @@ class SpaceLinkNode {
     this.commandBuffer.set(cmdId, {
       data: { ...data },
       roverId,
-      bufferedAt: Date.now() / 1000,
+      bufferedAt: LSOASTime.now() / 1000,
     });
     this.bus.emit("spacelink:command-buffered", {
       cmdId,
@@ -1008,7 +1185,7 @@ class SpaceLinkNode {
     this.commandBuffer.clear();
 
     queuedEntries.forEach((entry, index) => {
-      setTimeout(() => {
+      LSOASTime.setTimeout(() => {
         if (this.losOutageActive) {
           this.bufferCommand(entry.data, entry.roverId);
           return;
@@ -1017,7 +1194,10 @@ class SpaceLinkNode {
         this.bus.emit("spacelink:command-released", {
           cmdId: entry.data?.cmd_id || null,
           roverId: entry.roverId,
-          bufferedFor: Math.max(0, Date.now() / 1000 - Number(entry.bufferedAt || 0)),
+          bufferedFor: Math.max(
+            0,
+            LSOASTime.now() / 1000 - Number(entry.bufferedAt || 0),
+          ),
           queueDepth: Math.max(0, queuedEntries.length - index - 1),
         });
         this.relay(
@@ -1055,7 +1235,7 @@ class SpaceLinkNode {
     });
     this.bus.emit("signal:active", { direction, delay, rover_id: roverId });
 
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       this.stats.received++;
       this.bus.emit(targetEvent, data);
       this.bus.emit("stats:update", this.stats);
@@ -1094,7 +1274,10 @@ class EarthNode {
     );
 
     // Check for timeouts every 1s
-    this.timeoutInterval = setInterval(() => this.checkTimeouts(), 1000);
+    this.timeoutInterval = LSOASTime.setInterval(
+      () => this.checkTimeouts(),
+      1000,
+    );
     this.bus.emit("fleet:update", this.getFleetState());
   }
 
@@ -1135,7 +1318,7 @@ class EarthNode {
       ...this.fleetState[roverId],
       ...data,
       rover_id: roverId,
-      last_seen: Date.now() / 1000,
+      last_seen: LSOASTime.now() / 1000,
     };
 
     this.bus.emit("fleet:update", this.getFleetState());
@@ -1213,7 +1396,7 @@ class EarthNode {
 
     if (this.pendingCommands[ackId]) {
       const cmdInfo = this.pendingCommands[ackId];
-      const rtt = Date.now() / 1000 - cmdInfo.sentAt;
+      const rtt = LSOASTime.now() / 1000 - cmdInfo.sentAt;
 
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
@@ -1260,7 +1443,7 @@ class EarthNode {
     const roverId = data?.roverId || info.roverId;
     const transitioned = !info.buffered;
     info.buffered = true;
-    info.bufferedAt = Date.now() / 1000;
+    info.bufferedAt = LSOASTime.now() / 1000;
 
     if (transitioned) {
       this.bus.emit("log", {
@@ -1280,7 +1463,7 @@ class EarthNode {
     const roverId = data?.roverId || info.roverId;
 
     info.buffered = false;
-    info.sentAt = Date.now() / 1000;
+    info.sentAt = LSOASTime.now() / 1000;
     info.bufferedAt = null;
     this.bus.emit("log", {
       tag: "system",
@@ -1290,7 +1473,7 @@ class EarthNode {
   }
 
   checkTimeouts() {
-    const now = Date.now() / 1000;
+    const now = LSOASTime.now() / 1000;
     const timedOut = [];
 
     for (const [cmdId, info] of Object.entries(this.pendingCommands)) {
@@ -1304,7 +1487,7 @@ class EarthNode {
       const info = this.pendingCommands[cmdId];
       if (info.attempt < this.maxRetries) {
         info.attempt++;
-        info.sentAt = Date.now() / 1000;
+        info.sentAt = LSOASTime.now() / 1000;
         this.bus.emit("log", {
           tag: "system",
           text: `No ACK for ${cmdId} [${info.roverId}], retrying (attempt ${info.attempt}/${this.maxRetries})`,
@@ -1345,7 +1528,7 @@ class EarthNode {
       cmd_id: cmdId,
       rover_id: targetRoverId,
       type: cmdType,
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
     };
 
     if (taskId) cmdData.task_id = taskId;
@@ -1365,7 +1548,7 @@ class EarthNode {
 
     // Track pending
     this.pendingCommands[cmdId] = {
-      sentAt: Date.now() / 1000,
+      sentAt: LSOASTime.now() / 1000,
       cmdType,
       attempt: 1,
       cmdData,
@@ -1394,7 +1577,7 @@ class EarthNode {
   }
 
   destroy() {
-    clearInterval(this.timeoutInterval);
+    LSOASTime.clearInterval(this.timeoutInterval);
   }
 }
 
@@ -1449,10 +1632,12 @@ class SimulationController {
       roverIds,
       taskCatalog,
       celestialDynamics: this.celestialDynamics,
-      latestCelestialFrame: this.celestialDynamics.computeFrame(Date.now()),
+      latestCelestialFrame: this.celestialDynamics.computeFrame(
+        LSOASTime.now(),
+      ),
     };
 
-    this.startTime = Date.now();
+    this.startTime = LSOASTime.now();
     this.rovers = this.config.roverIds.map(
       (roverId, index) =>
         new RoverNode(
@@ -1467,17 +1652,22 @@ class SimulationController {
     this.earth = new EarthNode(this.bus, this.config);
     this.telemetryMonitor = new TelemetryMonitor(this.bus, this.earth);
     this.publishCelestialFrame();
-    this.celestialInterval = setInterval(() => this.publishCelestialFrame(), 1000);
+    this.celestialInterval = LSOASTime.setInterval(
+      () => this.publishCelestialFrame(),
+      1000,
+    );
   }
 
-  publishCelestialFrame(nowMs = Date.now()) {
+  publishCelestialFrame(nowMs = LSOASTime.now()) {
     const frame = this.celestialDynamics.computeFrame(nowMs);
     this.config.latestCelestialFrame = frame;
     this.bus.emit("celestial:ephemeris", frame);
   }
 
   applyRoverRuntimeOverrides(runtimeOptions) {
-    const roversById = new Map(this.rovers.map((rover) => [rover.roverId, rover]));
+    const roversById = new Map(
+      this.rovers.map((rover) => [rover.roverId, rover]),
+    );
     const validStates = new Set([
       RoverNode.STATE_IDLE,
       RoverNode.STATE_EXECUTING,
@@ -1506,7 +1696,10 @@ class SimulationController {
             ? `PRESET-${roverId.toUpperCase()}`
             : null;
 
-        if (state === RoverNode.STATE_SAFE_MODE || state === RoverNode.STATE_ERROR) {
+        if (
+          state === RoverNode.STATE_SAFE_MODE ||
+          state === RoverNode.STATE_ERROR
+        ) {
           if (!rover.lastFault) rover.lastFault = `Preset ${state}`;
         } else {
           rover.lastFault = null;
@@ -1551,7 +1744,7 @@ class SimulationController {
   }
 
   getElapsedTime() {
-    return (Date.now() - this.startTime) / 1000;
+    return (LSOASTime.now() - this.startTime) / 1000;
   }
 
   getRoverState(roverId = null) {
@@ -1572,7 +1765,7 @@ class SimulationController {
   destroy() {
     this.rovers.forEach((rover) => rover.destroy());
     this.earth.destroy();
-    clearInterval(this.celestialInterval);
+    LSOASTime.clearInterval(this.celestialInterval);
   }
 }
 

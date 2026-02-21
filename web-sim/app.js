@@ -71,7 +71,7 @@
   function set3DPanel(open) {
     is3DPanelOpen = Boolean(open);
     if (panelLayoutTimer) {
-      clearTimeout(panelLayoutTimer);
+      LSOASTime.clearTimeout(panelLayoutTimer);
       panelLayoutTimer = null;
     }
 
@@ -98,7 +98,7 @@
       floatingPanel.classList.remove("panel-open");
       floatingPanel.setAttribute("aria-hidden", "true");
       hideFleetHoverCard();
-      panelLayoutTimer = setTimeout(() => {
+      panelLayoutTimer = LSOASTime.setTimeout(() => {
         document.body.classList.remove("three-panel-open");
         syncAccordionLayoutMode(false);
         syncMobilePanelMode();
@@ -110,7 +110,7 @@
     }
 
     // Trigger resize after transition allows renderer to catch up
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       if (viz) {
         viz.onResize();
         if (typeof viz.syncNavigationTelemetry === "function") {
@@ -135,6 +135,7 @@
 
   const dom = {
     metValue: $("#met-value"),
+    timeBtns: $$(".time-btn"),
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
@@ -203,9 +204,21 @@
   const MOBILE_PANEL_BREAKPOINT = 1024;
   const MOBILE_PANEL_DEFAULT_KEY = "telemetry";
   const MOBILE_PANEL_SECTIONS = [
-    { key: "streams", panel: $("#panel-topology"), content: $("#left-dropdown-stack") },
-    { key: "telemetry", panel: $("#panel-telemetry"), content: $("#telemetry-dropdown-stack") },
-    { key: "command", panel: $("#panel-command"), content: $("#right-dropdown-stack") },
+    {
+      key: "streams",
+      panel: $("#panel-topology"),
+      content: $("#left-dropdown-stack"),
+    },
+    {
+      key: "telemetry",
+      panel: $("#panel-telemetry"),
+      content: $("#telemetry-dropdown-stack"),
+    },
+    {
+      key: "command",
+      panel: $("#panel-command"),
+      content: $("#right-dropdown-stack"),
+    },
   ].filter((entry) => entry.panel && entry.content);
   let mobilePanelMode = false;
   let mobilePanelActiveKey = MOBILE_PANEL_DEFAULT_KEY;
@@ -218,9 +231,13 @@
     if (!section || !section.panel) return;
     const header = section.panel.querySelector(".panel-header");
     section.panel.classList.toggle("panel-collapsed", !expanded);
-    section.panel.setAttribute("data-mobile-expanded", expanded ? "true" : "false");
+    section.panel.setAttribute(
+      "data-mobile-expanded",
+      expanded ? "true" : "false",
+    );
     if (section.content) section.content.hidden = !expanded;
-    if (header) header.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (header)
+      header.setAttribute("aria-expanded", expanded ? "true" : "false");
   }
 
   function openMobilePanelSection(key) {
@@ -272,7 +289,8 @@
 
       header.addEventListener("click", (event) => {
         if (!mobilePanelMode) return;
-        if (event.target.closest("button, a, input, select, textarea, label")) return;
+        if (event.target.closest("button, a, input, select, textarea, label"))
+          return;
         openMobilePanelSection(entry.key);
       });
 
@@ -354,10 +372,13 @@
     if (blocks.length === 0) return;
     const requireOneOpen = blocks[0].dataset.requireOneOpen === "true";
     if (!requireOneOpen) return;
-    const openBlocks = blocks.filter((block) => block.classList.contains("is-open"));
+    const openBlocks = blocks.filter((block) =>
+      block.classList.contains("is-open"),
+    );
     if (openBlocks.length > 0) return;
     const preferred =
-      blocks.find((block) => block.dataset.defaultOpen !== "false") || blocks[0];
+      blocks.find((block) => block.dataset.defaultOpen !== "false") ||
+      blocks[0];
     setAccordionBlockOpen(preferred, true);
   }
 
@@ -432,14 +453,17 @@
     });
     configureAccordionGroup("telemetry-orbital", {
       singleOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].singleOpen,
-      requireOneOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
+      requireOneOpen:
+        ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
     });
     configureAccordionGroup("orbital-silos", {
       singleOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].singleOpen,
       requireOneOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].requireOneOpen,
     });
     initializeMobilePanelHeaders();
-    syncAccordionLayoutMode(document.body.classList.contains("three-panel-open"));
+    syncAccordionLayoutMode(
+      document.body.classList.contains("three-panel-open"),
+    );
     syncMobilePanelMode();
     ensureAccordionGroupHasOpen("right-controls");
     ensureAccordionGroupHasOpen("telemetry-orbital");
@@ -452,13 +476,15 @@
   }
 
   function hydrateTaskSelectorsFromCatalog() {
-    if (!taskCatalog || !dom.taskTypeSelect || !dom.taskDifficultySelect) return;
+    if (!taskCatalog || !dom.taskTypeSelect || !dom.taskDifficultySelect)
+      return;
 
     const taskTypes = Object.keys(taskCatalog.task_types || {});
     if (taskTypes.length > 0) {
       dom.taskTypeSelect.innerHTML = taskTypes
         .map((taskType) => {
-          const display = taskCatalog.task_types[taskType]?.display_name || taskType;
+          const display =
+            taskCatalog.task_types[taskType]?.display_name || taskType;
           return `<option value="${taskType}">${display}</option>`;
         })
         .join("");
@@ -471,7 +497,10 @@
     if (difficultyLevels.length > 0) {
       dom.taskDifficultySelect.innerHTML = difficultyLevels
         .sort()
-        .map((difficulty) => `<option value="${difficulty}">${difficulty}</option>`)
+        .map(
+          (difficulty) =>
+            `<option value="${difficulty}">${difficulty}</option>`,
+        )
         .join("");
       if (difficultyLevels.includes("L2")) {
         dom.taskDifficultySelect.value = "L2";
@@ -498,6 +527,7 @@
         "Traverse, image, and run in-situ surface science analogs around a Pragyan-style landing zone.",
       payload_tags: ["Pragyan", "LIBS", "APXS", "NavCam"],
       default_target_site: "Shiv Shakti Point Sector-A",
+      default_rover_strategy: "rover-1",
       steps: [
         {
           title: "Traverse to scan waypoint",
@@ -533,6 +563,7 @@
         "A teaching sequence for prospecting, extraction, sample custody, and transfer preparation.",
       payload_tags: ["Sampling Drill", "Transfer Canister", "Surface Relay"],
       default_target_site: "Sample Depot Alpha",
+      default_rover_strategy: "rover-2",
       steps: [
         {
           title: "Prospecting traverse to candidate site",
@@ -576,6 +607,7 @@
         "Polar traverse and subsurface investigation sequence focused on volatile resource mapping.",
       payload_tags: ["Polar Traverse", "Volatile Mapping", "Drill Ops"],
       default_target_site: "Polar Shadow Boundary",
+      default_rover_strategy: "rover-3",
       steps: [
         {
           title: "Low-light approach traverse",
@@ -611,6 +643,7 @@
         "Multipurpose swarm scenario for regolith logistics, infrastructure staging, and base readiness.",
       payload_tags: ["Swarm Ops", "Regolith Handling", "Infrastructure Build"],
       default_target_site: "Bharati Base Site-01",
+      default_rover_strategy: "auto",
       steps: [
         {
           title: "Route clearance traverse",
@@ -699,7 +732,9 @@
       .trim()
       .toUpperCase();
     const missionCode = sanitizeTaskToken(preset.id_code || "CYX", "CYX");
-    const taskCode = TASK_TYPE_CODES[taskType] || sanitizeTaskToken(taskType, "TASK").slice(0, 4);
+    const taskCode =
+      TASK_TYPE_CODES[taskType] ||
+      sanitizeTaskToken(taskType, "TASK").slice(0, 4);
     const difficultyCode = /^L[1-5]$/.test(difficulty) ? difficulty : "L2";
 
     return {
@@ -772,12 +807,16 @@
   function getActiveMissionStep() {
     const steps = getMissionStepList();
     if (steps.length === 0) return null;
-    const clampedIndex = Math.max(0, Math.min(missionGuideState.activeStepIndex, steps.length - 1));
+    const clampedIndex = Math.max(
+      0,
+      Math.min(missionGuideState.activeStepIndex, steps.length - 1),
+    );
     return steps[clampedIndex];
   }
 
   function setMissionGuidePhase(nextPhase) {
-    missionGuideState.currentMissionPhase = String(nextPhase || "").trim() || getActiveMissionPreset().mission_phase;
+    missionGuideState.currentMissionPhase =
+      String(nextPhase || "").trim() || getActiveMissionPreset().mission_phase;
     if (dom.missionBriefPhase) {
       dom.missionBriefPhase.textContent = missionGuideState.currentMissionPhase;
     }
@@ -786,14 +825,21 @@
   function renderMissionBrief() {
     const preset = getActiveMissionPreset();
     if (dom.missionPresetSelect) {
-      dom.missionPresetSelect.value = safeMissionPresetKey(preset && missionGuideState.presetKey);
+      dom.missionPresetSelect.value = safeMissionPresetKey(
+        preset && missionGuideState.presetKey,
+      );
     }
     if (dom.missionBriefCode) dom.missionBriefCode.textContent = preset.id_code;
-    if (dom.missionBriefSummary) dom.missionBriefSummary.textContent = preset.summary;
-    setMissionGuidePhase(missionGuideState.currentMissionPhase || preset.mission_phase);
+    if (dom.missionBriefSummary)
+      dom.missionBriefSummary.textContent = preset.summary;
+    setMissionGuidePhase(
+      missionGuideState.currentMissionPhase || preset.mission_phase,
+    );
     if (dom.missionBriefTags) {
       dom.missionBriefTags.innerHTML = (preset.payload_tags || [])
-        .map((tag) => `<span class="mission-brief-tag">${escapeHtml(tag)}</span>`)
+        .map(
+          (tag) => `<span class="mission-brief-tag">${escapeHtml(tag)}</span>`,
+        )
         .join("");
     }
   }
@@ -806,11 +852,16 @@
       return;
     }
 
-    const nextIndex = Math.min(missionGuideState.completedCount, steps.length - 1);
+    const nextIndex = Math.min(
+      missionGuideState.completedCount,
+      steps.length - 1,
+    );
     dom.missionStepList.innerHTML = steps
       .map((step, index) => {
         const isComplete = index < missionGuideState.completedCount;
-        const isNext = missionGuideState.completedCount < steps.length && index === nextIndex;
+        const isNext =
+          missionGuideState.completedCount < steps.length &&
+          index === nextIndex;
         const isApplied = index === missionGuideState.activeStepIndex;
         const classes = [
           "mission-step-item",
@@ -844,20 +895,35 @@
   ) {
     if (!step) return;
 
-    if (dom.taskTypeSelect && step.task_type && dom.taskTypeSelect.querySelector(`option[value="${step.task_type}"]`)) {
+    if (
+      dom.taskTypeSelect &&
+      step.task_type &&
+      dom.taskTypeSelect.querySelector(`option[value="${step.task_type}"]`)
+    ) {
       dom.taskTypeSelect.value = step.task_type;
     }
     if (
       dom.taskDifficultySelect &&
       step.difficulty_level &&
-      dom.taskDifficultySelect.querySelector(`option[value="${step.difficulty_level}"]`)
+      dom.taskDifficultySelect.querySelector(
+        `option[value="${step.difficulty_level}"]`,
+      )
     ) {
       dom.taskDifficultySelect.value = step.difficulty_level;
     }
     if (dom.targetSiteInput) {
-      dom.targetSiteInput.value = step.target_site || getActiveMissionPreset().default_target_site || "";
+      dom.targetSiteInput.value =
+        step.target_site || getActiveMissionPreset().default_target_site || "";
     }
-    setMissionGuidePhase(step.mission_phase || getActiveMissionPreset().mission_phase);
+
+    // Synchronize Rover Strategy
+    const strategy =
+      step.rover_strategy || getActiveMissionPreset().default_rover_strategy;
+    if (strategy) setRoverTargetMode(strategy);
+
+    setMissionGuidePhase(
+      step.mission_phase || getActiveMissionPreset().mission_phase,
+    );
     if (forceTaskId) {
       taskIdDirty = false;
       syncTaskIdInput({ force: true });
@@ -874,7 +940,10 @@
     }
   }
 
-  function setMissionPreset(presetKey, { announce = false, resetProgress = true } = {}) {
+  function setMissionPreset(
+    presetKey,
+    { announce = false, resetProgress = true } = {},
+  ) {
     missionGuideState.presetKey = safeMissionPresetKey(presetKey);
     const preset = getActiveMissionPreset();
     if (resetProgress) {
@@ -905,7 +974,10 @@
   function setMissionActiveStep(index, { announce = false } = {}) {
     const steps = getMissionStepList();
     if (steps.length === 0) return;
-    missionGuideState.activeStepIndex = Math.max(0, Math.min(index, steps.length - 1));
+    missionGuideState.activeStepIndex = Math.max(
+      0,
+      Math.min(index, steps.length - 1),
+    );
     applyMissionStepToControls(getActiveMissionStep(), {
       announce,
       forceTaskId: true,
@@ -915,7 +987,9 @@
   function moveMissionActiveStep(delta) {
     const steps = getMissionStepList();
     if (steps.length === 0) return;
-    setMissionActiveStep(missionGuideState.activeStepIndex + delta, { announce: true });
+    setMissionActiveStep(missionGuideState.activeStepIndex + delta, {
+      announce: true,
+    });
   }
 
   function advanceMissionGuideAfterDispatch() {
@@ -932,7 +1006,10 @@
     if (missionGuideState.completedCount >= steps.length) {
       missionGuideState.activeStepIndex = steps.length - 1;
       renderMissionStepList();
-      addFeedLine("system", "Mission guide sequence complete. Use Reset Guide to run again.");
+      addFeedLine(
+        "system",
+        "Mission guide sequence complete. Use Reset Guide to run again.",
+      );
       return;
     }
 
@@ -991,12 +1068,16 @@
 
   function getSelectedTaskConfig(taskIdOverride = null) {
     const taskIdRaw = taskIdOverride || dom.taskIdInput?.value || "TASK-001";
-    const taskType = String(dom.taskTypeSelect?.value || "movement").trim().toLowerCase();
+    const taskType = String(dom.taskTypeSelect?.value || "movement")
+      .trim()
+      .toLowerCase();
     const difficultyLevel = String(dom.taskDifficultySelect?.value || "L2")
       .trim()
       .toUpperCase();
     const taskTypeCfg = getTaskTypeConfig(taskType);
-    const requiredCapabilities = Array.isArray(taskTypeCfg?.required_capabilities)
+    const requiredCapabilities = Array.isArray(
+      taskTypeCfg?.required_capabilities,
+    )
       ? [...taskTypeCfg.required_capabilities]
       : [];
     const targetSiteRaw = String(dom.targetSiteInput?.value || "").trim();
@@ -1097,7 +1178,7 @@
     const battery = Number(snapshot.battery || 0);
     const hasFault = Boolean(snapshot.fault);
     const staleSeconds = snapshot.last_seen
-      ? Math.max(0, Date.now() / 1000 - snapshot.last_seen)
+      ? Math.max(0, LSOASTime.now() / 1000 - snapshot.last_seen)
       : 0;
 
     let score = 0;
@@ -1223,7 +1304,9 @@
     }
 
     const compactMode = isCompactFleetMode();
-    const visibleEntries = showAllRovers ? entries : getPriorityFleetEntries(entries);
+    const visibleEntries = showAllRovers
+      ? entries
+      : getPriorityFleetEntries(entries);
 
     dom.fleetGrid.innerHTML = visibleEntries
       .map((snapshot) => buildFleetCardMarkup(snapshot, compactMode))
@@ -1231,8 +1314,7 @@
 
     if (dom.fleetGridSummary) {
       const mode = showAllRovers ? "all" : "priority";
-      dom.fleetGridSummary.textContent =
-        `Showing ${visibleEntries.length} of ${entries.length} rovers (${mode})`;
+      dom.fleetGridSummary.textContent = `Showing ${visibleEntries.length} of ${entries.length} rovers (${mode})`;
     }
     if (dom.toggleFleetScopeBtn) {
       dom.toggleFleetScopeBtn.textContent = showAllRovers
@@ -1269,24 +1351,23 @@
 
     if (dom.fleetTotalRovers) dom.fleetTotalRovers.textContent = String(total);
     if (dom.fleetStateDistribution) {
-      dom.fleetStateDistribution.textContent =
-        `${counts.IDLE || 0} IDLE · ${counts.EXECUTING || 0} EXECUTING · ${counts.SAFE_MODE || 0} SAFE_MODE`;
+      dom.fleetStateDistribution.textContent = `${counts.IDLE || 0} IDLE · ${counts.EXECUTING || 0} EXECUTING · ${counts.SAFE_MODE || 0} SAFE_MODE`;
     }
     if (dom.fleetAvgBattery) dom.fleetAvgBattery.textContent = `${avgBattery}%`;
     if (dom.fleetAvgSolar) dom.fleetAvgSolar.textContent = `${avgSolar}%`;
-    if (dom.fleetAvgRisk) dom.fleetAvgRisk.textContent = `${avgRisk.toFixed(1)}%`;
+    if (dom.fleetAvgRisk)
+      dom.fleetAvgRisk.textContent = `${avgRisk.toFixed(1)}%`;
     if (dom.fleetCommandAck) {
-      dom.fleetCommandAck.textContent =
-        `${trafficCounters.commandsSent} / ${trafficCounters.acksReceived}`;
+      dom.fleetCommandAck.textContent = `${trafficCounters.commandsSent} / ${trafficCounters.acksReceived}`;
     }
     if (dom.fleetMissionContext) {
       const steps = getMissionStepList();
       const stepTotal = steps.length;
-      const stepCurrent = stepTotal > 0
-        ? Math.min(missionGuideState.activeStepIndex + 1, stepTotal)
-        : 0;
-      dom.fleetMissionContext.textContent =
-        `${missionGuideState.currentMissionPhase || "mission"} · Step ${stepCurrent}/${stepTotal || 0}`;
+      const stepCurrent =
+        stepTotal > 0
+          ? Math.min(missionGuideState.activeStepIndex + 1, stepTotal)
+          : 0;
+      dom.fleetMissionContext.textContent = `${missionGuideState.currentMissionPhase || "mission"} · Step ${stepCurrent}/${stepTotal || 0}`;
     }
   }
 
@@ -1407,7 +1488,9 @@
     const entries = getFleetEntries();
     if (entries.length === 0) return null;
 
-    const idle = entries.filter((entry) => normalizeState(entry.state) === "IDLE");
+    const idle = entries.filter(
+      (entry) => normalizeState(entry.state) === "IDLE",
+    );
     const executing = entries.filter(
       (entry) => normalizeState(entry.state) === "EXECUTING",
     );
@@ -1430,7 +1513,9 @@
     }
 
     if (commandType === "GO_SAFE") {
-      return (highestScore(executing) || highestScore(entries))?.rover_id || null;
+      return (
+        (highestScore(executing) || highestScore(entries))?.rover_id || null
+      );
     }
 
     if (commandType === "RESET") {
@@ -1475,7 +1560,8 @@
         taskOptions = {
           ...assignment.task_request,
           selected_rover: roverId,
-          predicted_fault_probability: topScore?.predicted_fault_probability ?? null,
+          predicted_fault_probability:
+            topScore?.predicted_fault_probability ?? null,
           assignment_score_breakdown: topScore?.score_breakdown ?? null,
           reject_reason: assignment?.reject_reason || null,
         };
@@ -1493,13 +1579,21 @@
     }
 
     setSelectedRover(roverId);
-    const cmdId = sim.sendCommand(commandType, resolvedTaskId, roverId, taskOptions);
+    const cmdId = sim.sendCommand(
+      commandType,
+      resolvedTaskId,
+      roverId,
+      taskOptions,
+    );
     if (roverTargetMode === AUTO_ROVER_MODE && cmdId) {
       const taskSuffix =
         commandType === "START_TASK" && taskOptions
           ? ` (${taskOptions.task_type}/${taskOptions.difficulty_level})`
           : "";
-      addFeedLine("system", `Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`);
+      addFeedLine(
+        "system",
+        `Auto-selected ${formatRoverLabel(roverId)} for ${commandType}${taskSuffix}`,
+      );
     }
     if (commandType === "START_TASK" && cmdId) {
       advanceMissionGuideAfterDispatch();
@@ -1519,11 +1613,14 @@
     }
 
     const fleet = sim.getFleetState();
-    if (!fleet[nextMode]) return;
+    // Do not early return if fleet isn't populated yet, trust the mode string
     roverTargetMode = nextMode;
     if (dom.roverTargetSelect) dom.roverTargetSelect.value = nextMode;
     setSelectedRover(nextMode);
-    addFeedLine("system", `Manual rover selection: ${formatRoverLabel(nextMode)}`);
+    addFeedLine(
+      "system",
+      `Manual rover selection: ${formatRoverLabel(nextMode)}`,
+    );
   }
 
   function applyScenarioFromUrl() {
@@ -1534,8 +1631,12 @@
     );
     setMissionPreset(missionPreset, { announce: false, resetProgress: true });
 
-    const taskId = String(params.get("task") || dom.taskIdInput?.value || "").trim();
-    const taskType = String(params.get("task_type") || dom.taskTypeSelect?.value || "movement")
+    const taskId = String(
+      params.get("task") || dom.taskIdInput?.value || "",
+    ).trim();
+    const taskType = String(
+      params.get("task_type") || dom.taskTypeSelect?.value || "movement",
+    )
       .trim()
       .toLowerCase();
     const difficultyLevel = String(
@@ -1570,11 +1671,11 @@
     }
 
     if (open3d === "1" || open3d === "true" || open3d === "yes") {
-      setTimeout(() => set3DPanel(true), 80);
+      LSOASTime.setTimeout(() => set3DPanel(true), 80);
     }
 
     if (requestedView === "orbital") {
-      setTimeout(() => setVisualizationMode(), 120);
+      LSOASTime.setTimeout(() => setVisualizationMode(), 120);
     }
 
     const explicitTarget = params.get("target");
@@ -1587,37 +1688,56 @@
     }
 
     const autoStart = String(params.get("autostart") || "").toLowerCase();
-    if (autoStart === "1" || autoStart === "true" || autoStart === "start_task") {
-      setTimeout(() => dispatchCommand("START_TASK", taskId), delayMs);
+    if (
+      autoStart === "1" ||
+      autoStart === "true" ||
+      autoStart === "start_task"
+    ) {
+      LSOASTime.setTimeout(
+        () => dispatchCommand("START_TASK", taskId),
+        delayMs,
+      );
     }
 
     if (params.get("go_safe") === "1") {
-      setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 2500);
+      LSOASTime.setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 2500);
     }
 
     if (params.get("reset") === "1") {
-      setTimeout(() => dispatchCommand("RESET"), delayMs + 5000);
+      LSOASTime.setTimeout(() => dispatchCommand("RESET"), delayMs + 5000);
     }
 
     switch (scenario) {
       case "basic-auto":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
+        LSOASTime.setTimeout(
+          () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
+          delayMs,
+        );
         break;
       case "manual-select": {
         const manualRover = params.get("manual_rover") || "rover-2";
         setRoverTargetMode(manualRover);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
+        LSOASTime.setTimeout(
+          () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
+          delayMs,
+        );
         break;
       }
       case "safe-mode":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
-        setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
+        LSOASTime.setTimeout(
+          () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
+          delayMs,
+        );
+        LSOASTime.setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
         break;
       case "battery-select":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(() => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()), delayMs);
+        LSOASTime.setTimeout(
+          () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
+          delayMs,
+        );
         break;
       default:
         break;
@@ -1643,7 +1763,7 @@
   });
   setSelectedRover(sim.getSelectedRover());
   updateFleetUi();
-  setInterval(syncFleetFromController, 1500);
+  LSOASTime.setInterval(syncFleetFromController, 1500);
 
   // ─── Telemetry feed ───
   let feedInitialized = false;
@@ -1726,13 +1846,15 @@
     const normalizedState = normalizeState(data.state);
     const batteryValue = Number(data.battery || 0);
     const batteryPct = Math.round(batteryValue * 100);
-    const batteryStatus = batteryValue < 0.2 ? "LOW" : batteryValue < 0.5 ? "MID" : "OK";
+    const batteryStatus =
+      batteryValue < 0.2 ? "LOW" : batteryValue < 0.5 ? "MID" : "OK";
 
     let feedText =
       `${normalizedState} | BAT ${batteryPct}% (${batteryStatus})` +
       `${roverId ? ` | ROVER ${formatRoverLabel(roverId)}` : ""}`;
     if (data.task_id) feedText += ` | TASK ${data.task_id}`;
-    if (data.task_progress) feedText += ` (${data.task_progress}/${data.task_total_steps || "?"})`;
+    if (data.task_progress)
+      feedText += ` (${data.task_progress}/${data.task_total_steps || "?"})`;
     if (data.active_task_type && data.active_task_difficulty) {
       feedText += ` | MODE ${data.active_task_type}/${data.active_task_difficulty}`;
     }
@@ -1743,7 +1865,11 @@
 
     addFeedLine("tlm", feedText);
 
-    if (dom.lunarMeta && data.position && !document.body.classList.contains("three-panel-open")) {
+    if (
+      dom.lunarMeta &&
+      data.position &&
+      !document.body.classList.contains("three-panel-open")
+    ) {
       const lat = Number(data.position.lat || 0).toFixed(2);
       const lon = Number(data.position.lon || 0).toFixed(2);
       dom.lunarMeta.textContent = `Lat ${lat}, Lon ${lon}`;
@@ -1838,12 +1964,14 @@
     dom.pendingAcks.innerHTML = keys
       .map((id) => {
         const info = pending[id];
-        const elapsed = (Date.now() / 1000 - info.sentAt).toFixed(1);
+        const elapsed = (LSOASTime.now() / 1000 - info.sentAt).toFixed(1);
         const bufferedFor = info.bufferedAt
-          ? (Date.now() / 1000 - info.bufferedAt).toFixed(1)
+          ? (LSOASTime.now() / 1000 - info.bufferedAt).toFixed(1)
           : elapsed;
         const timerText = info.buffered ? `BUF ${bufferedFor}s` : `${elapsed}s`;
-        const timerClass = info.buffered ? "pending-timer buffered" : "pending-timer";
+        const timerClass = info.buffered
+          ? "pending-timer buffered"
+          : "pending-timer";
         const modeText = info.buffered ? "relay queue" : "in-flight";
         return `<div class="pending-item">
         <span class="pending-id">${id}</span>
@@ -1948,7 +2076,12 @@
       };
     });
 
-    if (!positions["topo-earth"] || !positions["topo-spacelink"] || !positions["topo-rover"] || !positions["topo-telemetry"]) {
+    if (
+      !positions["topo-earth"] ||
+      !positions["topo-spacelink"] ||
+      !positions["topo-rover"] ||
+      !positions["topo-telemetry"]
+    ) {
       return;
     }
 
@@ -1980,7 +2113,7 @@
   }
 
   // Draw lines after layout
-  setTimeout(drawTopologyLines, 100);
+  LSOASTime.setTimeout(drawTopologyLines, 100);
   window.addEventListener("resize", () => {
     requestAnimationFrame(drawTopologyLines);
     hideFleetHoverCard();
@@ -2033,7 +2166,10 @@
 
   if (dom.missionPresetSelect) {
     dom.missionPresetSelect.addEventListener("change", (event) => {
-      setMissionPreset(event.target.value, { announce: true, resetProgress: true });
+      setMissionPreset(event.target.value, {
+        announce: true,
+        resetProgress: true,
+      });
       openMissionControlsCard();
     });
   }
@@ -2152,7 +2288,7 @@
     btn.classList.remove("btn-press-feedback");
     void btn.offsetWidth;
     btn.classList.add("btn-press-feedback");
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       btn.classList.remove("btn-press-feedback");
     }, 190);
   }
@@ -2180,6 +2316,20 @@
   });
 
   // ─── Slider Controls ───
+  if (dom.timeBtns) {
+    dom.timeBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const mult = parseFloat(e.target.dataset.mult);
+        if (!isNaN(mult) && typeof LSOASTime !== "undefined") {
+          LSOASTime.setMultiplier(mult);
+          dom.timeBtns.forEach((b) => b.classList.remove("active"));
+          e.target.classList.add("active");
+          addFeedLine("system", `Time multiplier set to ${mult}x`);
+        }
+      });
+    });
+  }
+
   dom.latencySlider.addEventListener("input", (e) => {
     const val = parseFloat(e.target.value);
     sim.updateConfig("baseLatency", val);
@@ -2232,7 +2382,7 @@
     );
   }
 
-  setInterval(updateMET, 1000);
+  LSOASTime.setInterval(updateMET, 1000);
 
   // ─── Node Click Highlighting ───
   $$(".topo-node").forEach((node) => {
