@@ -71,7 +71,7 @@
   function set3DPanel(open) {
     is3DPanelOpen = Boolean(open);
     if (panelLayoutTimer) {
-      clearTimeout(panelLayoutTimer);
+      LSOASTime.clearTimeout(panelLayoutTimer);
       panelLayoutTimer = null;
     }
 
@@ -98,7 +98,7 @@
       floatingPanel.classList.remove("panel-open");
       floatingPanel.setAttribute("aria-hidden", "true");
       hideFleetHoverCard();
-      panelLayoutTimer = setTimeout(() => {
+      panelLayoutTimer = LSOASTime.setTimeout(() => {
         document.body.classList.remove("three-panel-open");
         syncAccordionLayoutMode(false);
         syncMobilePanelMode();
@@ -110,7 +110,7 @@
     }
 
     // Trigger resize after transition allows renderer to catch up
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       if (viz) {
         viz.onResize();
         if (typeof viz.syncNavigationTelemetry === "function") {
@@ -135,6 +135,7 @@
 
   const dom = {
     metValue: $("#met-value"),
+    timeBtns: $$(".time-btn"),
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
@@ -1177,7 +1178,7 @@
     const battery = Number(snapshot.battery || 0);
     const hasFault = Boolean(snapshot.fault);
     const staleSeconds = snapshot.last_seen
-      ? Math.max(0, Date.now() / 1000 - snapshot.last_seen)
+      ? Math.max(0, LSOASTime.now() / 1000 - snapshot.last_seen)
       : 0;
 
     let score = 0;
@@ -1612,7 +1613,7 @@
     }
 
     const fleet = sim.getFleetState();
-    if (!fleet[nextMode]) return;
+    // Do not early return if fleet isn't populated yet, trust the mode string
     roverTargetMode = nextMode;
     if (dom.roverTargetSelect) dom.roverTargetSelect.value = nextMode;
     setSelectedRover(nextMode);
@@ -1670,11 +1671,11 @@
     }
 
     if (open3d === "1" || open3d === "true" || open3d === "yes") {
-      setTimeout(() => set3DPanel(true), 80);
+      LSOASTime.setTimeout(() => set3DPanel(true), 80);
     }
 
     if (requestedView === "orbital") {
-      setTimeout(() => setVisualizationMode(), 120);
+      LSOASTime.setTimeout(() => setVisualizationMode(), 120);
     }
 
     const explicitTarget = params.get("target");
@@ -1692,21 +1693,24 @@
       autoStart === "true" ||
       autoStart === "start_task"
     ) {
-      setTimeout(() => dispatchCommand("START_TASK", taskId), delayMs);
+      LSOASTime.setTimeout(
+        () => dispatchCommand("START_TASK", taskId),
+        delayMs,
+      );
     }
 
     if (params.get("go_safe") === "1") {
-      setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 2500);
+      LSOASTime.setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 2500);
     }
 
     if (params.get("reset") === "1") {
-      setTimeout(() => dispatchCommand("RESET"), delayMs + 5000);
+      LSOASTime.setTimeout(() => dispatchCommand("RESET"), delayMs + 5000);
     }
 
     switch (scenario) {
       case "basic-auto":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(
+        LSOASTime.setTimeout(
           () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
           delayMs,
         );
@@ -1714,7 +1718,7 @@
       case "manual-select": {
         const manualRover = params.get("manual_rover") || "rover-2";
         setRoverTargetMode(manualRover);
-        setTimeout(
+        LSOASTime.setTimeout(
           () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
           delayMs,
         );
@@ -1722,15 +1726,15 @@
       }
       case "safe-mode":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(
+        LSOASTime.setTimeout(
           () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
           delayMs,
         );
-        setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
+        LSOASTime.setTimeout(() => dispatchCommand("GO_SAFE"), delayMs + 3000);
         break;
       case "battery-select":
         setRoverTargetMode(AUTO_ROVER_MODE);
-        setTimeout(
+        LSOASTime.setTimeout(
           () => dispatchCommand("START_TASK", taskId || ensureDispatchTaskId()),
           delayMs,
         );
@@ -1759,7 +1763,7 @@
   });
   setSelectedRover(sim.getSelectedRover());
   updateFleetUi();
-  setInterval(syncFleetFromController, 1500);
+  LSOASTime.setInterval(syncFleetFromController, 1500);
 
   // ─── Telemetry feed ───
   let feedInitialized = false;
@@ -1960,9 +1964,9 @@
     dom.pendingAcks.innerHTML = keys
       .map((id) => {
         const info = pending[id];
-        const elapsed = (Date.now() / 1000 - info.sentAt).toFixed(1);
+        const elapsed = (LSOASTime.now() / 1000 - info.sentAt).toFixed(1);
         const bufferedFor = info.bufferedAt
-          ? (Date.now() / 1000 - info.bufferedAt).toFixed(1)
+          ? (LSOASTime.now() / 1000 - info.bufferedAt).toFixed(1)
           : elapsed;
         const timerText = info.buffered ? `BUF ${bufferedFor}s` : `${elapsed}s`;
         const timerClass = info.buffered
@@ -2109,7 +2113,7 @@
   }
 
   // Draw lines after layout
-  setTimeout(drawTopologyLines, 100);
+  LSOASTime.setTimeout(drawTopologyLines, 100);
   window.addEventListener("resize", () => {
     requestAnimationFrame(drawTopologyLines);
     hideFleetHoverCard();
@@ -2284,7 +2288,7 @@
     btn.classList.remove("btn-press-feedback");
     void btn.offsetWidth;
     btn.classList.add("btn-press-feedback");
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       btn.classList.remove("btn-press-feedback");
     }, 190);
   }
@@ -2312,6 +2316,20 @@
   });
 
   // ─── Slider Controls ───
+  if (dom.timeBtns) {
+    dom.timeBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const mult = parseFloat(e.target.dataset.mult);
+        if (!isNaN(mult) && typeof LSOASTime !== "undefined") {
+          LSOASTime.setMultiplier(mult);
+          dom.timeBtns.forEach((b) => b.classList.remove("active"));
+          e.target.classList.add("active");
+          addFeedLine("system", `Time multiplier set to ${mult}x`);
+        }
+      });
+    });
+  }
+
   dom.latencySlider.addEventListener("input", (e) => {
     const val = parseFloat(e.target.value);
     sim.updateConfig("baseLatency", val);
@@ -2364,7 +2382,7 @@
     );
   }
 
-  setInterval(updateMET, 1000);
+  LSOASTime.setInterval(updateMET, 1000);
 
   // ─── Node Click Highlighting ───
   $$(".topo-node").forEach((node) => {

@@ -1816,32 +1816,36 @@ class VisualizationController {
   }
 
   physicsStep(dt) {
-    const clampedDt = Math.min(dt, 0.034);
+    const MAX_STEP = 0.034;
+    let timeRemaining = dt;
 
-    this.worldBodies.dynamic.forEach((body) => {
-      const r = body.position.length();
-      if (r > 0.0001) {
-        const accelScale = -this.GRAVITY_MU / (r * r * r);
-        this.tmpVecA.copy(body.position).multiplyScalar(accelScale);
-        body.velocity.addScaledVector(this.tmpVecA, clampedDt);
-      }
+    while (timeRemaining > 0) {
+      const step = Math.min(timeRemaining, MAX_STEP);
+      timeRemaining -= step;
 
-      body.position.addScaledVector(body.velocity, clampedDt);
-      body.group.position.copy(body.position);
-      body.group.lookAt(0, 0, 0);
+      this.worldBodies.dynamic.forEach((body) => {
+        const r = body.position.length();
+        if (r > 0.0001) {
+          const accelScale = -this.GRAVITY_MU / (r * r * r);
+          this.tmpVecA.copy(body.position).multiplyScalar(accelScale);
+          body.velocity.addScaledVector(this.tmpVecA, step);
+        }
 
-      if (body.collisionCooldown > 0) {
-        body.collisionCooldown = Math.max(
-          0,
-          body.collisionCooldown - clampedDt,
-        );
-      }
+        body.position.addScaledVector(body.velocity, step);
+        body.group.position.copy(body.position);
+        body.group.lookAt(0, 0, 0);
 
-      this.resolveMoonCollision(body);
-      this.resolveRoverCollisions(body);
-    });
+        if (body.collisionCooldown > 0) {
+          body.collisionCooldown = Math.max(0, body.collisionCooldown - step);
+        }
 
-    this.resolveSatelliteCollisions();
+        this.resolveMoonCollision(body);
+        this.resolveRoverCollisions(body);
+      });
+
+      this.resolveSatelliteCollisions();
+    }
+
     this.updateSatelliteLinks();
   }
 
@@ -2076,16 +2080,23 @@ class VisualizationController {
   animate() {
     requestAnimationFrame(() => this.animate());
     const now = performance.now();
-    const dt = (now - this.lastFrameTs) / 1000;
+    let realDt = (now - this.lastFrameTs) / 1000;
     this.lastFrameTs = now;
-    const clampedDt = Math.min(Math.max(dt, 0), 0.06);
+
+    // Scale simulation physics/rotations with multiplier
+    let mult = typeof LSOASTime !== "undefined" ? LSOASTime.multiplier : 1;
+    let dt = realDt * mult;
+    const clampedDt = Math.min(Math.max(dt, 0), 0.06 * mult);
 
     this.physicsStep(dt);
 
     if (this.earthBase) {
       this.earthBase.rotation.y += clampedDt * 0.032;
       if (this.earthAnchorOrbital) {
-        this.earthBase.position.lerp(this.earthAnchorOrbital, clampedDt * 2.0);
+        this.earthBase.position.lerp(
+          this.earthAnchorOrbital,
+          Math.min(clampedDt * 2.0, 1.0),
+        );
         this.earthAnchor.copy(this.earthBase.position);
       }
     }
@@ -2096,7 +2107,10 @@ class VisualizationController {
       this.sunSurface.rotation.y += clampedDt * 0.018;
     }
     if (this.sunGroup && this.sunAnchorOrbital) {
-      this.sunGroup.position.lerp(this.sunAnchorOrbital, clampedDt * 2.0);
+      this.sunGroup.position.lerp(
+        this.sunAnchorOrbital,
+        Math.min(clampedDt * 2.0, 1.0),
+      );
       if (this.sunLight) {
         this.sunLight.position.copy(this.sunGroup.position);
       }
@@ -2108,8 +2122,9 @@ class VisualizationController {
         const dLat = rover.targetLat - rover.lat;
         const dLon = rover.targetLon - rover.lon;
         if (Math.abs(dLat) > 1e-6 || Math.abs(dLon) > 1e-6) {
-          rover.lat += dLat * clampedDt * 3.0;
-          rover.lon += dLon * clampedDt * 3.0;
+          const t = Math.min(clampedDt * 3.0, 1.0);
+          rover.lat += dLat * t;
+          rover.lon += dLon * t;
           this.placeRover(rover);
         }
       }

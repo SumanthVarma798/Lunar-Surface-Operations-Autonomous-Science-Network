@@ -58,6 +58,12 @@
           <span class="clock-label">MET</span>
           <span class="clock-value" id="met-value">00:00:00</span>
         </div>
+        <div class="time-controls" id="time-controls">
+          <button class="time-btn active" data-mult="1">1x</button>
+          <button class="time-btn" data-mult="2">2x</button>
+          <button class="time-btn" data-mult="5">5x</button>
+          <button class="time-btn" data-mult="10">10x</button>
+        </div>
       </div>
       <div class="top-bar-right">
         <div class="connection-indicator" id="connection-indicator">
@@ -126,7 +132,10 @@
           <h2>Mission Streams</h2>
           <span class="badge badge-live">3 Tabs</span>
         </div>
-        <div class="dropdown-stack left-dropdown-stack" id="left-dropdown-stack">
+        <div
+          class="dropdown-stack left-dropdown-stack"
+          id="left-dropdown-stack"
+        >
           <section
             class="dropdown-block is-open"
             id="left-command-log-block"
@@ -204,20 +213,38 @@
                 </div>
 
                 <!-- Space Link Node -->
-                <div class="topo-node" id="topo-spacelink" data-node="spacelink">
+                <div
+                  class="topo-node"
+                  id="topo-spacelink"
+                  data-node="spacelink"
+                >
                   <div class="topo-node-ring">
                     <div class="topo-node-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" class="wire-icon">
                         <rect x="9" y="9" width="6" height="6" rx="1"></rect>
-                        <rect x="3" y="8.5" width="4.5" height="7" rx="0.8"></rect>
-                        <rect x="16.5" y="8.5" width="4.5" height="7" rx="0.8"></rect>
+                        <rect
+                          x="3"
+                          y="8.5"
+                          width="4.5"
+                          height="7"
+                          rx="0.8"
+                        ></rect>
+                        <rect
+                          x="16.5"
+                          y="8.5"
+                          width="4.5"
+                          height="7"
+                          rx="0.8"
+                        ></rect>
                         <path d="M12 6V3"></path>
                         <path d="M12 21v-3"></path>
                       </svg>
                     </div>
                   </div>
                   <span class="topo-node-label">Space Link</span>
-                  <span class="topo-node-state" id="spacelink-state">RELAY</span>
+                  <span class="topo-node-state" id="spacelink-state"
+                    >RELAY</span
+                  >
                 </div>
 
                 <!-- Rover Node -->
@@ -238,7 +265,11 @@
                 </div>
 
                 <!-- Telemetry Monitor -->
-                <div class="topo-node" id="topo-telemetry" data-node="telemetry">
+                <div
+                  class="topo-node"
+                  id="topo-telemetry"
+                  data-node="telemetry"
+                >
                   <div class="topo-node-ring">
                     <div class="topo-node-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" class="wire-icon">
@@ -319,7 +350,11 @@
                     <span>Awaiting fleet telemetry…</span>
                   </div>
                 </div>
-                <div class="fleet-hover-card" id="fleet-hover-card" hidden></div>
+                <div
+                  class="fleet-hover-card"
+                  id="fleet-hover-card"
+                  hidden
+                ></div>
               </div>
             </div>
           </section>
@@ -388,9 +423,15 @@
               data-accordion-group="orbital-silos"
               data-default-open="false"
             >
-              <button class="dropdown-toggle" type="button" aria-expanded="false">
+              <button
+                class="dropdown-toggle"
+                type="button"
+                aria-expanded="false"
+              >
                 <span class="dropdown-title">Status and Controls</span>
-                <span class="dropdown-meta">Primary mission telemetry and camera controls</span>
+                <span class="dropdown-meta"
+                  >Primary mission telemetry and camera controls</span
+                >
                 <span class="dropdown-chevron" aria-hidden="true"></span>
               </button>
               <div class="dropdown-content" hidden>
@@ -401,11 +442,15 @@
                   </div>
                   <div class="lunar-kpi" id="lunar-kpi-los-card">
                     <span class="lunar-kpi-label">LOS</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-los">Pending</span>
+                    <span class="lunar-kpi-value" id="lunar-kpi-los"
+                      >Pending</span
+                    >
                   </div>
                   <div class="lunar-kpi" id="lunar-kpi-links-card">
                     <span class="lunar-kpi-label">Links</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-links">0 / 0</span>
+                    <span class="lunar-kpi-value" id="lunar-kpi-links"
+                      >0 / 0</span
+                    >
                   </div>
                   <div class="lunar-kpi" id="lunar-kpi-loss-card">
                     <span class="lunar-kpi-label">LOS Outage</span>
@@ -465,29 +510,40 @@
               data-accordion-group="orbital-silos"
               data-default-open="false"
             >
-              <button class="dropdown-toggle" type="button" aria-expanded="false">
+              <button
+                class="dropdown-toggle"
+                type="button"
+                aria-expanded="false"
+              >
                 <span class="dropdown-title">Geometry and Link Context</span>
-                <span class="dropdown-meta">Distances, bearings, and LOS history</span>
+                <span class="dropdown-meta"
+                  >Distances, bearings, and LOS history</span
+                >
                 <span class="dropdown-chevron" aria-hidden="true"></span>
               </button>
               <div class="dropdown-content" hidden>
                 <div class="orbital-relative-strip" id="orbital-relative-strip">
-                  <span class="orbital-relative-item" id="orbital-earth-moon-distance"
+                  <span
+                    class="orbital-relative-item"
+                    id="orbital-earth-moon-distance"
                     >Earth-Moon: --</span
                   >
-                  <span class="orbital-relative-item" id="orbital-rover-earth-angle"
+                  <span
+                    class="orbital-relative-item"
+                    id="orbital-rover-earth-angle"
                     >Rover→Earth angle: --</span
                   >
                   <span class="orbital-relative-item" id="orbital-rover-side"
                     >Lunar side: --</span
                   >
-                  <span class="orbital-relative-item" id="orbital-last-loss-duration"
+                  <span
+                    class="orbital-relative-item"
+                    id="orbital-last-loss-duration"
                     >Last LOS outage: --</span
                   >
                 </div>
               </div>
             </section>
-
           </div>
           <div id="visualization-container">
             <div class="orbital-overlay orbital-compass" id="orbital-compass">
@@ -496,10 +552,16 @@
               <span class="orbital-compass-label south">S</span>
               <span class="orbital-compass-label west">W</span>
               <div class="orbital-compass-ring"></div>
-              <div class="orbital-compass-needle" id="orbital-compass-needle"></div>
+              <div
+                class="orbital-compass-needle"
+                id="orbital-compass-needle"
+              ></div>
               <div class="orbital-compass-center"></div>
             </div>
-            <div class="orbital-overlay orbital-position-card" id="orbital-position-card">
+            <div
+              class="orbital-overlay orbital-position-card"
+              id="orbital-position-card"
+            >
               <div class="orbital-position-row">
                 <span>Selected Rover</span>
                 <strong id="orbital-rover-coords">Lat -- · Lon --</strong>
@@ -509,7 +571,10 @@
                 <strong id="orbital-earth-bearing">--</strong>
               </div>
             </div>
-            <div class="orbital-overlay orbital-controls-hint" id="orbital-controls-hint">
+            <div
+              class="orbital-overlay orbital-controls-hint"
+              id="orbital-controls-hint"
+            >
               <span>LMB Orbit</span>
               <span>Shift + LMB Pan</span>
               <span>Wheel Zoom</span>
@@ -531,7 +596,10 @@
           <span class="badge badge-earth">Earth Station</span>
         </div>
 
-        <div class="dropdown-stack right-dropdown-stack" id="right-dropdown-stack">
+        <div
+          class="dropdown-stack right-dropdown-stack"
+          id="right-dropdown-stack"
+        >
           <section
             class="dropdown-block is-open"
             id="mission-controls-block"
@@ -557,7 +625,13 @@
                   <button class="cmd-btn cmd-abort" id="cmd-abort">
                     <span class="cmd-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" class="wire-icon">
-                        <rect x="7" y="7" width="10" height="10" rx="1.2"></rect>
+                        <rect
+                          x="7"
+                          y="7"
+                          width="10"
+                          height="10"
+                          rx="1.2"
+                        ></rect>
                       </svg>
                     </span>
                     <span class="cmd-label">Abort Task</span>
@@ -565,7 +639,9 @@
                   <button class="cmd-btn cmd-safe" id="cmd-go-safe">
                     <span class="cmd-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" class="wire-icon">
-                        <path d="M12 4l6 2.2V12c0 4-2.5 6.6-6 8-3.5-1.4-6-4-6-8V6.2z"></path>
+                        <path
+                          d="M12 4l6 2.2V12c0 4-2.5 6.6-6 8-3.5-1.4-6-4-6-8V6.2z"
+                        ></path>
                       </svg>
                     </span>
                     <span class="cmd-label">Enter Safe Mode</span>
@@ -584,7 +660,10 @@
                 <div class="control-subheading">Task Configuration</div>
                 <div class="input-group">
                   <label for="rover-target-select">Target Rover</label>
-                  <select id="rover-target-select" class="input-field select-field">
+                  <select
+                    id="rover-target-select"
+                    class="input-field select-field"
+                  >
                     <option value="auto">Auto-Select (Best Rover)</option>
                   </select>
                 </div>
@@ -607,7 +686,10 @@
                     </button>
                   </div>
                   <div class="task-id-meta">
-                    <label class="task-id-toggle-label" for="task-id-auto-toggle">
+                    <label
+                      class="task-id-toggle-label"
+                      for="task-id-auto-toggle"
+                    >
                       <input type="checkbox" id="task-id-auto-toggle" checked />
                       Auto-generate
                     </label>
@@ -616,13 +698,18 @@
                 </div>
                 <div class="input-group">
                   <label for="task-type-select">Task Type</label>
-                  <select id="task-type-select" class="input-field select-field">
+                  <select
+                    id="task-type-select"
+                    class="input-field select-field"
+                  >
                     <option value="movement">Movement/Traverse</option>
                     <option value="science">Science Investigation</option>
                     <option value="digging">Digging/Drilling</option>
                     <option value="pushing">Pushing/Regolith Handling</option>
                     <option value="photo">Photo/Imaging Survey</option>
-                    <option value="sample-handling">Sample Handling/Transfer</option>
+                    <option value="sample-handling">
+                      Sample Handling/Transfer
+                    </option>
                   </select>
                 </div>
                 <div class="input-group">
@@ -667,7 +754,9 @@
                     <div class="input-group">
                       <label for="latency-slider"
                         >Base Latency
-                        <span class="param-value" id="latency-value">1.3s</span></label
+                        <span class="param-value" id="latency-value"
+                          >1.3s</span
+                        ></label
                       >
                       <input
                         type="range"
@@ -699,7 +788,9 @@
                     <div class="input-group">
                       <label for="drop-slider"
                         >Drop Rate
-                        <span class="param-value" id="drop-value">5%</span></label
+                        <span class="param-value" id="drop-value"
+                          >5%</span
+                        ></label
                       >
                       <input
                         type="range"
@@ -714,7 +805,9 @@
                     <div class="input-group">
                       <label for="fault-slider"
                         >Risk Bias
-                        <span class="param-value" id="fault-prob-value">0%</span></label
+                        <span class="param-value" id="fault-prob-value"
+                          >0%</span
+                        ></label
                       >
                       <input
                         type="range"
@@ -746,14 +839,19 @@
               <div class="command-section command-section-inner">
                 <div class="input-group">
                   <label for="mission-preset-select">Mission Preset</label>
-                  <select id="mission-preset-select" class="input-field select-field">
+                  <select
+                    id="mission-preset-select"
+                    class="input-field select-field"
+                  >
                     <option value="cy3-pragyan" selected>
                       Chandrayaan-3 Pragyan Surface Ops
                     </option>
                     <option value="cy4-sample-return">
                       Chandrayaan-4 Sample Return Chain
                     </option>
-                    <option value="lupex-polar-ice">LUPEX Polar Ice Prospecting</option>
+                    <option value="lupex-polar-ice">
+                      LUPEX Polar Ice Prospecting
+                    </option>
                     <option value="cy-future-base">
                       Future Chandrayaan Base Build (Teaching Scenario)
                     </option>
@@ -761,13 +859,16 @@
                 </div>
                 <article class="mission-brief-card" id="mission-brief-card">
                   <div class="mission-brief-head">
-                    <span class="mission-brief-code" id="mission-brief-code">CY3</span>
+                    <span class="mission-brief-code" id="mission-brief-code"
+                      >CY3</span
+                    >
                     <span class="mission-brief-phase" id="mission-brief-phase"
                       >CY3-ops</span
                     >
                   </div>
                   <p class="mission-brief-summary" id="mission-brief-summary">
-                    Pragyan-style near-surface traverse and in-situ science sequence.
+                    Pragyan-style near-surface traverse and in-situ science
+                    sequence.
                   </p>
                   <div class="mission-brief-tags" id="mission-brief-tags"></div>
                 </article>
@@ -775,7 +876,11 @@
                   <button class="btn-sm" id="mission-apply-btn" type="button">
                     Apply Preset
                   </button>
-                  <button class="btn-sm" id="mission-next-step-btn" type="button">
+                  <button
+                    class="btn-sm"
+                    id="mission-next-step-btn"
+                    type="button"
+                  >
                     Use Next Step
                   </button>
                   <button class="btn-sm" id="mission-reset-btn" type="button">

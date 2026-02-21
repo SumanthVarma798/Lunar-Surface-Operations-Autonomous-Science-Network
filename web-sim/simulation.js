@@ -3,6 +3,82 @@
    Ports all ROS node logic to in-browser JavaScript.
    ═══════════════════════════════════════════════════════ */
 
+window.LSOASTime = new (class {
+  constructor() {
+    this.multiplier = 1.0;
+    this.baseReal = Date.now();
+    this.baseSim = this.baseReal;
+    this.timers = new Map();
+    this.timerId = 1;
+
+    // Start tick loop
+    this.tick = this.tick.bind(this);
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(this.tick);
+    } else {
+      setInterval(this.tick, 16);
+    }
+  }
+
+  now() {
+    return this.baseSim + (Date.now() - this.baseReal) * this.multiplier;
+  }
+
+  setMultiplier(m) {
+    this.baseSim = this.now();
+    this.baseReal = Date.now();
+    this.multiplier = m;
+  }
+
+  setTimeout(fn, delayRealMs) {
+    const id = this.timerId++;
+    const targetSimTime = this.now() + delayRealMs;
+    this.timers.set(id, { type: "timeout", target: targetSimTime, fn });
+    return id;
+  }
+
+  setInterval(fn, intervalRealMs) {
+    const id = this.timerId++;
+    this.timers.set(id, {
+      type: "interval",
+      interval: intervalRealMs,
+      next: this.now() + intervalRealMs,
+      fn,
+    });
+    return id;
+  }
+
+  clearTimeout(id) {
+    this.timers.delete(id);
+  }
+  clearInterval(id) {
+    this.timers.delete(id);
+  }
+
+  tick() {
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(this.tick);
+    }
+    const currentSim = this.now();
+
+    for (const [id, timer] of Array.from(this.timers.entries())) {
+      if (timer.type === "timeout") {
+        if (currentSim >= timer.target) {
+          this.timers.delete(id);
+          timer.fn();
+        }
+      } else if (timer.type === "interval") {
+        if (currentSim >= timer.next) {
+          // Trigger once and advance next target. To handle high multipliers gracefully,
+          // ensure next is strictly monotonic without triggering 100 times per tick.
+          timer.next = currentSim + timer.interval;
+          timer.fn();
+        }
+      }
+    }
+  }
+})();
+
 const DEFAULT_ROVER_IDS = ["rover-1", "rover-2", "rover-3"];
 const MIN_ROVER_COUNT = 1;
 const MAX_ROVER_COUNT = 8;
@@ -267,14 +343,14 @@ class CelestialDynamics {
     this.moonOrbitInclinationRad = degToRad(5.145);
     this.simDaysPerSecond = 1.2;
     this.phaseOffsetRad = -1.05;
-    this.startEpochMs = Date.now();
+    this.startEpochMs = LSOASTime.now();
   }
 
-  getElapsedDays(nowMs = Date.now()) {
+  getElapsedDays(nowMs = LSOASTime.now()) {
     return ((nowMs - this.startEpochMs) / 1000) * this.simDaysPerSecond;
   }
 
-  computeFrame(nowMs = Date.now()) {
+  computeFrame(nowMs = LSOASTime.now()) {
     const elapsedDays = this.getElapsedDays(nowMs);
     const earthOrbitAngle = TAU * (elapsedDays / this.earthOrbitPeriodDays);
     const moonOrbitAngle =
@@ -632,7 +708,7 @@ class RoverNode {
           this.position.lat,
           this.position.lon,
           this.latestCelestialFrame ||
-            this.celestialDynamics.computeFrame(Date.now()),
+            this.celestialDynamics.computeFrame(LSOASTime.now()),
         )
       : clamp01(0.6 + Math.random() * 0.4);
     this.lunarTimeState = getLunarTimeState(this.solarExposure);
@@ -645,9 +721,15 @@ class RoverNode {
     this.bus.on(this.commandTopic, this.commandListener);
 
     // Start telemetry publishing (every 2s)
-    this.telemetryInterval = setInterval(() => this.publishTelemetry(), 2000);
+    this.telemetryInterval = LSOASTime.setInterval(
+      () => this.publishTelemetry(),
+      2000,
+    );
     // Start task execution tick (every 1s)
-    this.taskInterval = setInterval(() => this.executeTaskStep(), 1000);
+    this.taskInterval = LSOASTime.setInterval(
+      () => this.executeTaskStep(),
+      1000,
+    );
   }
 
   commandCallback(cmdData) {
@@ -693,7 +775,7 @@ class RoverNode {
     this.predictedFaultProbability = 0;
   }
 
-  _updateSolarExposure(nowMs = Date.now()) {
+  _updateSolarExposure(nowMs = LSOASTime.now()) {
     if (this.celestialDynamics) {
       const frame =
         this.config.latestCelestialFrame ||
@@ -849,7 +931,7 @@ class RoverNode {
       rover_id: this.roverId,
       status: success ? "ACCEPTED" : "REJECTED",
       reason,
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
     };
     this.bus.emit(this.ackTopic, ackData);
   }
@@ -926,10 +1008,10 @@ class RoverNode {
   }
 
   publishTelemetry() {
-    this._updateSolarExposure(Date.now());
+    this._updateSolarExposure(LSOASTime.now());
     const frame = this.latestCelestialFrame;
     const telemetry = {
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
       rover_id: this.roverId,
       state: this.state,
       task_id: this.currentTaskId,
@@ -968,8 +1050,8 @@ class RoverNode {
   }
 
   destroy() {
-    clearInterval(this.telemetryInterval);
-    clearInterval(this.taskInterval);
+    LSOASTime.clearInterval(this.telemetryInterval);
+    LSOASTime.clearInterval(this.taskInterval);
     this.bus.off(this.commandTopic, this.commandListener);
   }
 }
@@ -1083,7 +1165,7 @@ class SpaceLinkNode {
     this.commandBuffer.set(cmdId, {
       data: { ...data },
       roverId,
-      bufferedAt: Date.now() / 1000,
+      bufferedAt: LSOASTime.now() / 1000,
     });
     this.bus.emit("spacelink:command-buffered", {
       cmdId,
@@ -1103,7 +1185,7 @@ class SpaceLinkNode {
     this.commandBuffer.clear();
 
     queuedEntries.forEach((entry, index) => {
-      setTimeout(() => {
+      LSOASTime.setTimeout(() => {
         if (this.losOutageActive) {
           this.bufferCommand(entry.data, entry.roverId);
           return;
@@ -1114,7 +1196,7 @@ class SpaceLinkNode {
           roverId: entry.roverId,
           bufferedFor: Math.max(
             0,
-            Date.now() / 1000 - Number(entry.bufferedAt || 0),
+            LSOASTime.now() / 1000 - Number(entry.bufferedAt || 0),
           ),
           queueDepth: Math.max(0, queuedEntries.length - index - 1),
         });
@@ -1153,7 +1235,7 @@ class SpaceLinkNode {
     });
     this.bus.emit("signal:active", { direction, delay, rover_id: roverId });
 
-    setTimeout(() => {
+    LSOASTime.setTimeout(() => {
       this.stats.received++;
       this.bus.emit(targetEvent, data);
       this.bus.emit("stats:update", this.stats);
@@ -1192,7 +1274,10 @@ class EarthNode {
     );
 
     // Check for timeouts every 1s
-    this.timeoutInterval = setInterval(() => this.checkTimeouts(), 1000);
+    this.timeoutInterval = LSOASTime.setInterval(
+      () => this.checkTimeouts(),
+      1000,
+    );
     this.bus.emit("fleet:update", this.getFleetState());
   }
 
@@ -1233,7 +1318,7 @@ class EarthNode {
       ...this.fleetState[roverId],
       ...data,
       rover_id: roverId,
-      last_seen: Date.now() / 1000,
+      last_seen: LSOASTime.now() / 1000,
     };
 
     this.bus.emit("fleet:update", this.getFleetState());
@@ -1311,7 +1396,7 @@ class EarthNode {
 
     if (this.pendingCommands[ackId]) {
       const cmdInfo = this.pendingCommands[ackId];
-      const rtt = Date.now() / 1000 - cmdInfo.sentAt;
+      const rtt = LSOASTime.now() / 1000 - cmdInfo.sentAt;
 
       if (status === "ACCEPTED") {
         this.bus.emit("log", {
@@ -1358,7 +1443,7 @@ class EarthNode {
     const roverId = data?.roverId || info.roverId;
     const transitioned = !info.buffered;
     info.buffered = true;
-    info.bufferedAt = Date.now() / 1000;
+    info.bufferedAt = LSOASTime.now() / 1000;
 
     if (transitioned) {
       this.bus.emit("log", {
@@ -1378,7 +1463,7 @@ class EarthNode {
     const roverId = data?.roverId || info.roverId;
 
     info.buffered = false;
-    info.sentAt = Date.now() / 1000;
+    info.sentAt = LSOASTime.now() / 1000;
     info.bufferedAt = null;
     this.bus.emit("log", {
       tag: "system",
@@ -1388,7 +1473,7 @@ class EarthNode {
   }
 
   checkTimeouts() {
-    const now = Date.now() / 1000;
+    const now = LSOASTime.now() / 1000;
     const timedOut = [];
 
     for (const [cmdId, info] of Object.entries(this.pendingCommands)) {
@@ -1402,7 +1487,7 @@ class EarthNode {
       const info = this.pendingCommands[cmdId];
       if (info.attempt < this.maxRetries) {
         info.attempt++;
-        info.sentAt = Date.now() / 1000;
+        info.sentAt = LSOASTime.now() / 1000;
         this.bus.emit("log", {
           tag: "system",
           text: `No ACK for ${cmdId} [${info.roverId}], retrying (attempt ${info.attempt}/${this.maxRetries})`,
@@ -1443,7 +1528,7 @@ class EarthNode {
       cmd_id: cmdId,
       rover_id: targetRoverId,
       type: cmdType,
-      ts: Date.now() / 1000,
+      ts: LSOASTime.now() / 1000,
     };
 
     if (taskId) cmdData.task_id = taskId;
@@ -1463,7 +1548,7 @@ class EarthNode {
 
     // Track pending
     this.pendingCommands[cmdId] = {
-      sentAt: Date.now() / 1000,
+      sentAt: LSOASTime.now() / 1000,
       cmdType,
       attempt: 1,
       cmdData,
@@ -1492,7 +1577,7 @@ class EarthNode {
   }
 
   destroy() {
-    clearInterval(this.timeoutInterval);
+    LSOASTime.clearInterval(this.timeoutInterval);
   }
 }
 
@@ -1547,10 +1632,12 @@ class SimulationController {
       roverIds,
       taskCatalog,
       celestialDynamics: this.celestialDynamics,
-      latestCelestialFrame: this.celestialDynamics.computeFrame(Date.now()),
+      latestCelestialFrame: this.celestialDynamics.computeFrame(
+        LSOASTime.now(),
+      ),
     };
 
-    this.startTime = Date.now();
+    this.startTime = LSOASTime.now();
     this.rovers = this.config.roverIds.map(
       (roverId, index) =>
         new RoverNode(
@@ -1565,13 +1652,13 @@ class SimulationController {
     this.earth = new EarthNode(this.bus, this.config);
     this.telemetryMonitor = new TelemetryMonitor(this.bus, this.earth);
     this.publishCelestialFrame();
-    this.celestialInterval = setInterval(
+    this.celestialInterval = LSOASTime.setInterval(
       () => this.publishCelestialFrame(),
       1000,
     );
   }
 
-  publishCelestialFrame(nowMs = Date.now()) {
+  publishCelestialFrame(nowMs = LSOASTime.now()) {
     const frame = this.celestialDynamics.computeFrame(nowMs);
     this.config.latestCelestialFrame = frame;
     this.bus.emit("celestial:ephemeris", frame);
@@ -1657,7 +1744,7 @@ class SimulationController {
   }
 
   getElapsedTime() {
-    return (Date.now() - this.startTime) / 1000;
+    return (LSOASTime.now() - this.startTime) / 1000;
   }
 
   getRoverState(roverId = null) {
@@ -1678,7 +1765,7 @@ class SimulationController {
   destroy() {
     this.rovers.forEach((rover) => rover.destroy());
     this.earth.destroy();
-    clearInterval(this.celestialInterval);
+    LSOASTime.clearInterval(this.celestialInterval);
   }
 }
 

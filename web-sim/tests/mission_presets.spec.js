@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 test.describe("Mission Presets & Controls Synchronization", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the local server
-    await page.goto("http://localhost:8097/");
+    await page.goto("http://localhost:8085/");
     // Expand the mission guide block
     await page.locator("#mission-explanation-block .dropdown-toggle").click();
   });
