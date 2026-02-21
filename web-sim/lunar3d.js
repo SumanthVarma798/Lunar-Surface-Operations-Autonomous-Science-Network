@@ -1554,10 +1554,6 @@ class VisualizationController {
     this.camera.position.copy(this.cameraTarget).add(this.tmpVecA);
     this.camera.lookAt(this.cameraTarget);
 
-    if (!this.earthAnchor.equals(this.earthAnchorOrbital)) {
-      this.earthAnchor.copy(this.earthAnchorOrbital);
-      if (this.earthBase) this.earthBase.position.copy(this.earthAnchor);
-    }
     if (this.earthBase) this.earthBase.scale.setScalar(1.28);
 
     if (force) this.camera.updateProjectionMatrix();
