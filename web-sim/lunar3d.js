@@ -669,11 +669,15 @@ class VisualizationController {
       .multiplyScalar(sunDistanceLu);
     this.sunAnchorOrbital.copy(this.tmpVecC);
 
-    if (this.earthBase) this.earthBase.position.copy(this.earthAnchorOrbital);
-    if (this.sunGroup) this.sunGroup.position.copy(this.sunAnchorOrbital);
-    if (this.sunLight) {
-      this.sunLight.position.copy(this.sunAnchorOrbital);
-      this.sunLight.target.position.set(0, 0, 0);
+    // Initial snap if they are uninitialized (at 0,0,0)
+    if (this.earthBase && this.earthBase.position.lengthSq() < 0.1) {
+      this.earthBase.position.copy(this.earthAnchorOrbital);
+    }
+    if (this.sunGroup && this.sunGroup.position.lengthSq() < 0.1) {
+      this.sunGroup.position.copy(this.sunAnchorOrbital);
+      if (this.sunLight) {
+        this.sunLight.position.copy(this.sunAnchorOrbital);
+      }
     }
   }
 
@@ -2081,10 +2085,26 @@ class VisualizationController {
     const clampedDt = Math.min(Math.max(dt, 0), 0.06);
 
     this.physicsStep(dt);
-    if (this.earthBase) this.earthBase.rotation.y += clampedDt * 0.032;
-    if (this.earthCloudLayer)
+
+    if (this.earthBase) {
+      this.earthBase.rotation.y += clampedDt * 0.032;
+      if (this.earthAnchorOrbital) {
+        this.earthBase.position.lerp(this.earthAnchorOrbital, clampedDt * 2.0);
+        this.earthAnchor.copy(this.earthBase.position);
+      }
+    }
+    if (this.earthCloudLayer) {
       this.earthCloudLayer.rotation.y += clampedDt * 0.065;
-    if (this.sunSurface) this.sunSurface.rotation.y += clampedDt * 0.018;
+    }
+    if (this.sunSurface) {
+      this.sunSurface.rotation.y += clampedDt * 0.018;
+    }
+    if (this.sunGroup && this.sunAnchorOrbital) {
+      this.sunGroup.position.lerp(this.sunAnchorOrbital, clampedDt * 2.0);
+      if (this.sunLight) {
+        this.sunLight.position.copy(this.sunGroup.position);
+      }
+    }
 
     this.rovers.forEach((rover) => {
       // Smoothly interpolate rover positions
