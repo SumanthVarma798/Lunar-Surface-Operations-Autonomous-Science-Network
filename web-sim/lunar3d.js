@@ -24,14 +24,34 @@ class VisualizationController {
     this.moon = null;
     this.stars = null;
     this.earthBase = null;
+    this.earthCloudLayer = null;
+    this.sunSurface = null;
+    this.sunGlow = null;
+    this.sunGroup = null;
+    this.sunLight = null;
+    this.latestCelestialFrame = null;
+    this.displayEarthMoonDistanceLu = 10.8;
+    this.displaySunDistanceClampLu = { min: 88, max: 320 };
 
     this.viewMode = "orbital";
-    this.orbitalDistance = 6.6;
+    this.defaultOrbitalDistance = 7.6;
+    this.defaultCameraAzimuth = -2.22;
+    this.defaultCameraPolar = 1.08;
+    this.defaultEarthFrameFactor = 0.22;
+    this.orbitalDistance = this.defaultOrbitalDistance;
+    this.cameraDistance = this.defaultOrbitalDistance;
+    this.cameraMinDistance = 1.35;
+    this.cameraMaxDistance = 16.0;
+    this.cameraAzimuth = 0.54;
+    this.cameraPolar = 1.08;
+    this.cameraTarget = new THREE.Vector3(0, 0, 0);
+    this.cameraTargetDesired = new THREE.Vector3(0, 0, 0);
     this.lastFrameTs = performance.now();
 
     this.dragState = {
       active: false,
       button: 0,
+      mode: "orbit",
       x: 0,
       y: 0,
     };
@@ -61,6 +81,13 @@ class VisualizationController {
       hasIssue: false,
       issueReason: "",
     };
+    this.signalLossState = {
+      active: false,
+      startedAtMs: 0,
+      currentDurationMs: 0,
+      lastDurationMs: null,
+      outageCount: 0,
+    };
     this.curiosityGeometry = null;
     this.curiosityModelReady = false;
     this.curiosityModelFailed = false;
@@ -69,9 +96,16 @@ class VisualizationController {
     this.tmpVecA = new THREE.Vector3();
     this.tmpVecB = new THREE.Vector3();
     this.tmpVecC = new THREE.Vector3();
+    this.tmpVecD = new THREE.Vector3();
     this.tmpColor = new THREE.Color();
-    this.earthAnchorOrbital = new THREE.Vector3(8.4, 3.2, 6.8);
+    this.earthAnchorOrbital = new THREE.Vector3(8.2, 1.0, 6.6);
     this.earthAnchor = this.earthAnchorOrbital.clone();
+    this.sunAnchorOrbital = new THREE.Vector3(20.6, 2.1, 15.8);
+    this.earthTextureUrls = {
+      color: "assets/nasa/earth-blue-marble-2048.png",
+      clouds: "assets/nasa/earth-clouds-2048.jpg",
+    };
+    this.sunTextureUrl = "assets/nasa/sun-sdo-2048-0171.jpg";
 
     this.init();
     this.bindBus();
@@ -89,7 +123,7 @@ class VisualizationController {
       42,
       this.width / this.height,
       0.003,
-      100,
+      420,
     );
 
     this.renderer = new THREE.WebGLRenderer({
@@ -106,6 +140,7 @@ class VisualizationController {
     this.loadCuriosityModel();
     this.createStars();
     this.createEarthBase();
+    this.createSun();
     this.createSatellites();
     this.setupInteraction();
     this.setViewMode("orbital", false);
@@ -116,6 +151,7 @@ class VisualizationController {
   bindBus() {
     this.bus.on("earth:telemetry", (data) => this.upsertRoverFromTelemetry(data));
     this.bus.on("fleet:update", (fleet) => this.upsertFleetSnapshot(fleet));
+    this.bus.on("celestial:ephemeris", (frame) => this.setCelestialFrame(frame));
     this.bus.on("earth:selected-rover", (data) => {
       if (data?.rover_id) this.setSelectedRover(data.rover_id);
     });
@@ -129,9 +165,11 @@ class VisualizationController {
     hemi.position.set(0, 6, 0);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xf8fcff, 2.25);
-    sun.position.set(6.2, 4.4, 5.1);
-    this.scene.add(sun);
+    this.sunLight = new THREE.DirectionalLight(0xf8fcff, 2.35);
+    this.sunLight.position.copy(this.sunAnchorOrbital);
+    this.scene.add(this.sunLight);
+    this.scene.add(this.sunLight.target);
+    this.sunLight.target.position.set(0, 0, 0);
 
     const fill = new THREE.PointLight(0x7cc8ff, 0.55, 24, 2);
     fill.position.set(-3.4, 2.1, 2.8);
@@ -247,7 +285,7 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ External moon texture unavailable, using procedural lunar albedo",
+          text: "WARN: External moon texture unavailable, using procedural lunar albedo",
         });
       },
     );
@@ -258,7 +296,7 @@ class VisualizationController {
       this.curiosityModelFailed = true;
       this.bus.emit("log", {
         tag: "system",
-        text: "⚠️ STL loader unavailable, using fallback rover mesh",
+        text: "WARN: STL loader unavailable, using fallback rover mesh",
       });
       return;
     }
@@ -276,7 +314,7 @@ class VisualizationController {
         this.curiosityModelFailed = true;
         this.bus.emit("log", {
           tag: "system",
-          text: "⚠️ Curiosity model failed to load, using fallback rover mesh",
+          text: "WARN: Curiosity model failed to load, using fallback rover mesh",
         });
       },
     );
@@ -317,7 +355,9 @@ class VisualizationController {
     rover.modelMesh = model;
     rover.modelMaterial = modelMaterial;
 
-    if (rover.fallbackMesh) {
+    if (rover.fallbackGroup) {
+      rover.fallbackGroup.visible = false;
+    } else if (rover.fallbackMesh) {
       rover.fallbackMesh.visible = false;
     }
 
@@ -365,34 +405,52 @@ class VisualizationController {
 
   createEarthBase() {
     const baseGroup = new THREE.Group();
+    const earthRadius = 0.34;
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 26, 26),
+      new THREE.SphereGeometry(earthRadius, 64, 64),
       new THREE.MeshStandardMaterial({
-        color: 0x93c5fd,
-        emissive: 0x1d4e89,
-        emissiveIntensity: 0.55,
-        roughness: 0.36,
-        metalness: 0.08,
+        color: 0x9fc4eb,
+        emissive: 0x0f2742,
+        emissiveIntensity: 0.46,
+        roughness: 0.82,
+        metalness: 0.02,
       }),
     );
+    core.rotation.y = Math.PI * 0.88;
     baseGroup.add(core);
 
+    const cloudBandMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+      roughness: 1.0,
+      metalness: 0.0,
+    });
     const cloudBand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.312, 20, 20),
+      new THREE.SphereGeometry(earthRadius * 1.02, 52, 52),
+      cloudBandMaterial,
+    );
+    cloudBand.rotation.y = Math.PI * 0.92;
+    baseGroup.add(cloudBand);
+
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(earthRadius * 1.08, 42, 42),
       new THREE.MeshBasicMaterial({
         color: 0xe0f2fe,
         transparent: true,
-        opacity: 0.17,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
       }),
     );
-    baseGroup.add(cloudBand);
+    baseGroup.add(atmosphere);
 
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.44, 18, 18),
+      new THREE.SphereGeometry(earthRadius * 1.34, 26, 26),
       new THREE.MeshBasicMaterial({
-        color: 0x67e8f9,
+        color: 0x8ad8ff,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.17,
         blending: THREE.AdditiveBlending,
       }),
     );
@@ -401,6 +459,207 @@ class VisualizationController {
     baseGroup.position.copy(this.earthAnchor);
     this.rootGroup.add(baseGroup);
     this.earthBase = baseGroup;
+    this.earthCloudLayer = cloudBand;
+
+    this.upgradeEarthTextures(core.material, cloudBandMaterial);
+  }
+
+  upgradeEarthTextures(coreMaterial, cloudMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    const maxAnisotropy = Math.min(
+      14,
+      this.renderer?.capabilities?.getMaxAnisotropy
+        ? this.renderer.capabilities.getMaxAnisotropy()
+        : 14,
+    );
+    const applyMapSettings = (texture, isColor = false) => {
+      if (!texture) return;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = maxAnisotropy;
+      if (isColor) texture.colorSpace = THREE.SRGBColorSpace;
+    };
+
+    textureLoader.load(
+      this.earthTextureUrls.color,
+      (colorMap) => {
+        applyMapSettings(colorMap, true);
+        coreMaterial.map = colorMap;
+        coreMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Earth color texture unavailable, using procedural fallback",
+        });
+      },
+    );
+
+    if (this.earthTextureUrls.normal) {
+      textureLoader.load(
+        this.earthTextureUrls.normal,
+        (normalMap) => {
+          applyMapSettings(normalMap, false);
+          coreMaterial.normalMap = normalMap;
+          coreMaterial.normalScale = new THREE.Vector2(0.55, 0.55);
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
+
+    if (this.earthTextureUrls.specular) {
+      textureLoader.load(
+        this.earthTextureUrls.specular,
+        (specMap) => {
+          applyMapSettings(specMap, false);
+          coreMaterial.roughnessMap = specMap;
+          coreMaterial.metalness = 0.0;
+          coreMaterial.roughness = 0.78;
+          coreMaterial.needsUpdate = true;
+        },
+        undefined,
+        () => {},
+      );
+    }
+
+    textureLoader.load(
+      this.earthTextureUrls.clouds,
+      (cloudMap) => {
+        applyMapSettings(cloudMap, false);
+        cloudMaterial.map = cloudMap;
+        cloudMaterial.alphaMap = cloudMap;
+        cloudMaterial.opacity = 0.42;
+        cloudMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Earth cloud texture unavailable, using atmospheric fallback",
+        });
+      },
+    );
+  }
+
+  createSun() {
+    const sunGroup = new THREE.Group();
+    const sunRadius = 2.35;
+    const sunSurfaceMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffcc7a,
+    });
+    const sunSurface = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius, 72, 72),
+      sunSurfaceMaterial,
+    );
+    sunGroup.add(sunSurface);
+
+    const sunCorona = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.2, 40, 40),
+      new THREE.MeshBasicMaterial({
+        color: 0xffa155,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    sunGroup.add(sunCorona);
+
+    const sunHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius * 1.55, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xffbe74,
+        transparent: true,
+        opacity: 0.13,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+      }),
+    );
+    sunGroup.add(sunHalo);
+
+    sunGroup.position.copy(this.sunAnchorOrbital);
+    this.scene.add(sunGroup);
+    this.sunGroup = sunGroup;
+    this.sunSurface = sunSurface;
+    this.sunGlow = sunHalo;
+
+    if (this.sunLight) {
+      this.sunLight.position.copy(sunGroup.position);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
+
+    this.upgradeSunTexture(sunSurfaceMaterial);
+  }
+
+  upgradeSunTexture(sunSurfaceMaterial) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin("anonymous");
+    textureLoader.load(
+      this.sunTextureUrl,
+      (sunMap) => {
+        sunMap.colorSpace = THREE.SRGBColorSpace;
+        sunMap.wrapS = THREE.ClampToEdgeWrapping;
+        sunMap.wrapT = THREE.ClampToEdgeWrapping;
+        sunSurfaceMaterial.map = sunMap;
+        sunSurfaceMaterial.alphaMap = sunMap;
+        sunSurfaceMaterial.transparent = true;
+        sunSurfaceMaterial.opacity = 0.96;
+        sunSurfaceMaterial.blending = THREE.AdditiveBlending;
+        sunSurfaceMaterial.depthWrite = false;
+        sunSurfaceMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        this.bus.emit("log", {
+          tag: "system",
+          text: "WARN: Sun texture unavailable, using emissive fallback",
+        });
+      },
+    );
+  }
+
+  setCelestialFrame(frame) {
+    if (!frame || !frame.earth_from_moon_km || !frame.sun_from_moon_km) return;
+    this.latestCelestialFrame = frame;
+
+    const earthKmVec = frame.earth_from_moon_km;
+    const sunKmVec = frame.sun_from_moon_km;
+    const earthDistKm = Math.max(
+      Number(frame.earth_distance_km) || this.tmpVecA.set(earthKmVec.x, earthKmVec.y, earthKmVec.z).length(),
+      1,
+    );
+    const sunDistKmRaw = Math.max(
+      Number(frame.sun_distance_km) || this.tmpVecB.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).length(),
+      1,
+    );
+
+    const earthScale = this.displayEarthMoonDistanceLu / earthDistKm;
+    this.earthAnchorOrbital.set(
+      earthKmVec.x * earthScale,
+      earthKmVec.y * earthScale,
+      earthKmVec.z * earthScale,
+    );
+
+    const ratioRaw = sunDistKmRaw / earthDistKm;
+    const compressedRatio = Math.max(9, Math.log10(ratioRaw + 1) * 9.2);
+    const sunDistanceLu = THREE.MathUtils.clamp(
+      this.displayEarthMoonDistanceLu * compressedRatio,
+      this.displaySunDistanceClampLu.min,
+      this.displaySunDistanceClampLu.max,
+    );
+
+    this.tmpVecC.set(sunKmVec.x, sunKmVec.y, sunKmVec.z).normalize().multiplyScalar(sunDistanceLu);
+    this.sunAnchorOrbital.copy(this.tmpVecC);
+
+    if (this.earthBase) this.earthBase.position.copy(this.earthAnchorOrbital);
+    if (this.sunGroup) this.sunGroup.position.copy(this.sunAnchorOrbital);
+    if (this.sunLight) {
+      this.sunLight.position.copy(this.sunAnchorOrbital);
+      this.sunLight.target.position.set(0, 0, 0);
+    }
   }
 
   createSatellites() {
@@ -453,41 +712,96 @@ class VisualizationController {
       .multiplyScalar(speed);
 
     const group = new THREE.Group();
+
+    const busMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8c3d4,
+      metalness: 0.62,
+      roughness: 0.28,
+      emissive: 0x152030,
+      emissiveIntensity: 0.35,
+    });
     const bus = new THREE.Mesh(
-      new THREE.BoxGeometry(def.size * 1.15, def.size * 0.55, def.size * 0.5),
-      new THREE.MeshStandardMaterial({
-        color: 0xb4bdca,
-        metalness: 0.55,
-        roughness: 0.29,
-        emissive: 0x151f2f,
-      }),
+      new THREE.BoxGeometry(def.size * 1.05, def.size * 0.46, def.size * 0.5),
+      busMaterial,
     );
     group.add(bus);
 
-    const panelMat = new THREE.MeshStandardMaterial({
-      color: def.color,
-      emissive: new THREE.Color(def.color).multiplyScalar(0.45),
-      metalness: 0.65,
-      roughness: 0.35,
-    });
-    const panelGeo = new THREE.BoxGeometry(def.size * 1.8, def.size * 0.08, def.size * 0.7);
-    const panelLeft = new THREE.Mesh(panelGeo, panelMat);
-    panelLeft.position.x = -def.size * 1.2;
-    const panelRight = panelLeft.clone();
-    panelRight.position.x = def.size * 1.2;
-    group.add(panelLeft, panelRight);
-
-    const dish = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0, def.size * 0.28, def.size * 0.36, 14, 1),
+    const serviceRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.23, def.size * 0.23, def.size * 0.58, 14),
       new THREE.MeshStandardMaterial({
-        color: 0xe5e7eb,
-        metalness: 0.5,
-        roughness: 0.25,
+        color: 0xd5dbe6,
+        metalness: 0.54,
+        roughness: 0.34,
       }),
     );
-    dish.rotation.z = Math.PI / 2;
-    dish.position.z = def.size * 0.46;
+    serviceRing.rotation.x = Math.PI / 2;
+    group.add(serviceRing);
+
+    const panelMat = new THREE.MeshStandardMaterial({
+      color: def.color,
+      emissive: new THREE.Color(def.color).multiplyScalar(0.52),
+      metalness: 0.74,
+      roughness: 0.32,
+    });
+    const panelWing = new THREE.BoxGeometry(def.size * 1.85, def.size * 0.06, def.size * 0.64);
+    const panelFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x7f94ac,
+      metalness: 0.5,
+      roughness: 0.4,
+    });
+    const panelFrame = new THREE.BoxGeometry(def.size * 1.9, def.size * 0.02, def.size * 0.72);
+    const panelLeft = new THREE.Mesh(panelWing, panelMat);
+    const panelLeftFrame = new THREE.Mesh(panelFrame, panelFrameMat);
+    panelLeft.position.x = -def.size * 1.22;
+    panelLeftFrame.position.copy(panelLeft.position).setY(panelLeft.position.y + def.size * 0.02);
+    const panelRight = panelLeft.clone();
+    const panelRightFrame = panelLeftFrame.clone();
+    panelRight.position.x = def.size * 1.22;
+    panelRightFrame.position.x = def.size * 1.22;
+    group.add(panelLeft, panelLeftFrame, panelRight, panelRightFrame);
+
+    const antennaMast = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.045, def.size * 0.045, def.size * 0.44, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xd0d8e5,
+        metalness: 0.48,
+        roughness: 0.31,
+      }),
+    );
+    antennaMast.position.set(0, def.size * 0.28, def.size * 0.08);
+    group.add(antennaMast);
+
+    const dish = new THREE.Mesh(
+      new THREE.CylinderGeometry(def.size * 0.03, def.size * 0.28, def.size * 0.34, 18, 1),
+      new THREE.MeshStandardMaterial({
+        color: 0xe5e7eb,
+        metalness: 0.56,
+        roughness: 0.24,
+      }),
+    );
+    dish.rotation.x = Math.PI / 2;
+    dish.position.set(0, def.size * 0.28, def.size * 0.39);
     group.add(dish);
+
+    const sensorPod = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.11, 10, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0x9fb4d0,
+        emissive: 0x1a3350,
+        emissiveIntensity: 0.6,
+        roughness: 0.3,
+        metalness: 0.42,
+      }),
+    );
+    sensorPod.position.set(0, 0, def.size * 0.35);
+    group.add(sensorPod);
+
+    const navBeacon = new THREE.Mesh(
+      new THREE.SphereGeometry(def.size * 0.055, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x93c5fd }),
+    );
+    navBeacon.position.set(0, def.size * 0.32, -def.size * 0.28);
+    group.add(navBeacon);
 
     group.position.copy(pos);
 
@@ -725,6 +1039,7 @@ class VisualizationController {
   upsertRoverFromTelemetry(data) {
     const roverId = data?.rover_id;
     if (!roverId) return;
+    if (data?.celestial) this.setCelestialFrame(data.celestial);
 
     let rover = this.rovers.get(roverId);
     if (!rover) {
@@ -752,29 +1067,97 @@ class VisualizationController {
 
   createRover(roverId) {
     const group = new THREE.Group();
+    const fallbackGroup = new THREE.Group();
+    group.add(fallbackGroup);
+
     const fallbackMaterial = new THREE.MeshStandardMaterial({
       color: 0x34d399,
       emissive: 0x0a1f16,
-      roughness: 0.48,
-      metalness: 0.26,
+      roughness: 0.46,
+      metalness: 0.28,
     });
-    const fallbackMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, 0.016, 0.02),
+
+    const chassisDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(0.033, 0.008, 0.022),
       fallbackMaterial,
     );
-    group.add(fallbackMesh);
+    chassisDeck.position.y = 0.005;
+    fallbackGroup.add(chassisDeck);
+
+    const fallbackMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.03, 0.008, 0.02),
+      fallbackMaterial,
+    );
+    fallbackGroup.add(fallbackMesh);
+
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.002, 0.026),
+      new THREE.MeshStandardMaterial({
+        color: 0x6aa8dc,
+        emissive: 0x143150,
+        emissiveIntensity: 0.38,
+        roughness: 0.42,
+        metalness: 0.62,
+      }),
+    );
+    panel.position.y = 0.011;
+    fallbackGroup.add(panel);
+
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0016, 0.0016, 0.012, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xc8d2df,
+        metalness: 0.46,
+        roughness: 0.36,
+      }),
+    );
+    mast.position.set(0.006, 0.016, 0.002);
+    fallbackGroup.add(mast);
+
+    const cameraHead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.008, 0.005, 0.006),
+      new THREE.MeshStandardMaterial({
+        color: 0xcdd9e8,
+        metalness: 0.44,
+        roughness: 0.33,
+      }),
+    );
+    cameraHead.position.set(0.006, 0.022, 0.002);
+    fallbackGroup.add(cameraHead);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.0048, 0.0048, 0.0034, 12);
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x4a5868,
+      roughness: 0.84,
+      metalness: 0.1,
+    });
+    const wheelOffsets = [
+      [-0.012, 0.0, -0.011],
+      [0.0, 0.0, -0.011],
+      [0.012, 0.0, -0.011],
+      [-0.012, 0.0, 0.011],
+      [0.0, 0.0, 0.011],
+      [0.012, 0.0, 0.011],
+    ];
+    wheelOffsets.forEach(([x, y, z]) => {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, y, z);
+      fallbackGroup.add(wheel);
+    });
 
     const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x34d399 });
     const beacon = new THREE.Mesh(
       new THREE.SphereGeometry(0.0048, 10, 10),
       beaconMaterial,
     );
-    beacon.position.set(0, 0.024, 0);
-    group.add(beacon);
+    beacon.position.set(0, 0.027, 0);
+    fallbackGroup.add(beacon);
 
     const rover = {
       id: roverId,
       group,
+      fallbackGroup,
       fallbackMesh,
       fallbackMaterial,
       beaconMaterial,
@@ -870,16 +1253,188 @@ class VisualizationController {
   setViewMode(mode, emitEvent = true) {
     const next = "orbital";
     this.viewMode = next;
+    this.resetView(false);
     this.updateCamera(true);
     this.updateMetaText();
     if (emitEvent) this.bus.emit("viz:view-mode", { mode: next });
   }
 
+  resetView(emitEvent = true) {
+    this.cameraDistance = this.defaultOrbitalDistance;
+    this.orbitalDistance = this.cameraDistance;
+    this.cameraAzimuth = this.defaultCameraAzimuth;
+    this.cameraPolar = this.defaultCameraPolar;
+    this.cameraTargetDesired.copy(this.earthAnchorOrbital).multiplyScalar(this.defaultEarthFrameFactor);
+    this.cameraTargetDesired.y *= 0.42;
+    this.cameraTarget.copy(this.cameraTargetDesired);
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    if (emitEvent) this.bus.emit("viz:navigation", { action: "reset" });
+  }
+
+  focusSelectedRover() {
+    if (!this.selectedRoverId || !this.rovers.has(this.selectedRoverId)) return;
+    const selected = this.rovers.get(this.selectedRoverId);
+    this.cameraTargetDesired.copy(selected.group.position);
+    this.cameraTarget.copy(this.cameraTargetDesired);
+    this.cameraDistance = THREE.MathUtils.clamp(
+      this.cameraDistance,
+      this.cameraMinDistance,
+      5.8,
+    );
+    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.2, Math.PI - 0.2);
+    this.orbitalDistance = this.cameraDistance;
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    this.bus.emit("viz:navigation", {
+      action: "focus-selected",
+      rover_id: this.selectedRoverId,
+    });
+  }
+
+  setTopView() {
+    this.cameraPolar = 0.16;
+    this.cameraAzimuth = 0.0;
+    if (this.selectedRoverId && this.rovers.has(this.selectedRoverId)) {
+      this.cameraTargetDesired.copy(this.rovers.get(this.selectedRoverId).group.position);
+      this.cameraTarget.copy(this.cameraTargetDesired);
+    }
+    this.updateCamera(true);
+    this.syncNavigationTelemetry();
+    this.bus.emit("viz:navigation", { action: "top-view" });
+  }
+
+  panCamera(dx, dy) {
+    this.tmpVecA.copy(this.camera.position).sub(this.cameraTarget).normalize();
+    this.tmpVecB.crossVectors(this.camera.up, this.tmpVecA).normalize();
+    this.tmpVecC.crossVectors(this.tmpVecA, this.tmpVecB).normalize();
+
+    const panScale = this.cameraDistance * 0.0019;
+    this.cameraTargetDesired.addScaledVector(this.tmpVecB, -dx * panScale);
+    this.cameraTargetDesired.addScaledVector(this.tmpVecC, dy * panScale);
+    this.cameraTarget.copy(this.cameraTargetDesired);
+  }
+
+  formatDurationMs(durationMs) {
+    const totalSeconds = Math.max(0, durationMs) / 1000;
+    if (totalSeconds < 60) {
+      const precision = totalSeconds < 10 ? 1 : 0;
+      return `${totalSeconds.toFixed(precision)}s`;
+    }
+
+    const totalWholeSeconds = Math.floor(totalSeconds);
+    const hours = Math.floor(totalWholeSeconds / 3600);
+    const minutes = Math.floor((totalWholeSeconds % 3600) / 60);
+    const seconds = totalWholeSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    return `${minutes}m ${seconds}s`;
+  }
+
+  updateSignalLossTracking(linkStatus, nowMs = performance.now()) {
+    const hasNoLineOfSight = Boolean(linkStatus.hasIssue);
+    const tracker = this.signalLossState;
+    let transitioned = false;
+
+    if (hasNoLineOfSight) {
+      if (!tracker.active) {
+        tracker.active = true;
+        tracker.startedAtMs = nowMs;
+        tracker.currentDurationMs = 0;
+        tracker.outageCount += 1;
+        transitioned = true;
+        const reason = linkStatus.issueReason || "Issue: no line-of-sight contact";
+        this.bus.emit("log", {
+          tag: "fault",
+          text: `LOS outage started: ${reason}`,
+        });
+      } else {
+        tracker.currentDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      }
+      return transitioned;
+    }
+
+    if (tracker.active) {
+      const durationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      tracker.active = false;
+      tracker.startedAtMs = 0;
+      tracker.currentDurationMs = 0;
+      tracker.lastDurationMs = durationMs;
+      transitioned = true;
+      this.bus.emit("log", {
+        tag: "system",
+        text: `LOS restored after ${this.formatDurationMs(durationMs)}`,
+      });
+    }
+
+    return transitioned;
+  }
+
+  updateSignalLossUi(nowMs = performance.now()) {
+    const tracker = this.signalLossState;
+    const lossValueEl = document.getElementById("lunar-kpi-loss");
+    const lossCardEl = document.getElementById("lunar-kpi-loss-card");
+    const stripValueEl = document.getElementById("orbital-last-loss-duration");
+    const metaEl = document.getElementById("lunar-meta");
+
+    let activeDurationMs = tracker.currentDurationMs;
+    if (tracker.active) {
+      activeDurationMs = Math.max(0, nowMs - tracker.startedAtMs);
+      tracker.currentDurationMs = activeDurationMs;
+    }
+
+    if (lossCardEl) {
+      lossCardEl.classList.remove("is-good", "is-alert");
+      if (tracker.active) lossCardEl.classList.add("is-alert");
+      else if (tracker.lastDurationMs !== null) lossCardEl.classList.add("is-good");
+    }
+
+    if (tracker.active) {
+      const activeText = `Active ${this.formatDurationMs(activeDurationMs)}`;
+      if (lossValueEl) lossValueEl.textContent = activeText;
+      if (stripValueEl) {
+        stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
+      }
+      if (metaEl) {
+        const reason = this.linkStatus.issueReason || "Issue: no line-of-sight contact";
+        metaEl.classList.add("warning");
+        metaEl.textContent = `${reason} · Outage ${this.formatDurationMs(activeDurationMs)}`;
+      }
+      return;
+    }
+
+    if (tracker.lastDurationMs !== null) {
+      const lastText = `Last ${this.formatDurationMs(tracker.lastDurationMs)}`;
+      if (lossValueEl) lossValueEl.textContent = lastText;
+      if (stripValueEl) {
+        stripValueEl.textContent =
+          `Last LOS outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
+      }
+      return;
+    }
+
+    if (lossValueEl) lossValueEl.textContent = "--";
+    if (stripValueEl) stripValueEl.textContent = "Last LOS outage: --";
+  }
+
   updateCamera(force = false) {
     if (!this.camera) return;
     this.camera.fov = 35;
-    this.camera.position.set(0, 0, this.orbitalDistance);
-    this.camera.lookAt(0, 0, 0);
+    this.cameraDistance = THREE.MathUtils.clamp(
+      this.cameraDistance,
+      this.cameraMinDistance,
+      this.cameraMaxDistance,
+    );
+    this.orbitalDistance = this.cameraDistance;
+    this.cameraPolar = THREE.MathUtils.clamp(this.cameraPolar, 0.08, Math.PI - 0.08);
+
+    const sinPolar = Math.sin(this.cameraPolar);
+    this.tmpVecA.set(
+      this.cameraDistance * sinPolar * Math.sin(this.cameraAzimuth),
+      this.cameraDistance * Math.cos(this.cameraPolar),
+      this.cameraDistance * sinPolar * Math.cos(this.cameraAzimuth),
+    );
+    this.camera.position.copy(this.cameraTarget).add(this.tmpVecA);
+    this.camera.lookAt(this.cameraTarget);
 
     if (!this.earthAnchor.equals(this.earthAnchorOrbital)) {
       this.earthAnchor.copy(this.earthAnchorOrbital);
@@ -888,6 +1443,87 @@ class VisualizationController {
     if (this.earthBase) this.earthBase.scale.setScalar(1.28);
 
     if (force) this.camera.updateProjectionMatrix();
+  }
+
+  syncNavigationTelemetry() {
+    if (!this.camera) return;
+
+    const headingValueEl = document.getElementById("orbital-nav-heading");
+    const pitchValueEl = document.getElementById("orbital-nav-pitch");
+    const distanceValueEl = document.getElementById("orbital-nav-distance");
+    const earthMoonDistanceEl = document.getElementById("orbital-earth-moon-distance");
+    const roverEarthAngleEl = document.getElementById("orbital-rover-earth-angle");
+    const roverSideEl = document.getElementById("orbital-rover-side");
+    const roverCoordsEl = document.getElementById("orbital-rover-coords");
+    const earthBearingEl = document.getElementById("orbital-earth-bearing");
+    const compassNeedleEl = document.getElementById("orbital-compass-needle");
+
+    this.camera.getWorldDirection(this.tmpVecA).normalize();
+    const pitchDeg = Math.round(
+      THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(this.tmpVecA.y, -1, 1))),
+    );
+    this.tmpVecB.copy(this.tmpVecA);
+    this.tmpVecB.y = 0;
+    let headingDeg = 0;
+    if (this.tmpVecB.lengthSq() > 0.0000001) {
+      this.tmpVecB.normalize();
+      headingDeg = (THREE.MathUtils.radToDeg(Math.atan2(this.tmpVecB.x, this.tmpVecB.z)) + 360) % 360;
+    }
+
+    if (headingValueEl) headingValueEl.textContent = `HDG ${String(Math.round(headingDeg)).padStart(3, "0")}°`;
+    if (pitchValueEl) pitchValueEl.textContent = `PITCH ${pitchDeg >= 0 ? "+" : ""}${pitchDeg}°`;
+    if (distanceValueEl) distanceValueEl.textContent = `RANGE ${this.cameraDistance.toFixed(2)} LU`;
+    if (earthMoonDistanceEl) earthMoonDistanceEl.textContent = `Earth-Moon: ${this.earthAnchor.length().toFixed(2)} LU`;
+
+    if (compassNeedleEl) {
+      compassNeedleEl.style.transform = `rotate(${headingDeg}deg)`;
+    }
+
+    const selectedRover = this.selectedRoverId && this.rovers.has(this.selectedRoverId)
+      ? this.rovers.get(this.selectedRoverId)
+      : null;
+
+    if (!selectedRover) {
+      if (roverEarthAngleEl) roverEarthAngleEl.textContent = "Rover→Earth angle: --";
+      if (roverSideEl) roverSideEl.textContent = "Lunar side: --";
+      if (roverCoordsEl) roverCoordsEl.textContent = "Lat -- · Lon --";
+      if (earthBearingEl) earthBearingEl.textContent = "--";
+      return;
+    }
+
+    const roverPos = selectedRover.group.position;
+    this.tmpVecC.copy(roverPos).normalize();
+    this.tmpVecD.copy(this.earthAnchor).normalize();
+    const roverEarthAngle = THREE.MathUtils.radToDeg(
+      THREE.MathUtils.clamp(this.tmpVecC.angleTo(this.tmpVecD), 0, Math.PI),
+    );
+    const onNearSide = roverEarthAngle <= 90;
+
+    if (roverEarthAngleEl) {
+      roverEarthAngleEl.textContent = `Rover→Earth angle: ${roverEarthAngle.toFixed(1)}°`;
+    }
+    if (roverSideEl) {
+      roverSideEl.textContent = `Lunar side: ${onNearSide ? "Nearside" : "Farside"}`;
+    }
+    if (roverCoordsEl) {
+      roverCoordsEl.textContent =
+        `Lat ${Number(selectedRover.lat).toFixed(2)}° · Lon ${Number(selectedRover.lon).toFixed(2)}°`;
+    }
+
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    this.tmpVecA.copy(worldUp).cross(this.tmpVecC);
+    if (this.tmpVecA.lengthSq() < 0.000001) {
+      this.tmpVecA.set(1, 0, 0);
+    } else {
+      this.tmpVecA.normalize();
+    }
+    this.tmpVecB.crossVectors(this.tmpVecC, this.tmpVecA).normalize();
+    this.tmpVecD.copy(this.earthAnchor).sub(roverPos).normalize();
+    const bearingRad = Math.atan2(this.tmpVecD.dot(this.tmpVecA), this.tmpVecD.dot(this.tmpVecB));
+    const bearingDeg = (THREE.MathUtils.radToDeg(bearingRad) + 360) % 360;
+    if (earthBearingEl) {
+      earthBearingEl.textContent = `${bearingDeg.toFixed(0)}° from north`;
+    }
   }
 
   updateMetaText() {
@@ -900,6 +1536,7 @@ class VisualizationController {
     const losCardEl = document.getElementById("lunar-kpi-los-card");
     const linksCardEl = document.getElementById("lunar-kpi-links-card");
     const roverCardEl = document.getElementById("lunar-kpi-rover-card");
+    const lossCardEl = document.getElementById("lunar-kpi-loss-card");
 
     const setCardState = (cardEl, state) => {
       if (!cardEl) return;
@@ -919,7 +1556,9 @@ class VisualizationController {
     const roverTotal = this.linkStatus.roverTotal;
     const roverClear = this.linkStatus.roverClear;
     const hasIssue = Boolean(this.linkStatus.hasIssue);
-    const zoomFactor = (8.4 / Math.max(this.orbitalDistance, 0.2)).toFixed(1);
+    const zoomFactor = (
+      this.defaultOrbitalDistance / Math.max(this.orbitalDistance, 0.2)
+    ).toFixed(1);
 
     if (roverValueEl) roverValueEl.textContent = selectedLabel;
     if (linksValueEl) {
@@ -934,10 +1573,13 @@ class VisualizationController {
       if (losValueEl) losValueEl.textContent = "Pending";
       setCardState(losCardEl, null);
       setCardState(linksCardEl, null);
+      if (lossCardEl) lossCardEl.classList.remove("is-good", "is-alert");
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent = "Awaiting stable comm links · Drag to rotate · Scroll to zoom";
+        metaEl.textContent = "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
       }
+      this.syncNavigationTelemetry();
+      this.updateSignalLossUi();
       return;
     }
 
@@ -968,52 +1610,71 @@ class VisualizationController {
     } else {
       setCardState(roverCardEl, null);
     }
+
+    this.syncNavigationTelemetry();
+    this.updateSignalLossUi();
   }
 
   setupInteraction() {
     this.container.addEventListener("contextmenu", (e) => e.preventDefault());
+    this.container.style.cursor = "grab";
 
     this.container.addEventListener("mousedown", (e) => {
+      const panGesture = e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey);
+      const orbitGesture = e.button === 0 && !e.shiftKey;
+      if (!panGesture && !orbitGesture) return;
+
       this.dragState.active = true;
       this.dragState.button = e.button;
+      this.dragState.mode = panGesture ? "pan" : "orbit";
       this.dragState.x = e.clientX;
       this.dragState.y = e.clientY;
+      this.container.style.cursor = panGesture ? "grabbing" : "move";
+      e.preventDefault();
     });
 
     window.addEventListener("mouseup", () => {
       this.dragState.active = false;
+      this.container.style.cursor = "grab";
     });
 
     window.addEventListener("mousemove", (e) => {
-      if (!this.dragState.active || !this.rootGroup) return;
+      if (!this.dragState.active || !this.camera) return;
       const dx = e.clientX - this.dragState.x;
       const dy = e.clientY - this.dragState.y;
       this.dragState.x = e.clientX;
       this.dragState.y = e.clientY;
 
-      const rollGesture = this.dragState.button === 2 || e.shiftKey;
-      if (rollGesture) {
-        this.rootGroup.rotateZ(dx * 0.0065);
+      if (this.dragState.mode === "pan") {
+        this.panCamera(dx, dy);
       } else {
-        this.rootGroup.rotateY(dx * 0.0065);
-        this.rootGroup.rotateX(dy * 0.0065);
+        this.cameraAzimuth -= dx * 0.006;
+        this.cameraPolar += dy * 0.006;
       }
+
+      this.updateCamera();
+      this.syncNavigationTelemetry();
     });
 
     this.container.addEventListener(
       "wheel",
       (e) => {
         e.preventDefault();
-        this.orbitalDistance = THREE.MathUtils.clamp(
-          this.orbitalDistance + e.deltaY * 0.0012,
-          1.35,
-          16.0,
+        const zoomScale = Math.exp(e.deltaY * 0.0011);
+        this.cameraDistance = THREE.MathUtils.clamp(
+          this.cameraDistance * zoomScale,
+          this.cameraMinDistance,
+          this.cameraMaxDistance,
         );
         this.updateCamera();
-        this.updateMetaText();
+        this.syncNavigationTelemetry();
       },
       { passive: false },
     );
+
+    this.container.addEventListener("dblclick", () => {
+      this.focusSelectedRover();
+    });
   }
 
   physicsStep(dt) {
@@ -1144,7 +1805,7 @@ class VisualizationController {
     this.updateMetaText();
     this.bus.emit("log", {
       tag: "system",
-      text: `🛰 Physics collision: ${message}`,
+      text: `Physics collision: ${message}`,
     });
   }
 
@@ -1234,10 +1895,21 @@ class VisualizationController {
       linkStatus.issueReason = "Issue: Rover unreachable from all satellites";
     }
 
+    const lossTransitioned = this.updateSignalLossTracking(linkStatus, performance.now());
     const prev = this.linkStatus;
     const changed = Object.keys(linkStatus).some((k) => linkStatus[k] !== prev[k]);
     this.linkStatus = linkStatus;
-    if (changed) this.updateMetaText();
+    if (changed || lossTransitioned) {
+      this.bus.emit("orbital:los-status", {
+        hasIssue: linkStatus.hasIssue,
+        issueReason: linkStatus.issueReason,
+        earthClear: linkStatus.earthClear,
+        earthTotal: linkStatus.earthTotal,
+        roverClear: linkStatus.roverClear,
+        roverTotal: linkStatus.roverTotal,
+      });
+      this.updateMetaText();
+    }
   }
 
   onResize() {
@@ -1255,9 +1927,14 @@ class VisualizationController {
     const now = performance.now();
     const dt = (now - this.lastFrameTs) / 1000;
     this.lastFrameTs = now;
+    const clampedDt = Math.min(Math.max(dt, 0), 0.06);
 
     this.physicsStep(dt);
+    if (this.earthBase) this.earthBase.rotation.y += clampedDt * 0.032;
+    if (this.earthCloudLayer) this.earthCloudLayer.rotation.y += clampedDt * 0.065;
+    if (this.sunSurface) this.sunSurface.rotation.y += clampedDt * 0.018;
     this.updateCamera();
+    this.updateSignalLossUi(now);
     this.renderer.render(this.scene, this.camera);
   }
 }
