@@ -17,6 +17,75 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
+    <!-- ─── Hidden Config Panel ─── -->
+    <div
+      id="hidden-config-panel"
+      style="
+        display: none;
+        position: fixed;
+        top: 60px;
+        left: 10px;
+        background: var(--panel-bg);
+        padding: 1rem;
+        z-index: 9999;
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+      "
+    >
+      <h4
+        style="
+          margin: 0 0 1rem 0;
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--text-primary);
+        "
+      >
+        Simulation Settings
+      </h4>
+      <label
+        style="
+          display: block;
+          margin-bottom: 1rem;
+          font-size: 14px;
+          font-family: var(--font-mono);
+          color: var(--text-primary);
+        "
+      >
+        Number of Rovers:
+        <input
+          type="number"
+          id="config-rover-count"
+          value="3"
+          min="1"
+          max="8"
+          style="
+            width: 50px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: 4px;
+          "
+        />
+      </label>
+      <button
+        id="config-restart-btn"
+        style="
+          width: 100%;
+          padding: 8px;
+          background: var(--accent-primary);
+          border: none;
+          border-radius: 4px;
+          color: black;
+          font-weight: 600;
+          cursor: pointer;
+        "
+      >
+        Restart Sim
+      </button>
+    </div>
+
     <!-- ─── Top Bar ─── -->
     <header id="top-bar">
       <div class="top-bar-left">
