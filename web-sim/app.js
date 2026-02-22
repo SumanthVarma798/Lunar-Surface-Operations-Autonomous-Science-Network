@@ -138,6 +138,10 @@
     timeBtns: $$(".time-btn"),
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
+    logoMark: $("#logo-mark"),
+    configPanel: $("#hidden-config-panel"),
+    configRoverCount: $("#config-rover-count"),
+    configRestartBtn: $("#config-restart-btn"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
     leftDropdownStack: $("#left-dropdown-stack"),
     rightDropdownStack: $("#right-dropdown-stack"),
@@ -697,6 +701,8 @@
     completedCount: 0,
     activeStepIndex: 0,
     currentMissionPhase: MISSION_PRESETS[DEFAULT_MISSION_PRESET].mission_phase,
+    executingTaskId: null,
+    failedStepIndex: null,
   };
   let taskIdDirty = false;
   let suppressTaskIdInputTracking = false;
@@ -863,20 +869,30 @@
           missionGuideState.completedCount < steps.length &&
           index === nextIndex;
         const isApplied = index === missionGuideState.activeStepIndex;
+        const isExecuting =
+          missionGuideState.executingTaskId !== null && isApplied;
+        const isFailed = missionGuideState.failedStepIndex === index;
+
         const classes = [
           "mission-step-item",
           isComplete ? "is-complete" : "",
           isNext ? "is-next" : "",
           isApplied ? "is-applied" : "",
+          isExecuting ? "is-executing" : "",
+          isFailed ? "is-failed" : "",
         ]
           .filter(Boolean)
           .join(" ");
+
+        let badgeText = isComplete ? "DONE" : isNext ? "NEXT" : "PLAN";
+        if (isExecuting) badgeText = "EXEC";
+        else if (isFailed) badgeText = "FAIL";
 
         return `
           <li class="${classes}" data-step-index="${index}">
             <div class="mission-step-title">
               <span>${index + 1}. ${escapeHtml(step.title || "Step")}</span>
-              <span class="mission-step-badge">${isComplete ? "DONE" : isNext ? "NEXT" : "PLAN"}</span>
+              <span class="mission-step-badge">${badgeText}</span>
             </div>
             <div class="mission-step-meta">
               <span class="mission-step-chip">${escapeHtml(step.task_type || "movement")}</span>
@@ -992,7 +1008,18 @@
     });
   }
 
-  function advanceMissionGuideAfterDispatch() {
+  function markMissionGuideExecuting(taskId) {
+    if (getMissionStepList().length === 0) return;
+    missionGuideState.executingTaskId = taskId;
+    missionGuideState.failedStepIndex = null;
+    renderMissionStepList();
+  }
+
+  function completeMissionStep(taskId) {
+    if (missionGuideState.executingTaskId !== taskId) return;
+    missionGuideState.executingTaskId = null;
+    missionGuideState.failedStepIndex = null;
+
     const steps = getMissionStepList();
     if (steps.length === 0) return;
 
@@ -1019,6 +1046,16 @@
       forceTaskId: true,
     });
   }
+
+  function failMissionStep(taskId) {
+    if (missionGuideState.executingTaskId !== taskId) return;
+    missionGuideState.executingTaskId = null;
+    missionGuideState.failedStepIndex = missionGuideState.activeStepIndex;
+    renderMissionStepList();
+  }
+
+  bus.on("task:completed", (data) => completeMissionStep(data.taskId));
+  bus.on("task:failed", (data) => failMissionStep(data.taskId));
 
   function ensureDispatchTaskId() {
     const existing = String(dom.taskIdInput?.value || "").trim();
@@ -1596,7 +1633,7 @@
       );
     }
     if (commandType === "START_TASK" && cmdId) {
-      advanceMissionGuideAfterDispatch();
+      markMissionGuideExecuting(resolvedTaskId);
       markTaskIdAsDispatched();
     }
     return cmdId;
@@ -2204,6 +2241,34 @@
       });
       openMissionControlsCard();
       pulseButton(dom.missionResetBtn);
+    });
+  }
+  let logoClickCount = 0;
+  let logoClickTimer = null;
+  if (dom.logoMark) {
+    dom.logoMark.addEventListener("click", () => {
+      logoClickCount++;
+      clearTimeout(logoClickTimer);
+      if (logoClickCount >= 3) {
+        if (dom.configPanel) {
+          dom.configPanel.style.display =
+            dom.configPanel.style.display === "none" ? "block" : "none";
+        }
+        logoClickCount = 0;
+      } else {
+        logoClickTimer = setTimeout(() => {
+          logoClickCount = 0;
+        }, 400);
+      }
+    });
+  }
+
+  if (dom.configRestartBtn) {
+    dom.configRestartBtn.addEventListener("click", () => {
+      const count = parseInt(dom.configRoverCount?.value || "3", 10);
+      const url = new URL(window.location.href);
+      url.searchParams.set("rovers", count);
+      window.location.href = url.toString();
     });
   }
 

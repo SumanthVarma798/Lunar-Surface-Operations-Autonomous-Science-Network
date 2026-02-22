@@ -598,9 +598,13 @@ function scoreRoverForTask(taskCatalog, roverId, roverStatus, taskRequest) {
 
   const distanceMargin = 0.75;
   const accessibilityMargin = 1 - terrainDifficulty;
+  const pastFailures = roverStatus?.task_failures?.[taskRequest.task_type] || 0;
+  const historyMargin = Math.max(0, 1 - pastFailures * 0.3);
+
   const scoreBreakdown = {
     capability_match: capabilityMatch ? 1 : 0,
     battery_margin: battery,
+    history_margin: historyMargin,
     solar_margin: solar,
     thermal_margin: 1 - thermalStress,
     comm_margin: commQuality,
@@ -610,15 +614,16 @@ function scoreRoverForTask(taskCatalog, roverId, roverStatus, taskRequest) {
   };
 
   const score =
-    scoreBreakdown.capability_match * 0.28 +
-    scoreBreakdown.battery_margin * 0.2 +
+    scoreBreakdown.capability_match * 0.23 +
+    scoreBreakdown.battery_margin * 0.15 +
     scoreBreakdown.solar_margin * 0.12 +
     scoreBreakdown.thermal_margin * 0.1 +
     scoreBreakdown.comm_margin * 0.1 +
     ((scoreBreakdown.distance_margin + scoreBreakdown.accessibility_margin) /
       2) *
       0.1 +
-    scoreBreakdown.risk_margin * 0.1;
+    scoreBreakdown.risk_margin * 0.1 +
+    scoreBreakdown.history_margin * 0.1;
 
   const minBattery = Number(
     taskCatalog.difficulty_levels[taskRequest.difficulty_level]?.min_battery ??
@@ -694,6 +699,8 @@ class RoverNode {
     this.batteryLevel = 1.0;
     this.lastFault = null;
     this.predictedFaultProbability = 0;
+    this.taskFailures = {};
+    this.resumableTasks = {};
     this.commandTopic = roverTopic(this.roverId, "command");
     this.telemetryTopic = roverTopic(this.roverId, "telemetry");
     this.ackTopic = roverTopic(this.roverId, "ack");
@@ -876,7 +883,7 @@ class RoverNode {
       ...taskRequest.required_capabilities,
     ];
     this.assignmentScoreBreakdown = cmdData.assignment_score_breakdown || null;
-    this.taskCounter = 0;
+    this.taskCounter = this.resumableTasks[taskRequest.task_id] || 0;
     this.predictedFaultProbability = Number.isFinite(
       Number(cmdData.predicted_fault_probability),
     )
@@ -980,10 +987,28 @@ class RoverNode {
     );
     this.predictedFaultProbability = Number(faultProb.toFixed(4));
     if (Math.random() < faultProb) {
+      const isResumable =
+        ["movement", "science"].includes(this.activeTaskType) &&
+        ["L1", "L2"].includes(this.activeTaskDifficulty);
+      this.taskFailures[this.activeTaskType] =
+        (this.taskFailures[this.activeTaskType] || 0) + 1;
+
+      if (isResumable) {
+        this.resumableTasks[this.currentTaskId] = this.taskCounter;
+      } else {
+        delete this.resumableTasks[this.currentTaskId];
+      }
+
       const faultMsg = `Fault during task execution (step ${this.taskCounter})`;
       this.bus.emit("log", {
         tag: "fault",
         text: `🚨 [${this.roverId}] FAULT DETECTED during task ${this.currentTaskId}!`,
+      });
+      this.bus.emit("task:failed", {
+        roverId: this.roverId,
+        taskId: this.currentTaskId,
+        fault: faultMsg,
+        taskType: this.activeTaskType,
       });
       this.state = RoverNode.STATE_SAFE_MODE;
       this.lastFault = faultMsg;
@@ -997,6 +1022,12 @@ class RoverNode {
         tag: "task",
         text: `[${this.roverId}] Task ${this.currentTaskId} completed`,
       });
+      this.bus.emit("task:completed", {
+        roverId: this.roverId,
+        taskId: this.currentTaskId,
+        taskType: this.activeTaskType,
+      });
+      delete this.resumableTasks[this.currentTaskId];
       this.state = RoverNode.STATE_IDLE;
       this._clearActiveTask();
     } else {
@@ -1025,6 +1056,8 @@ class RoverNode {
         this.state === RoverNode.STATE_EXECUTING ? this.taskTotalSteps : null,
       predicted_fault_probability: this.predictedFaultProbability,
       assignment_score_breakdown: this.assignmentScoreBreakdown,
+      task_failures: { ...this.taskFailures },
+      resumable_tasks: { ...this.resumableTasks },
       lunar_time_state: this.lunarTimeState,
       solar_intensity: Number(this.solarExposure.toFixed(2)),
       solar_exposure: Number(this.solarExposure.toFixed(2)),
@@ -1300,6 +1333,8 @@ class EarthNode {
       thermal_stress: 0.3,
       predicted_fault_probability: 0,
       assignment_score_breakdown: null,
+      task_failures: {},
+      resumable_tasks: {},
       ts: null,
       last_seen: null,
     };
