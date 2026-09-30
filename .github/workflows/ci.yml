@@ -114,6 +114,7 @@ jobs:
           grep -q '<title' web-sim/index.html && echo "  ✅ <title> tag"
           grep -q 'simulation.js' web-sim/index.html && echo "  ✅ simulation.js linked"
           grep -q 'app.js' web-sim/index.html && echo "  ✅ app.js linked"
+          grep -q 'ui.js' web-sim/index.html && echo "  ✅ ui.js linked"
           grep -q 'styles.css' web-sim/index.html && echo "  ✅ styles.css linked"
           echo "✅ HTML structure valid"
 
@@ -127,6 +128,9 @@ jobs:
           echo "Checking JavaScript syntax..."
           node --check web-sim/simulation.js && echo "  ✅ simulation.js"
           node --check web-sim/app.js && echo "  ✅ app.js"
+          node --check web-sim/ui.js && echo "  ✅ ui.js"
+          node --check web-sim/theme.js && echo "  ✅ theme.js"
+          node --check web-sim/lunar3d.js && echo "  ✅ lunar3d.js"
           echo "✅ No JavaScript syntax errors"
 
       - name: CSS validation
@@ -239,6 +243,8 @@ jobs:
           test -f web-sim/simulation.js
           test -f web-sim/styles.css
           test -f web-sim/tokens.css
+          test -f web-sim/ui.js
+          test -f web-sim/theme.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

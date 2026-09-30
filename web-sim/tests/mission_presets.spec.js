@@ -80,7 +80,7 @@ test.describe("Mission Presets & Controls Synchronization", () => {
 
     // Check if the mission controls block is now expanded
     const attr = await page
-      .locator("#mission-controls-block > .dropdown-toggle")
+      .locator("#mission-controls-block > .dropdown-heading > .dropdown-toggle")
       .getAttribute("aria-expanded");
     expect(attr).toBe("true");
   });

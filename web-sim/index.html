@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LSOAS — Lunar Mission Control</title>
+    <title>LSOAS - Lunar Mission Control</title>
     <meta
       name="description"
-      content="Lunar Surface Operations Autonomous Science Network — A Chandrayaan-themed lunar mission control simulation for teaching swarm rover operations."
+      content="Lunar Surface Operations Autonomous Science Network. A Chandrayaan-themed lunar mission control simulation for teaching swarm rover operations."
     />
+    <meta name="color-scheme" content="dark light" />
+    <script src="theme.js"></script>
     <link
       rel="preload"
       href="assets/fonts/Geist-Variable.woff2"
@@ -22,659 +24,347 @@
       type="font/woff2"
       crossorigin
     />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"
+    />
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- ─── Top Bar ─── -->
+    <a class="skip-link" href="#main-grid">Skip to dashboard</a>
+
+    <!-- Top bar -->
     <header id="top-bar">
       <div class="top-bar-left">
-        <div class="logo-mark" id="logo-mark">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="1.5"
-            />
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
-            <path
-              d="M12 2 C17 7 17 17 12 22"
-              stroke="currentColor"
-              stroke-width="1"
-            />
-            <path
-              d="M12 2 C7 7 7 17 12 22"
-              stroke="currentColor"
-              stroke-width="1"
-            />
-            <line
-              x1="2"
-              y1="12"
-              x2="22"
-              y2="12"
-              stroke="currentColor"
-              stroke-width="1"
-            />
-          </svg>
-        </div>
-        <span class="top-bar-title">LSOAS</span>
+        <span class="icon-well icon-well-round" id="logo-mark" aria-hidden="true">
+          <i class="ph-duotone ph-moon-stars"></i>
+        </span>
+        <h1 class="top-bar-title">LSOAS</h1>
         <span class="top-bar-subtitle">Lunar Surface Operations</span>
       </div>
+
       <div class="top-bar-center">
-        <div class="sim-clock" id="sim-clock">
+        <div class="sim-clock well" id="sim-clock" role="timer" aria-label="Mission elapsed time">
+          <i class="ph ph-clock" aria-hidden="true"></i>
           <span class="clock-label">MET</span>
-          <span class="clock-value" id="met-value">00:00:00</span>
+          <span class="clock-value num" id="met-value">00:00:00</span>
         </div>
-        <div class="time-controls" id="time-controls">
-          <button class="time-btn active" data-mult="1">1x</button>
-          <button class="time-btn" data-mult="2">2x</button>
-          <button class="time-btn" data-mult="5">5x</button>
-          <button class="time-btn" data-mult="10">10x</button>
+        <div
+          class="seg time-controls"
+          id="time-controls"
+          role="group"
+          aria-label="Simulation speed"
+          style="--seg-n: 4; --seg-i: 0"
+        >
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button class="time-btn seg-btn active" type="button" data-mult="1" aria-pressed="true">1x</button>
+          <button class="time-btn seg-btn" type="button" data-mult="2" aria-pressed="false">2x</button>
+          <button class="time-btn seg-btn" type="button" data-mult="5" aria-pressed="false">5x</button>
+          <button class="time-btn seg-btn" type="button" data-mult="10" aria-pressed="false">10x</button>
         </div>
       </div>
+
       <div class="top-bar-right">
-        <div class="connection-indicator" id="connection-indicator">
-          <span class="conn-dot"></span>
-          <span class="conn-text">SIM ACTIVE</span>
-        </div>
+        <span class="chip chip-ok connection-indicator" id="connection-indicator">
+          <i class="ph-fill ph-check-circle" aria-hidden="true"></i>
+          <span class="conn-text">Simulation running</span>
+        </span>
         <button
-          class="cmd-btn-sm"
+          class="btn btn-icon"
+          id="btn-theme"
+          type="button"
+          aria-label="Switch to light theme"
+          title="Switch theme"
+        >
+          <i class="ph ph-sun" aria-hidden="true"></i>
+        </button>
+        <button
+          class="btn"
           id="btn-3d-toggle"
+          type="button"
           title="Open Orbital Operations View"
           aria-label="Open Orbital Operations View"
           aria-expanded="false"
+          aria-haspopup="dialog"
         >
-          <span class="btn-moon-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="wire-icon">
-              <circle cx="12" cy="12" r="8"></circle>
-              <path d="M15.5 5.2a7 7 0 1 0 0 13.6"></path>
-            </svg>
-          </span>
+          <i class="ph-duotone ph-planet" aria-hidden="true"></i>
           <span id="btn-3d-toggle-label">Orbital Operations View</span>
         </button>
       </div>
     </header>
 
-    <!-- ─── Fleet Summary Banner ─── -->
-    <section id="fleet-banner" aria-label="Fleet Summary">
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Total Rovers</span>
-        <span class="fleet-banner-value" id="fleet-total-rovers">3</span>
+    <!-- View switcher (narrow screens only) -->
+    <nav class="view-nav" aria-label="Dashboard view">
+      <div
+        class="seg"
+        id="view-switch"
+        role="group"
+        aria-label="Dashboard view"
+        style="--seg-n: 3; --seg-i: 0"
+      >
+        <span class="seg-thumb" aria-hidden="true"></span>
+        <button class="seg-btn" type="button" data-view-target="fleet" aria-pressed="true">
+          <i class="ph ph-robot" aria-hidden="true"></i><span>Fleet</span>
+        </button>
+        <button class="seg-btn" type="button" data-view-target="command" aria-pressed="false">
+          <i class="ph ph-sliders-horizontal" aria-hidden="true"></i><span>Command</span>
+        </button>
+        <button class="seg-btn" type="button" data-view-target="logs" aria-pressed="false">
+          <i class="ph ph-terminal-window" aria-hidden="true"></i><span>Logs</span>
+        </button>
       </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">State Distribution</span>
-        <span class="fleet-banner-value" id="fleet-state-distribution"
-          >3 IDLE · 0 EXECUTING · 0 SAFE_MODE</span
-        >
-      </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Average Battery</span>
-        <span class="fleet-banner-value" id="fleet-avg-battery">100%</span>
-      </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Average Solar</span>
-        <span class="fleet-banner-value" id="fleet-avg-solar">--</span>
-      </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Average Risk</span>
-        <span class="fleet-banner-value" id="fleet-avg-risk">--</span>
-      </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Commands / ACKs</span>
-        <span class="fleet-banner-value" id="fleet-command-ack">0 / 0</span>
-      </div>
-      <div class="fleet-banner-item">
-        <span class="fleet-banner-label">Mission Context</span>
-        <span class="fleet-banner-value" id="fleet-mission-context"
-          >CY3-ops · Step 1/3</span
-        >
-      </div>
-    </section>
+    </nav>
 
-    <!-- ─── Main Layout ─── -->
-    <main id="main-grid">
-      <!-- ━━━ LEFT: Operations Streams ━━━ -->
-      <section class="panel panel-topology" id="panel-topology">
-        <div class="panel-header">
-          <h2>Mission Streams</h2>
-          <span class="badge badge-live">3 Tabs</span>
+    <div class="app" id="app" data-view="fleet">
+      <!-- Fleet summary -->
+      <section id="fleet-banner" aria-label="Fleet summary" data-view="fleet">
+        <div class="kpi" data-enter style="--i: 0">
+          <span class="kpi-label">Rovers</span>
+          <span class="kpi-value num" id="fleet-total-rovers">3</span>
         </div>
-        <div
-          class="dropdown-stack left-dropdown-stack"
-          id="left-dropdown-stack"
-        >
-          <section
-            class="dropdown-block is-open"
-            id="left-command-log-block"
-            data-accordion-group="left-orbital"
-            data-default-open="true"
-          >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Command Log</span>
-              <span class="dropdown-meta">Earth uplink stream</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="dropdown-content">
-              <div class="command-log command-log-left" id="command-log">
-                <div class="feed-empty">
-                  <span>No commands sent yet</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section
-            class="dropdown-block"
-            id="left-pending-ack-block"
-            data-accordion-group="left-orbital"
-            data-default-open="false"
-          >
-            <button class="dropdown-toggle" type="button" aria-expanded="false">
-              <span class="dropdown-title">Pending ACKs</span>
-              <span class="pending-count" id="pending-count">0</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="dropdown-content" hidden>
-              <div class="pending-acks pending-acks-left" id="pending-acks">
-                <span class="pending-none">No pending commands</span>
-              </div>
-            </div>
-          </section>
-
-          <section
-            class="dropdown-block is-open"
-            id="left-topology-block"
-            data-accordion-group="left-orbital"
-            data-default-open="true"
-          >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Network Topology</span>
-              <span class="dropdown-meta">4 mission nodes</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="dropdown-content">
-              <div class="topology-visual" id="topology-visual">
-                <!-- Topology Canvas (SVG-based connection lines) -->
-                <svg
-                  class="topology-lines"
-                  id="topology-lines"
-                  preserveAspectRatio="none"
-                ></svg>
-
-                <!-- Nodes... -->
-
-                <!-- Earth Node -->
-                <div class="topo-node" id="topo-earth" data-node="earth">
-                  <div class="topo-node-ring">
-                    <div class="topo-node-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <circle cx="12" cy="12" r="8.5"></circle>
-                        <path d="M3.5 12h17"></path>
-                        <path d="M12 3.5c2.8 2.2 2.8 14.8 0 17"></path>
-                        <path d="M12 3.5c-2.8 2.2-2.8 14.8 0 17"></path>
-                      </svg>
-                    </div>
-                  </div>
-                  <span class="topo-node-label">Earth Station</span>
-                  <span class="topo-node-state" id="earth-state">ONLINE</span>
-                </div>
-
-                <!-- Space Link Node -->
-                <div
-                  class="topo-node"
-                  id="topo-spacelink"
-                  data-node="spacelink"
-                >
-                  <div class="topo-node-ring">
-                    <div class="topo-node-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <rect x="9" y="9" width="6" height="6" rx="1"></rect>
-                        <rect
-                          x="3"
-                          y="8.5"
-                          width="4.5"
-                          height="7"
-                          rx="0.8"
-                        ></rect>
-                        <rect
-                          x="16.5"
-                          y="8.5"
-                          width="4.5"
-                          height="7"
-                          rx="0.8"
-                        ></rect>
-                        <path d="M12 6V3"></path>
-                        <path d="M12 21v-3"></path>
-                      </svg>
-                    </div>
-                  </div>
-                  <span class="topo-node-label">Space Link</span>
-                  <span class="topo-node-state" id="spacelink-state"
-                    >RELAY</span
-                  >
-                </div>
-
-                <!-- Rover Node -->
-                <div class="topo-node" id="topo-rover" data-node="rover">
-                  <div class="topo-node-ring">
-                    <div class="topo-node-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <rect x="6" y="9" width="12" height="7" rx="1.4"></rect>
-                        <circle cx="9" cy="18.5" r="1.4"></circle>
-                        <circle cx="15" cy="18.5" r="1.4"></circle>
-                        <path d="M12 9V6"></path>
-                        <path d="M9.5 12.5h5"></path>
-                      </svg>
-                    </div>
-                  </div>
-                  <span class="topo-node-label">Lunar Rover</span>
-                  <span class="topo-node-state" id="rover-state">IDLE</span>
-                </div>
-
-                <!-- Telemetry Monitor -->
-                <div
-                  class="topo-node"
-                  id="topo-telemetry"
-                  data-node="telemetry"
-                >
-                  <div class="topo-node-ring">
-                    <div class="topo-node-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <path d="M6 17l5-5"></path>
-                        <path d="M8 19h7"></path>
-                        <path d="M14 10a4 4 0 0 1 0 5.7"></path>
-                        <path d="M16.6 7.4a7.5 7.5 0 0 1 0 10.6"></path>
-                        <circle cx="6" cy="17" r="1.3"></circle>
-                      </svg>
-                    </div>
-                  </div>
-                  <span class="topo-node-label">Telemetry</span>
-                  <span class="topo-node-state" id="telemetry-state"
-                    >LISTENING</span
-                  >
-                </div>
-              </div>
-
-              <!-- Signal Flow Indicators -->
-              <div class="signal-legend">
-                <div class="signal-legend-item">
-                  <span class="signal-arrow up">↑</span> Uplink (Cmd)
-                </div>
-                <div class="signal-legend-item">
-                  <span class="signal-arrow down">↓</span> Downlink (Tlm)
-                </div>
-              </div>
-            </div>
-          </section>
+        <div class="kpi" data-enter style="--i: 1">
+          <span class="kpi-label">Rover states</span>
+          <span class="kpi-value kpi-states" id="fleet-state-distribution">
+            <span class="kpi-state"><i class="ph ph-pause-circle" aria-hidden="true"></i><span class="num" data-count="idle">3</span><span class="kpi-state-label">idle</span></span>
+            <span class="kpi-state"><i class="ph ph-circle-notch" aria-hidden="true"></i><span class="num" data-count="executing">0</span><span class="kpi-state-label">running</span></span>
+            <span class="kpi-state"><i class="ph ph-shield-warning" aria-hidden="true"></i><span class="num" data-count="safe">0</span><span class="kpi-state-label">safe</span></span>
+          </span>
+        </div>
+        <div class="kpi" data-enter style="--i: 2">
+          <span class="kpi-label">Average battery</span>
+          <span class="kpi-value num" id="fleet-avg-battery">100%</span>
+        </div>
+        <div class="kpi" data-enter style="--i: 3">
+          <span class="kpi-label">Average solar</span>
+          <span class="kpi-value num" id="fleet-avg-solar">--</span>
+        </div>
+        <div class="kpi" data-enter style="--i: 4">
+          <span class="kpi-label">Average risk</span>
+          <span class="kpi-value num" id="fleet-avg-risk">--</span>
+        </div>
+        <div class="kpi" data-enter style="--i: 5">
+          <span class="kpi-label">Commands / ACKs</span>
+          <span class="kpi-value num" id="fleet-command-ack">0 / 0</span>
+        </div>
+        <div class="kpi kpi-wide" data-enter style="--i: 6">
+          <span class="kpi-label">Mission context</span>
+          <span class="kpi-value kpi-text" id="fleet-mission-context">CY3-ops, step 1 of 3</span>
         </div>
       </section>
 
-      <!-- ━━━ CENTER: Telemetry & Details ━━━ -->
-      <section class="panel panel-telemetry" id="panel-telemetry">
-        <div class="panel-header">
-          <h2>Fleet Telemetry</h2>
-          <div class="panel-header-actions">
-            <button class="btn-sm" id="btn-clear-telemetry">Clear</button>
-          </div>
-        </div>
-
-        <div
-          class="dropdown-stack telemetry-dropdown-stack"
-          id="telemetry-dropdown-stack"
-        >
+      <main id="main-grid" class="layout">
+        <!-- Bento: operations -->
+        <div class="bento">
+          <!-- Fleet status -->
           <section
-            class="dropdown-block is-open"
+            class="card card-fleet"
             id="telemetry-fleet-block"
-            data-accordion-group="telemetry-orbital"
-            data-default-open="true"
+            aria-labelledby="h-fleet"
+            data-view="fleet"
+            data-enter
+            style="--i: 7"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Fleet Status</span>
-              <span class="dropdown-meta">Rover cards and pinning</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="dropdown-content">
-              <div class="fleet-grid-panel" id="fleet-grid-panel">
-                <div class="fleet-grid-toolbar">
-                  <span class="fleet-grid-summary" id="fleet-grid-summary"
-                    >Showing 0 of 0 rovers</span
-                  >
-                  <button class="btn-sm" id="btn-toggle-fleet-scope">
-                    Show All
-                  </button>
-                </div>
-                <div class="fleet-grid" id="fleet-grid" aria-live="polite">
-                  <div class="feed-empty">
-                    <span class="feed-empty-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <rect x="6" y="9" width="12" height="7" rx="1.4"></rect>
-                        <circle cx="9" cy="18.5" r="1.4"></circle>
-                        <circle cx="15" cy="18.5" r="1.4"></circle>
-                        <path d="M12 9V6"></path>
-                        <path d="M9.5 12.5h5"></path>
-                      </svg>
-                    </span>
-                    <span>Awaiting fleet telemetry…</span>
-                  </div>
-                </div>
-                <div
-                  class="fleet-hover-card"
-                  id="fleet-hover-card"
-                  hidden
-                ></div>
+            <header class="card-head">
+              <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-robot"></i></span>
+              <div class="card-title">
+                <h2 id="h-fleet">Fleet status</h2>
+                <p class="card-sub" id="fleet-grid-summary">Showing 0 of 0 rovers</p>
+              </div>
+              <button class="btn btn-sm" id="btn-toggle-fleet-scope" type="button">Show all</button>
+            </header>
+            <div class="fleet-grid" id="fleet-grid">
+              <div class="feed-empty">
+                <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-robot"></i></span>
+                <span>Awaiting fleet telemetry</span>
               </div>
             </div>
           </section>
 
+          <!-- Network topology -->
           <section
-            class="dropdown-block is-open"
+            class="card card-topology"
+            id="left-topology-block"
+            aria-labelledby="h-topology"
+            data-view="fleet"
+            data-enter
+            style="--i: 8"
+          >
+            <header class="card-head">
+              <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-graph"></i></span>
+              <div class="card-title">
+                <h2 id="h-topology">Network topology</h2>
+                <p class="card-sub">Four mission nodes</p>
+              </div>
+            </header>
+            <div class="topology-visual well" id="topology-visual">
+              <svg class="topology-lines" id="topology-lines" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+              <div class="topo-node" id="topo-earth" data-node="earth" tabindex="0" role="button" aria-label="Earth Station node">
+                <div class="topo-node-ring">
+                  <span class="topo-node-icon" aria-hidden="true"><i class="ph-duotone ph-globe-hemisphere-west"></i></span>
+                </div>
+                <span class="topo-node-label">Earth Station</span>
+                <span class="topo-node-state" id="earth-state">ONLINE</span>
+              </div>
+
+              <div class="topo-node" id="topo-spacelink" data-node="spacelink" tabindex="0" role="button" aria-label="Space Link node">
+                <div class="topo-node-ring">
+                  <span class="topo-node-icon" aria-hidden="true"><i class="ph-duotone ph-broadcast"></i></span>
+                </div>
+                <span class="topo-node-label">Space Link</span>
+                <span class="topo-node-state" id="spacelink-state">RELAY</span>
+              </div>
+
+              <div class="topo-node" id="topo-rover" data-node="rover" tabindex="0" role="button" aria-label="Lunar Rover node">
+                <div class="topo-node-ring">
+                  <span class="topo-node-icon" aria-hidden="true"><i class="ph-duotone ph-robot"></i></span>
+                </div>
+                <span class="topo-node-label">Lunar Rover</span>
+                <span class="topo-node-state" id="rover-state">IDLE</span>
+              </div>
+
+              <div class="topo-node" id="topo-telemetry" data-node="telemetry" tabindex="0" role="button" aria-label="Telemetry node">
+                <div class="topo-node-ring">
+                  <span class="topo-node-icon" aria-hidden="true"><i class="ph-duotone ph-wave-sine"></i></span>
+                </div>
+                <span class="topo-node-label">Telemetry</span>
+                <span class="topo-node-state" id="telemetry-state">LISTENING</span>
+              </div>
+            </div>
+            <ul class="signal-legend">
+              <li class="signal-legend-item"><i class="ph ph-arrow-up" aria-hidden="true"></i> Uplink (commands)</li>
+              <li class="signal-legend-item"><i class="ph ph-arrow-down" aria-hidden="true"></i> Downlink (telemetry)</li>
+            </ul>
+          </section>
+
+          <!-- Telemetry stream -->
+          <section
+            class="card card-stream"
             id="telemetry-stream-block"
-            data-accordion-group="telemetry-orbital"
-            data-default-open="true"
+            aria-labelledby="h-stream"
+            data-view="logs"
+            data-enter
+            style="--i: 9"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Telemetry Stream</span>
-              <span class="dropdown-meta">Live downlink events</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="dropdown-content">
-              <div class="telemetry-feed" id="telemetry-feed">
-                <div class="feed-empty">
-                  <span class="feed-empty-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" class="wire-icon">
-                      <path d="M6 17l5-5"></path>
-                      <path d="M8 19h7"></path>
-                      <path d="M14 10a4 4 0 0 1 0 5.7"></path>
-                      <path d="M16.6 7.4a7.5 7.5 0 0 1 0 10.6"></path>
-                      <circle cx="6" cy="17" r="1.3"></circle>
-                    </svg>
-                  </span>
-                  <span>Awaiting telemetry…</span>
-                </div>
+            <header class="card-head">
+              <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-terminal-window"></i></span>
+              <div class="card-title">
+                <h2 id="h-stream">Telemetry stream</h2>
+                <p class="card-sub">Live downlink events</p>
               </div>
-              <div class="telemetry-last-line" id="telemetry-last-line">
-                <span class="telemetry-last-label">Last Log</span>
-                <span class="telemetry-last-value" id="telemetry-last-value"
-                  >Awaiting telemetry…</span
-                >
+              <button class="btn btn-sm" id="btn-clear-telemetry" type="button">
+                <i class="ph ph-eraser" aria-hidden="true"></i>
+                Clear
+              </button>
+            </header>
+            <div
+              class="telemetry-feed well"
+              id="telemetry-feed"
+              role="log"
+              aria-live="off"
+              aria-label="Telemetry stream"
+              tabindex="0"
+            >
+              <div class="feed-empty">
+                <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-wave-sine"></i></span>
+                <span>Awaiting telemetry</span>
               </div>
             </div>
           </section>
-        </div>
-      </section>
 
-      <!-- ─── Lunar Orbital Panel ─── -->
-      <aside id="floating-panel" aria-hidden="true">
-        <div class="floating-panel-shell">
-          <div class="floating-panel-header">
-            <div class="floating-panel-title-wrap">
-              <span class="floating-panel-grab" aria-hidden="true"></span>
-              <h3>Orbital Operations View</h3>
-              <span class="floating-panel-meta" id="lunar-meta"
-                >LMB Orbit · Shift+LMB Pan · Wheel Zoom</span
-              >
-            </div>
-            <button
-              id="btn-close-3d"
-              class="btn-icon floating-close-btn"
-              title="Close Orbital View"
-              aria-label="Close Orbital View"
-            >
-              ✕
-            </button>
-          </div>
-          <div class="orbital-silos">
-            <section
-              class="dropdown-block orbital-silo"
-              id="orbital-silo-status"
-              data-accordion-group="orbital-silos"
-              data-default-open="false"
-            >
-              <button
-                class="dropdown-toggle"
-                type="button"
-                aria-expanded="false"
-              >
-                <span class="dropdown-title">Status and Controls</span>
-                <span class="dropdown-meta"
-                  >Primary mission telemetry and camera controls</span
-                >
-                <span class="dropdown-chevron" aria-hidden="true"></span>
-              </button>
-              <div class="dropdown-content" hidden>
-                <div class="floating-panel-kpis" id="lunar-panel-kpis">
-                  <div class="lunar-kpi" id="lunar-kpi-rover-card">
-                    <span class="lunar-kpi-label">Selected</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-rover">--</span>
-                  </div>
-                  <div class="lunar-kpi" id="lunar-kpi-los-card">
-                    <span class="lunar-kpi-label">LOS</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-los"
-                      >Pending</span
-                    >
-                  </div>
-                  <div class="lunar-kpi" id="lunar-kpi-links-card">
-                    <span class="lunar-kpi-label">Links</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-links"
-                      >0 / 0</span
-                    >
-                  </div>
-                  <div class="lunar-kpi" id="lunar-kpi-loss-card">
-                    <span class="lunar-kpi-label">LOS Outage</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-loss">--</span>
-                  </div>
-                  <div class="lunar-kpi">
-                    <span class="lunar-kpi-label">Zoom</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-zoom">--</span>
-                  </div>
-                  <div class="lunar-kpi">
-                    <span class="lunar-kpi-label">Fleet</span>
-                    <span class="lunar-kpi-value" id="lunar-kpi-fleet">0</span>
-                  </div>
-                </div>
-                <div class="orbital-toolbar" aria-label="Orbital controls">
-                  <div class="orbital-toolbar-group">
-                    <button
-                      class="btn-sm orbital-tool-btn"
-                      id="orbital-reset-view-btn"
-                      type="button"
-                    >
-                      Reset View
-                    </button>
-                    <button
-                      class="btn-sm orbital-tool-btn"
-                      id="orbital-focus-rover-btn"
-                      type="button"
-                    >
-                      Focus Rover
-                    </button>
-                    <button
-                      class="btn-sm orbital-tool-btn"
-                      id="orbital-top-view-btn"
-                      type="button"
-                    >
-                      Top View
-                    </button>
-                  </div>
-                  <div class="orbital-toolbar-group orbital-toolbar-status">
-                    <span class="orbital-status-pill" id="orbital-nav-heading"
-                      >HDG 000°</span
-                    >
-                    <span class="orbital-status-pill" id="orbital-nav-pitch"
-                      >PITCH 00°</span
-                    >
-                    <span class="orbital-status-pill" id="orbital-nav-distance"
-                      >RANGE --</span
-                    >
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section
-              class="dropdown-block orbital-silo"
-              id="orbital-silo-geometry"
-              data-accordion-group="orbital-silos"
-              data-default-open="false"
-            >
-              <button
-                class="dropdown-toggle"
-                type="button"
-                aria-expanded="false"
-              >
-                <span class="dropdown-title">Geometry and Link Context</span>
-                <span class="dropdown-meta"
-                  >Distances, bearings, and LOS history</span
-                >
-                <span class="dropdown-chevron" aria-hidden="true"></span>
-              </button>
-              <div class="dropdown-content" hidden>
-                <div class="orbital-relative-strip" id="orbital-relative-strip">
-                  <span
-                    class="orbital-relative-item"
-                    id="orbital-earth-moon-distance"
-                    >Earth-Moon: --</span
-                  >
-                  <span
-                    class="orbital-relative-item"
-                    id="orbital-rover-earth-angle"
-                    >Rover→Earth angle: --</span
-                  >
-                  <span class="orbital-relative-item" id="orbital-rover-side"
-                    >Lunar side: --</span
-                  >
-                  <span
-                    class="orbital-relative-item"
-                    id="orbital-last-loss-duration"
-                    >Last LOS outage: --</span
-                  >
-                </div>
-              </div>
-            </section>
-          </div>
-          <div id="visualization-container">
-            <div class="orbital-overlay orbital-compass" id="orbital-compass">
-              <span class="orbital-compass-label north">N</span>
-              <span class="orbital-compass-label east">E</span>
-              <span class="orbital-compass-label south">S</span>
-              <span class="orbital-compass-label west">W</span>
-              <div class="orbital-compass-ring"></div>
-              <div
-                class="orbital-compass-needle"
-                id="orbital-compass-needle"
-              ></div>
-              <div class="orbital-compass-center"></div>
-            </div>
-            <div
-              class="orbital-overlay orbital-position-card"
-              id="orbital-position-card"
-            >
-              <div class="orbital-position-row">
-                <span>Selected Rover</span>
-                <strong id="orbital-rover-coords">Lat -- · Lon --</strong>
-              </div>
-              <div class="orbital-position-row">
-                <span>Earth Bearing</span>
-                <strong id="orbital-earth-bearing">--</strong>
-              </div>
-            </div>
-            <div
-              class="orbital-overlay orbital-controls-hint"
-              id="orbital-controls-hint"
-            >
-              <span>LMB Orbit</span>
-              <span>Shift + LMB Pan</span>
-              <span>Wheel Zoom</span>
-              <span>F Focus</span>
-              <span>H Reset</span>
-              <span class="line-earth">Earth Link</span>
-              <span class="line-rover">Rover Link</span>
-              <span class="line-inter">Inter-Sat</span>
-              <span class="line-blocked">Blocked LOS</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- ━━━ RIGHT: Command Console ━━━ -->
-      <section class="panel panel-command" id="panel-command">
-        <div class="panel-header">
-          <h2>Mission Command</h2>
-          <span class="badge badge-earth">Earth Station</span>
-        </div>
-
-        <div
-          class="dropdown-stack right-dropdown-stack"
-          id="right-dropdown-stack"
-        >
+          <!-- Command log and pending ACKs -->
           <section
-            class="dropdown-block is-open"
+            class="card card-comms"
+            id="left-command-log-block"
+            aria-labelledby="h-comms"
+            data-view="logs"
+            data-enter
+            style="--i: 10"
+          >
+            <header class="card-head">
+              <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-paper-plane-tilt"></i></span>
+              <div class="card-title">
+                <h2 id="h-comms">Command log</h2>
+                <p class="card-sub">Earth uplink stream</p>
+              </div>
+            </header>
+            <div class="command-log well" id="command-log" role="log" aria-live="off" aria-label="Command log" tabindex="0">
+              <div class="feed-empty"><span>No commands sent yet</span></div>
+            </div>
+            <div class="pending-head" id="left-pending-ack-block">
+              <h3>Pending ACKs</h3>
+              <span class="chip num" id="pending-count">0</span>
+            </div>
+            <div class="pending-acks" id="pending-acks">
+              <span class="pending-none">No pending commands</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- Rail: command -->
+        <aside class="rail" id="panel-command" aria-label="Mission command" data-view="command">
+          <section
+            class="dropdown-block card is-open"
             id="mission-controls-block"
             data-accordion-group="right-controls"
+            data-enter
+            style="--i: 11"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="true">
-              <span class="dropdown-title">Command Planning</span>
-              <span class="dropdown-meta">Guide, task setup, and dispatch</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
+            <h2 class="dropdown-heading">
+              <button class="dropdown-toggle" type="button" aria-expanded="true">
+                <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-sliders-horizontal"></i></span>
+                <span class="dropdown-text">
+                  <span class="dropdown-title">Command planning</span>
+                  <span class="dropdown-meta">Quick commands and task setup</span>
+                </span>
+                <i class="dropdown-chevron ph ph-caret-down" aria-hidden="true"></i>
+              </button>
+            </h2>
             <div class="dropdown-content">
-              <div class="command-section command-section-inner">
-                <div class="control-subheading">Quick Commands</div>
+              <div class="command-section">
+                <h3 class="control-subheading">Quick commands</h3>
                 <div class="command-grid">
-                  <button class="cmd-btn cmd-start" id="cmd-start-task">
-                    <span class="cmd-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <path d="M8 6l10 6-10 6z"></path>
-                      </svg>
-                    </span>
-                    <span class="cmd-label">Start Task</span>
+                  <button class="cmd-btn cmd-start" id="cmd-start-task" type="button">
+                    <span class="icon-well icon-well-round" aria-hidden="true"><i class="ph-fill ph-play"></i></span>
+                    <span class="cmd-label">Start task</span>
+                    <kbd class="kbd" aria-hidden="true">S</kbd>
                   </button>
-                  <button class="cmd-btn cmd-abort" id="cmd-abort">
-                    <span class="cmd-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <rect
-                          x="7"
-                          y="7"
-                          width="10"
-                          height="10"
-                          rx="1.2"
-                        ></rect>
-                      </svg>
-                    </span>
-                    <span class="cmd-label">Abort Task</span>
+                  <button class="cmd-btn cmd-abort" id="cmd-abort" type="button">
+                    <span class="icon-well icon-well-round" aria-hidden="true"><i class="ph-fill ph-stop"></i></span>
+                    <span class="cmd-label">Abort task</span>
+                    <kbd class="kbd" aria-hidden="true">A</kbd>
                   </button>
-                  <button class="cmd-btn cmd-safe" id="cmd-go-safe">
-                    <span class="cmd-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <path
-                          d="M12 4l6 2.2V12c0 4-2.5 6.6-6 8-3.5-1.4-6-4-6-8V6.2z"
-                        ></path>
-                      </svg>
-                    </span>
-                    <span class="cmd-label">Enter Safe Mode</span>
+                  <button class="cmd-btn cmd-safe" id="cmd-go-safe" type="button">
+                    <span class="icon-well icon-well-round" aria-hidden="true"><i class="ph-fill ph-shield-warning"></i></span>
+                    <span class="cmd-label">Enter safe mode</span>
+                    <kbd class="kbd" aria-hidden="true">Shift S</kbd>
                   </button>
-                  <button class="cmd-btn cmd-reset" id="cmd-reset">
-                    <span class="cmd-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" class="wire-icon">
-                        <path d="M19 9a7 7 0 1 0 1 4"></path>
-                        <path d="M19 4v5h-5"></path>
-                      </svg>
-                    </span>
-                    <span class="cmd-label">Reset Rover</span>
+                  <button class="cmd-btn cmd-reset" id="cmd-reset" type="button">
+                    <span class="icon-well icon-well-round" aria-hidden="true"><i class="ph ph-arrow-counter-clockwise"></i></span>
+                    <span class="cmd-label">Reset rover</span>
+                    <kbd class="kbd" aria-hidden="true">R</kbd>
                   </button>
                 </div>
 
-                <div class="control-subheading">Task Configuration</div>
+                <h3 class="control-subheading">Task configuration</h3>
                 <div class="input-group">
-                  <label for="rover-target-select">Target Rover</label>
-                  <select
-                    id="rover-target-select"
-                    class="input-field select-field"
-                  >
-                    <option value="auto">Auto-Select (Best Rover)</option>
-                  </select>
+                  <label for="rover-target-select">Target rover</label>
+                  <div class="select-wrap">
+                    <select id="rover-target-select" class="input-field select-field">
+                      <option value="auto">Auto-select (best rover)</option>
+                    </select>
+                    <i class="ph ph-caret-down" aria-hidden="true"></i>
+                  </div>
                 </div>
                 <div class="input-group">
                   <label for="task-id-input">Task ID</label>
@@ -683,150 +373,90 @@
                       type="text"
                       id="task-id-input"
                       class="input-field"
-                      placeholder="e.g. CY3-SCI-L2-001"
+                      placeholder="CY3-SCI-L2-001"
                       value="CY3-SCI-L2-001"
+                      autocomplete="off"
+                      spellcheck="false"
                     />
-                    <button
-                      class="btn-sm task-id-regenerate-btn"
-                      id="task-id-regenerate-btn"
-                      type="button"
-                    >
+                    <button class="btn btn-sm task-id-regenerate-btn" id="task-id-regenerate-btn" type="button">
+                      <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
                       Regenerate
                     </button>
                   </div>
                   <div class="task-id-meta">
-                    <label
-                      class="task-id-toggle-label"
-                      for="task-id-auto-toggle"
-                    >
+                    <label class="toggle" for="task-id-auto-toggle">
                       <input type="checkbox" id="task-id-auto-toggle" checked />
-                      Auto-generate
+                      <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"><i class="ph-bold ph-check"></i></span></span>
+                      <span class="toggle-text">Auto-generate</span>
                     </label>
                     <span class="task-id-preview" id="task-id-preview"></span>
                   </div>
                 </div>
                 <div class="input-group">
-                  <label for="task-type-select">Task Type</label>
-                  <select
-                    id="task-type-select"
-                    class="input-field select-field"
-                  >
-                    <option value="movement">Movement/Traverse</option>
-                    <option value="science">Science Investigation</option>
-                    <option value="digging">Digging/Drilling</option>
-                    <option value="pushing">Pushing/Regolith Handling</option>
-                    <option value="photo">Photo/Imaging Survey</option>
-                    <option value="sample-handling">
-                      Sample Handling/Transfer
-                    </option>
-                  </select>
+                  <label for="task-type-select">Task type</label>
+                  <div class="select-wrap select-wrap-icon">
+                    <span class="task-type-icon icon-well" id="task-type-icon" aria-hidden="true"><i class="ph-duotone ph-path"></i></span>
+                    <select id="task-type-select" class="input-field select-field">
+                      <option value="movement">Movement/Traverse</option>
+                      <option value="science">Science Investigation</option>
+                      <option value="digging">Digging/Drilling</option>
+                      <option value="pushing">Pushing/Regolith Handling</option>
+                      <option value="photo">Photo/Imaging Survey</option>
+                      <option value="sample-handling">Sample Handling/Transfer</option>
+                    </select>
+                    <i class="ph ph-caret-down" aria-hidden="true"></i>
+                  </div>
                 </div>
                 <div class="input-group">
                   <label for="task-difficulty-select">Difficulty</label>
-                  <select
-                    id="task-difficulty-select"
-                    class="input-field select-field"
-                  >
-                    <option value="L1">L1 - Very Easy</option>
-                    <option value="L2" selected>L2 - Easy</option>
-                    <option value="L3">L3 - Moderate</option>
-                    <option value="L4">L4 - Hard</option>
-                    <option value="L5">L5 - Extreme</option>
-                  </select>
+                  <div class="select-wrap">
+                    <select id="task-difficulty-select" class="input-field select-field">
+                      <option value="L1">L1 - Very Easy</option>
+                      <option value="L2" selected>L2 - Easy</option>
+                      <option value="L3">L3 - Moderate</option>
+                      <option value="L4">L4 - Hard</option>
+                      <option value="L5">L5 - Extreme</option>
+                    </select>
+                    <i class="ph ph-caret-down" aria-hidden="true"></i>
+                  </div>
                 </div>
                 <div class="input-group">
-                  <label for="target-site-input">Target Site (optional)</label>
+                  <label for="target-site-input">Target site (optional)</label>
                   <input
                     type="text"
                     id="target-site-input"
                     class="input-field"
-                    placeholder="e.g. Shiv Shakti Point Sector-A"
+                    placeholder="Shiv Shakti Point Sector-A"
+                    autocomplete="off"
                   />
                 </div>
 
-                <section
-                  class="dropdown-block nested-dropdown-block"
-                  id="advanced-controls-block"
-                >
-                  <button
-                    class="dropdown-toggle"
-                    type="button"
-                    aria-expanded="false"
-                  >
-                    <span class="dropdown-title">Advanced Controls</span>
-                    <span class="dropdown-meta"
-                      >Fine-grained link and risk tuning</span
-                    >
-                    <span class="dropdown-chevron" aria-hidden="true"></span>
-                  </button>
+                <section class="dropdown-block nested-dropdown-block" id="advanced-controls-block">
+                  <h3 class="dropdown-heading">
+                    <button class="dropdown-toggle" type="button" aria-expanded="false">
+                      <span class="dropdown-text">
+                        <span class="dropdown-title">Advanced controls</span>
+                        <span class="dropdown-meta">Link and risk tuning</span>
+                      </span>
+                      <i class="dropdown-chevron ph ph-caret-down" aria-hidden="true"></i>
+                    </button>
+                  </h3>
                   <div class="dropdown-content" hidden>
                     <div class="input-group">
-                      <label for="latency-slider"
-                        >Base Latency
-                        <span class="param-value" id="latency-value"
-                          >1.3s</span
-                        ></label
-                      >
-                      <input
-                        type="range"
-                        id="latency-slider"
-                        class="range-input"
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        value="1.3"
-                      />
+                      <label for="latency-slider">Base latency <output class="param-value num" id="latency-value">1.3s</output></label>
+                      <input type="range" id="latency-slider" class="range-input" min="0" max="5" step="0.1" value="1.3" />
                     </div>
                     <div class="input-group">
-                      <label for="jitter-slider"
-                        >Jitter
-                        <span class="param-value" id="jitter-value"
-                          >±0.2s</span
-                        ></label
-                      >
-                      <input
-                        type="range"
-                        id="jitter-slider"
-                        class="range-input"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value="0.2"
-                      />
+                      <label for="jitter-slider">Jitter <output class="param-value num" id="jitter-value">±0.2s</output></label>
+                      <input type="range" id="jitter-slider" class="range-input" min="0" max="2" step="0.05" value="0.2" />
                     </div>
                     <div class="input-group">
-                      <label for="drop-slider"
-                        >Drop Rate
-                        <span class="param-value" id="drop-value"
-                          >5%</span
-                        ></label
-                      >
-                      <input
-                        type="range"
-                        id="drop-slider"
-                        class="range-input"
-                        min="0"
-                        max="50"
-                        step="1"
-                        value="5"
-                      />
+                      <label for="drop-slider">Drop rate <output class="param-value num" id="drop-value">5%</output></label>
+                      <input type="range" id="drop-slider" class="range-input" min="0" max="50" step="1" value="5" />
                     </div>
                     <div class="input-group">
-                      <label for="fault-slider"
-                        >Risk Bias
-                        <span class="param-value" id="fault-prob-value"
-                          >0%</span
-                        ></label
-                      >
-                      <input
-                        type="range"
-                        id="fault-slider"
-                        class="range-input"
-                        min="-20"
-                        max="20"
-                        step="1"
-                        value="0"
-                      />
+                      <label for="fault-slider">Risk bias <output class="param-value num" id="fault-prob-value">0%</output></label>
+                      <input type="range" id="fault-slider" class="range-input" min="-20" max="20" step="1" value="0" />
                     </div>
                   </div>
                 </section>
@@ -835,95 +465,207 @@
           </section>
 
           <section
-            class="dropdown-block"
+            class="dropdown-block card"
             id="mission-explanation-block"
             data-accordion-group="right-controls"
+            data-enter
+            style="--i: 12"
           >
-            <button class="dropdown-toggle" type="button" aria-expanded="false">
-              <span class="dropdown-title">Mission Guide</span>
-              <span class="dropdown-meta">Context, presets, and step flow</span>
-              <span class="dropdown-chevron" aria-hidden="true"></span>
-            </button>
+            <h2 class="dropdown-heading">
+              <button class="dropdown-toggle" type="button" aria-expanded="false">
+                <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-list-checks"></i></span>
+                <span class="dropdown-text">
+                  <span class="dropdown-title">Mission guide</span>
+                  <span class="dropdown-meta">Presets and step-by-step flow</span>
+                </span>
+                <i class="dropdown-chevron ph ph-caret-down" aria-hidden="true"></i>
+              </button>
+            </h2>
             <div class="dropdown-content" hidden>
-              <div class="command-section command-section-inner">
+              <div class="command-section">
                 <div class="input-group">
-                  <label for="mission-preset-select">Mission Preset</label>
-                  <select
-                    id="mission-preset-select"
-                    class="input-field select-field"
+                  <span class="label-text" id="preset-tabs-label">Mission preset</span>
+                  <div
+                    class="seg seg-presets"
+                    id="preset-tabs"
+                    role="group"
+                    aria-labelledby="preset-tabs-label"
+                    style="--seg-n: 4; --seg-i: 0"
                   >
-                    <option value="cy3-pragyan" selected>
-                      Chandrayaan-3 Pragyan Surface Ops
-                    </option>
-                    <option value="cy4-sample-return">
-                      Chandrayaan-4 Sample Return Chain
-                    </option>
-                    <option value="lupex-polar-ice">
-                      LUPEX Polar Ice Prospecting
-                    </option>
-                    <option value="cy-future-base">
-                      Future Chandrayaan Base Build (Teaching Scenario)
-                    </option>
+                    <span class="seg-thumb" aria-hidden="true"></span>
+                    <button class="seg-btn" type="button" data-preset="cy3-pragyan" aria-pressed="true">CY-3</button>
+                    <button class="seg-btn" type="button" data-preset="cy4-sample-return" aria-pressed="false">CY-4</button>
+                    <button class="seg-btn" type="button" data-preset="lupex-polar-ice" aria-pressed="false">LUPEX</button>
+                    <button class="seg-btn" type="button" data-preset="cy-future-base" aria-pressed="false">Base</button>
+                  </div>
+                  <select id="mission-preset-select" class="sr-only" aria-hidden="true" tabindex="-1">
+                    <option value="cy3-pragyan" selected>Chandrayaan-3 Pragyan Surface Ops</option>
+                    <option value="cy4-sample-return">Chandrayaan-4 Sample Return Chain</option>
+                    <option value="lupex-polar-ice">LUPEX Polar Ice Prospecting</option>
+                    <option value="cy-future-base">Future Chandrayaan Base Build (Teaching Scenario)</option>
                   </select>
                 </div>
-                <article class="mission-brief-card" id="mission-brief-card">
+                <article class="mission-brief-card well" id="mission-brief-card" aria-live="polite">
                   <div class="mission-brief-head">
-                    <span class="mission-brief-code" id="mission-brief-code"
-                      >CY3</span
-                    >
-                    <span class="mission-brief-phase" id="mission-brief-phase"
-                      >CY3-ops</span
-                    >
+                    <span class="mission-brief-code chip chip-accent num" id="mission-brief-code">CY3</span>
+                    <span class="mission-brief-phase num" id="mission-brief-phase">CY3-ops</span>
                   </div>
                   <p class="mission-brief-summary" id="mission-brief-summary">
-                    Pragyan-style near-surface traverse and in-situ science
-                    sequence.
+                    Pragyan-style near-surface traverse and in-situ science sequence.
                   </p>
                   <div class="mission-brief-tags" id="mission-brief-tags"></div>
                 </article>
                 <div class="mission-guide-toolbar">
-                  <button class="btn-sm" id="mission-apply-btn" type="button">
-                    Apply Preset
+                  <button class="btn btn-sm" id="mission-apply-btn" type="button">
+                    <i class="ph ph-check" aria-hidden="true"></i>
+                    Apply preset
                   </button>
-                  <button
-                    class="btn-sm"
-                    id="mission-next-step-btn"
-                    type="button"
-                  >
-                    Use Next Step
+                  <button class="btn btn-sm" id="mission-next-step-btn" type="button">
+                    <i class="ph ph-skip-forward" aria-hidden="true"></i>
+                    Use next step
                   </button>
-                  <button class="btn-sm" id="mission-reset-btn" type="button">
-                    Reset Guide
+                  <button class="btn btn-sm" id="mission-reset-btn" type="button">
+                    <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+                    Reset guide
                   </button>
                 </div>
                 <ol class="mission-step-list" id="mission-step-list"></ol>
+                <ul class="family-legend" id="task-family-legend" aria-label="Task families"></ul>
               </div>
             </div>
           </section>
-        </div>
-      </section>
-    </main>
+        </aside>
+      </main>
 
-    <!-- ─── Bottom Status Bar ─── -->
-    <footer id="bottom-bar">
-      <span class="footer-item">
-        <span class="footer-dot green"></span>
-        Simulation Engine: Running
-      </span>
-      <span class="footer-item" id="footer-packets">
-        Packets: <strong id="packets-sent">0</strong> sent ·
-        <strong id="packets-received">0</strong> received ·
-        <strong id="packets-dropped">0</strong> dropped
-      </span>
-      <span class="footer-item" id="footer-uptime">
-        Session: <span id="session-time">0s</span>
-      </span>
-    </footer>
+      <footer id="bottom-bar">
+        <span class="footer-item">
+          <i class="ph ph-cpu" aria-hidden="true"></i>
+          Simulation engine running
+        </span>
+        <span class="footer-item" id="footer-packets">
+          Packets:
+          <strong class="num" id="packets-sent">0</strong> sent,
+          <strong class="num" id="packets-received">0</strong> received,
+          <strong class="num" id="packets-dropped">0</strong> dropped
+        </span>
+        <span class="footer-item" id="footer-uptime">
+          Session <span class="num" id="session-time">0s</span>
+        </span>
+      </footer>
+    </div>
+
+    <!-- Orbital operations dialog -->
+    <div id="floating-panel" role="dialog" aria-modal="true" aria-labelledby="orbital-title" aria-hidden="true">
+      <div class="floating-panel-shell card">
+        <header class="floating-panel-header">
+          <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-planet"></i></span>
+          <div class="card-title">
+            <h2 id="orbital-title">Orbital operations view</h2>
+            <p class="card-sub floating-panel-meta" id="lunar-meta">Left drag orbits, Shift + left drag pans, wheel zooms</p>
+          </div>
+          <button class="btn btn-icon" id="btn-close-3d" type="button" title="Close orbital view" aria-label="Close Orbital View">
+            <i class="ph ph-x" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <div class="orbital-body">
+          <div class="orbital-stage">
+            <div id="visualization-container">
+              <div class="orbital-overlay orbital-compass" id="orbital-compass" aria-hidden="true">
+                <span class="orbital-compass-label north">N</span>
+                <span class="orbital-compass-label east">E</span>
+                <span class="orbital-compass-label south">S</span>
+                <span class="orbital-compass-label west">W</span>
+                <div class="orbital-compass-ring"></div>
+                <div class="orbital-compass-needle" id="orbital-compass-needle"></div>
+                <div class="orbital-compass-center"></div>
+              </div>
+
+              <div class="orbital-overlay orbital-toolbar" role="toolbar" aria-label="Orbital controls">
+                <button class="btn btn-sm orbital-tool-btn" id="orbital-reset-view-btn" type="button">
+                  <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Reset view
+                </button>
+                <button class="btn btn-sm orbital-tool-btn" id="orbital-focus-rover-btn" type="button">
+                  <i class="ph ph-crosshair" aria-hidden="true"></i>Focus rover
+                </button>
+                <button class="btn btn-sm orbital-tool-btn" id="orbital-top-view-btn" type="button">
+                  <i class="ph ph-arrow-line-up" aria-hidden="true"></i>Top view
+                </button>
+              </div>
+
+              <div class="orbital-overlay orbital-position-card" id="orbital-position-card">
+                <div class="orbital-position-row">
+                  <span>Selected rover</span>
+                  <strong class="num" id="orbital-rover-coords">Lat -- / Lon --</strong>
+                </div>
+                <div class="orbital-position-row">
+                  <span>Earth bearing</span>
+                  <strong class="num" id="orbital-earth-bearing">--</strong>
+                </div>
+              </div>
+
+              <div class="orbital-overlay orbital-nav" aria-label="Camera readout">
+                <span class="chip num" id="orbital-nav-heading">HDG 000°</span>
+                <span class="chip num" id="orbital-nav-pitch">PITCH 00°</span>
+                <span class="chip num" id="orbital-nav-distance">RANGE --</span>
+              </div>
+            </div>
+            <ul class="orbital-legend" id="orbital-controls-hint" aria-label="Legend and shortcuts">
+              <li><kbd class="kbd">F</kbd> Focus</li>
+              <li><kbd class="kbd">H</kbd> Reset</li>
+              <li><kbd class="kbd">T</kbd> Top view</li>
+              <li class="line-earth"><span class="swatch" aria-hidden="true"></span>Earth link</li>
+              <li class="line-rover"><span class="swatch" aria-hidden="true"></span>Rover link</li>
+              <li class="line-inter"><span class="swatch" aria-hidden="true"></span>Inter-satellite</li>
+              <li class="line-blocked"><span class="swatch" aria-hidden="true"></span>Blocked line of sight</li>
+            </ul>
+          </div>
+
+          <aside class="orbital-side" aria-label="Orbital status">
+            <div class="floating-panel-kpis" id="lunar-panel-kpis">
+              <div class="lunar-kpi" id="lunar-kpi-rover-card">
+                <span class="lunar-kpi-label">Selected</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-rover">--</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-los-card">
+                <span class="lunar-kpi-label">Line of sight</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-los">Pending</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-links-card">
+                <span class="lunar-kpi-label">Links</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-links">0 / 0</span>
+              </div>
+              <div class="lunar-kpi" id="lunar-kpi-loss-card">
+                <span class="lunar-kpi-label">Signal outage</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-loss">--</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Zoom</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-zoom">--</span>
+              </div>
+              <div class="lunar-kpi">
+                <span class="lunar-kpi-label">Fleet</span>
+                <span class="lunar-kpi-value num" id="lunar-kpi-fleet">0</span>
+              </div>
+            </div>
+            <div class="orbital-relative-strip" id="orbital-relative-strip">
+              <span class="orbital-relative-item num" id="orbital-earth-moon-distance">Earth-Moon: --</span>
+              <span class="orbital-relative-item num" id="orbital-rover-earth-angle">Rover to Earth angle: --</span>
+              <span class="orbital-relative-item num" id="orbital-rover-side">Lunar side: --</span>
+              <span class="orbital-relative-item num" id="orbital-last-loss-duration">Last signal outage: --</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-region" id="toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
 
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
     <script src="lunar3d.js"></script>
     <script src="simulation.js"></script>
+    <script src="ui.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

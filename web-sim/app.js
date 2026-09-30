@@ -44,23 +44,22 @@
   const btnToggle = $("#btn-3d-toggle");
   const btnToggleLabel = $("#btn-3d-toggle-label");
   const btnClose = $("#btn-close-3d");
-  const panelTelemetry = $("#panel-telemetry");
   let panelLayoutTimer = null;
   let is3DPanelOpen = false;
 
   function getResponsiveOrbitalToggleLabel() {
     const viewportWidth = window.innerWidth || 1280;
-    if (viewportWidth <= 520) return "OOV";
-    if (viewportWidth <= 920) return "Orbital View";
+    if (viewportWidth <= 520) return "Orbital";
+    if (viewportWidth <= 920) return "Orbital view";
     return "Orbital Operations View";
   }
 
   function refreshOrbitalToggleLabel(open) {
     if (!btnToggleLabel) return;
     const nextLabel = getResponsiveOrbitalToggleLabel();
-    const actionTarget =
-      nextLabel === "OOV" ? "Orbital Operations View (OOV)" : nextLabel;
-    const actionLabel = open ? `Close ${actionTarget}` : `Open ${actionTarget}`;
+    const actionLabel = open
+      ? "Close Orbital Operations View"
+      : "Open Orbital Operations View";
     btnToggleLabel.textContent = nextLabel;
     if (btnToggle) {
       btnToggle.setAttribute("title", actionLabel);
@@ -69,7 +68,9 @@
   }
 
   function set3DPanel(open) {
-    is3DPanelOpen = Boolean(open);
+    const nextOpen = Boolean(open);
+    if (nextOpen === is3DPanelOpen) return;
+    is3DPanelOpen = nextOpen;
     if (panelLayoutTimer) {
       LSOASTime.clearTimeout(panelLayoutTimer);
       panelLayoutTimer = null;
@@ -83,12 +84,10 @@
     if (is3DPanelOpen) {
       floatingPanel.setAttribute("aria-hidden", "false");
       document.body.classList.add("three-panel-open");
-      syncAccordionLayoutMode(true);
-      syncMobilePanelMode();
-      resetAccordionGroupToDefaults("orbital-silos");
-      if (panelTelemetry) panelTelemetry.classList.add("compact-log");
-      updateFleetUi();
-
+      LSOASUI.openDialog(floatingPanel, {
+        onClose: () => set3DPanel(false),
+        initialFocus: btnClose,
+      });
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           floatingPanel.classList.add("panel-open");
@@ -97,19 +96,13 @@
     } else {
       floatingPanel.classList.remove("panel-open");
       floatingPanel.setAttribute("aria-hidden", "true");
-      hideFleetHoverCard();
+      LSOASUI.closeDialog();
       panelLayoutTimer = LSOASTime.setTimeout(() => {
         document.body.classList.remove("three-panel-open");
-        syncAccordionLayoutMode(false);
-        syncMobilePanelMode();
-        if (panelTelemetry) {
-          panelTelemetry.classList.remove("compact-log");
-        }
-        updateFleetUi();
-      }, 260);
+      }, 420);
     }
 
-    // Trigger resize after transition allows renderer to catch up
+    // Trigger resize after the transition so the renderer catches up
     LSOASTime.setTimeout(() => {
       if (viz) {
         viz.onResize();
@@ -117,33 +110,29 @@
           viz.syncNavigationTelemetry();
         }
       }
-    }, 400); // slightly longer than CSS transition
+    }, 460);
   }
 
   function toggle3D() {
-    const shouldOpen = !is3DPanelOpen;
-    set3DPanel(shouldOpen);
+    set3DPanel(!is3DPanelOpen);
   }
 
   if (btnToggle) btnToggle.addEventListener("click", toggle3D);
-  if (btnClose)
-    btnClose.addEventListener("click", () => {
-      set3DPanel(false);
-    });
+  if (btnClose) btnClose.addEventListener("click", () => set3DPanel(false));
 
   refreshOrbitalToggleLabel(is3DPanelOpen);
 
   const dom = {
     metValue: $("#met-value"),
     timeBtns: $$(".time-btn"),
+    presetTabs: $("#preset-tabs"),
+    taskTypeIcon: $("#task-type-icon"),
+    taskFamilyLegend: $("#task-family-legend"),
     sessionTime: $("#session-time"),
     roverState: $("#rover-state"),
     topoRoverLabel: $("#topo-rover .topo-node-label"),
-    leftDropdownStack: $("#left-dropdown-stack"),
-    rightDropdownStack: $("#right-dropdown-stack"),
     fleetGrid: $("#fleet-grid"),
     fleetGridSummary: $("#fleet-grid-summary"),
-    fleetHoverCard: $("#fleet-hover-card"),
     toggleFleetScopeBtn: $("#btn-toggle-fleet-scope"),
     fleetTotalRovers: $("#fleet-total-rovers"),
     fleetStateDistribution: $("#fleet-state-distribution"),
@@ -153,7 +142,6 @@
     fleetCommandAck: $("#fleet-command-ack"),
     fleetMissionContext: $("#fleet-mission-context"),
     telemetryFeed: $("#telemetry-feed"),
-    telemetryLastValue: $("#telemetry-last-value"),
     lunarMeta: $("#lunar-meta"),
     commandLog: $("#command-log"),
     pendingAcks: $("#pending-acks"),
@@ -195,113 +183,8 @@
   };
 
   const ACCORDION_GROUP_CONFIG = {
-    "left-orbital": { singleOpen: false, requireOneOpen: false },
-    "telemetry-orbital": { singleOpen: false, requireOneOpen: true },
     "right-controls": { singleOpen: false, requireOneOpen: true },
-    "orbital-silos": { singleOpen: true, requireOneOpen: false },
   };
-
-  const MOBILE_PANEL_BREAKPOINT = 1024;
-  const MOBILE_PANEL_DEFAULT_KEY = "telemetry";
-  const MOBILE_PANEL_SECTIONS = [
-    {
-      key: "streams",
-      panel: $("#panel-topology"),
-      content: $("#left-dropdown-stack"),
-    },
-    {
-      key: "telemetry",
-      panel: $("#panel-telemetry"),
-      content: $("#telemetry-dropdown-stack"),
-    },
-    {
-      key: "command",
-      panel: $("#panel-command"),
-      content: $("#right-dropdown-stack"),
-    },
-  ].filter((entry) => entry.panel && entry.content);
-  let mobilePanelMode = false;
-  let mobilePanelActiveKey = MOBILE_PANEL_DEFAULT_KEY;
-
-  function isMobilePanelViewport() {
-    return (window.innerWidth || 1280) <= MOBILE_PANEL_BREAKPOINT;
-  }
-
-  function setMobilePanelExpandedState(section, expanded) {
-    if (!section || !section.panel) return;
-    const header = section.panel.querySelector(".panel-header");
-    section.panel.classList.toggle("panel-collapsed", !expanded);
-    section.panel.setAttribute(
-      "data-mobile-expanded",
-      expanded ? "true" : "false",
-    );
-    if (section.content) section.content.hidden = !expanded;
-    if (header)
-      header.setAttribute("aria-expanded", expanded ? "true" : "false");
-  }
-
-  function openMobilePanelSection(key) {
-    if (!mobilePanelMode) return;
-    const target = MOBILE_PANEL_SECTIONS.find((entry) => entry.key === key);
-    if (!target) return;
-    mobilePanelActiveKey = target.key;
-    MOBILE_PANEL_SECTIONS.forEach((entry) => {
-      setMobilePanelExpandedState(entry, entry.key === mobilePanelActiveKey);
-    });
-    requestAnimationFrame(() => drawTopologyLines());
-  }
-
-  function resetDesktopPanelSections() {
-    MOBILE_PANEL_SECTIONS.forEach((entry) => {
-      if (!entry.panel) return;
-      entry.panel.classList.remove("panel-collapsed");
-      entry.panel.removeAttribute("data-mobile-expanded");
-      if (entry.content) entry.content.hidden = false;
-      const header = entry.panel.querySelector(".panel-header");
-      if (header) header.setAttribute("aria-expanded", "true");
-    });
-  }
-
-  function syncMobilePanelMode() {
-    const shouldEnable = isMobilePanelViewport();
-    const wasEnabled = mobilePanelMode;
-    mobilePanelMode = shouldEnable;
-    document.body.classList.toggle("mobile-panel-mode", shouldEnable);
-
-    if (!shouldEnable) {
-      resetDesktopPanelSections();
-      return;
-    }
-
-    if (!wasEnabled) mobilePanelActiveKey = MOBILE_PANEL_DEFAULT_KEY;
-    openMobilePanelSection(mobilePanelActiveKey);
-  }
-
-  function initializeMobilePanelHeaders() {
-    MOBILE_PANEL_SECTIONS.forEach((entry) => {
-      const header = entry.panel?.querySelector(".panel-header");
-      if (!header || header.dataset.mobilePanelInit === "true") return;
-
-      header.dataset.mobilePanelInit = "true";
-      header.setAttribute("role", "button");
-      header.setAttribute("tabindex", "0");
-      header.setAttribute("aria-expanded", "true");
-
-      header.addEventListener("click", (event) => {
-        if (!mobilePanelMode) return;
-        if (event.target.closest("button, a, input, select, textarea, label"))
-          return;
-        openMobilePanelSection(entry.key);
-      });
-
-      header.addEventListener("keydown", (event) => {
-        if (!mobilePanelMode) return;
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        openMobilePanelSection(entry.key);
-      });
-    });
-  }
 
   function getAccordionBlocks(groupName) {
     return Array.from(
@@ -319,11 +202,6 @@
     if (content) content.hidden = !open;
     if (open && content) content.scrollTop = 0;
     if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open && block.id === "left-topology-block") {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => drawTopologyLines());
-      });
-    }
   }
 
   function toggleAccordionBlock(block) {
@@ -347,14 +225,6 @@
     }
 
     setAccordionBlockOpen(block, nextOpen);
-    if (group === "left-orbital") {
-      const topologyBlock = document.getElementById("left-topology-block");
-      if (topologyBlock?.classList.contains("is-open")) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => drawTopologyLines());
-        });
-      }
-    }
   }
 
   function configureAccordionGroup(
@@ -382,62 +252,6 @@
     setAccordionBlockOpen(preferred, true);
   }
 
-  function resetAccordionGroupToDefaults(groupName) {
-    const blocks = getAccordionBlocks(groupName);
-    if (blocks.length === 0) return;
-    const singleOpen = blocks[0].dataset.singleOpen === "true";
-    let hasOpenedDefault = false;
-
-    blocks.forEach((block) => {
-      const defaultOpen = block.dataset.defaultOpen === "true";
-      const shouldOpen = defaultOpen && (!singleOpen || !hasOpenedDefault);
-      setAccordionBlockOpen(block, shouldOpen);
-      if (shouldOpen) hasOpenedDefault = true;
-    });
-
-    ensureAccordionGroupHasOpen(groupName);
-  }
-
-  function syncAccordionLayoutMode(compact) {
-    const leftBlocks = getAccordionBlocks("left-orbital");
-    const telemetryBlocks = getAccordionBlocks("telemetry-orbital");
-
-    if (leftBlocks.length > 0) {
-      configureAccordionGroup("left-orbital", {
-        singleOpen: compact,
-        requireOneOpen: false,
-      });
-      if (compact) {
-        leftBlocks.forEach((block) => setAccordionBlockOpen(block, false));
-      } else {
-        leftBlocks.forEach((block) => {
-          const defaultOpen = block.dataset.defaultOpen !== "false";
-          setAccordionBlockOpen(block, defaultOpen);
-        });
-      }
-    }
-
-    if (telemetryBlocks.length > 0) {
-      configureAccordionGroup("telemetry-orbital", {
-        singleOpen: compact,
-        requireOneOpen: true,
-      });
-      if (compact) {
-        telemetryBlocks.forEach((block) => setAccordionBlockOpen(block, false));
-        const preferred = telemetryBlocks.find(
-          (block) => block.id === "telemetry-stream-block",
-        );
-        setAccordionBlockOpen(preferred || telemetryBlocks[0], true);
-      } else {
-        telemetryBlocks.forEach((block) => {
-          const defaultOpen = block.dataset.defaultOpen !== "false";
-          setAccordionBlockOpen(block, defaultOpen);
-        });
-        ensureAccordionGroupHasOpen("telemetry-orbital");
-      }
-    }
-  }
-
   function initializeAccordions() {
     const blocks = Array.from(document.querySelectorAll(".dropdown-block"));
     blocks.forEach((block) => {
@@ -451,23 +265,7 @@
       singleOpen: ACCORDION_GROUP_CONFIG["right-controls"].singleOpen,
       requireOneOpen: ACCORDION_GROUP_CONFIG["right-controls"].requireOneOpen,
     });
-    configureAccordionGroup("telemetry-orbital", {
-      singleOpen: ACCORDION_GROUP_CONFIG["telemetry-orbital"].singleOpen,
-      requireOneOpen:
-        ACCORDION_GROUP_CONFIG["telemetry-orbital"].requireOneOpen,
-    });
-    configureAccordionGroup("orbital-silos", {
-      singleOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].singleOpen,
-      requireOneOpen: ACCORDION_GROUP_CONFIG["orbital-silos"].requireOneOpen,
-    });
-    initializeMobilePanelHeaders();
-    syncAccordionLayoutMode(
-      document.body.classList.contains("three-panel-open"),
-    );
-    syncMobilePanelMode();
     ensureAccordionGroupHasOpen("right-controls");
-    ensureAccordionGroupHasOpen("telemetry-orbital");
-    ensureAccordionGroupHasOpen("orbital-silos");
   }
 
   function openMissionControlsCard() {
@@ -767,11 +565,11 @@
     if (!dom.taskIdPreview) return;
     const suggested = peekGeneratedTaskId();
     if (!dom.taskIdAutoToggle?.checked) {
-      dom.taskIdPreview.textContent = `Manual mode · Suggested ${suggested}`;
+      dom.taskIdPreview.textContent = `Manual mode, suggested ${suggested}`;
       return;
     }
     dom.taskIdPreview.textContent = taskIdDirty
-      ? `Manual override · Suggested ${suggested}`
+      ? `Manual override, suggested ${suggested}`
       : `Next ${suggested}`;
   }
 
@@ -822,6 +620,43 @@
     }
   }
 
+  const STEP_STATUS = {
+    done: { icon: "ph-fill ph-check-circle", label: "Done" },
+    next: { icon: "ph-fill ph-arrow-circle-right", label: "Next" },
+    plan: { icon: "ph ph-circle", label: "Planned" },
+  };
+
+  function difficultyLabel(level) {
+    const rate = taskCatalog?.difficulty_levels?.[level]?.base_fault_rate;
+    return Number.isFinite(rate)
+      ? `${level}, ${Math.round(rate * 100)}% base fault`
+      : level;
+  }
+
+  function syncPresetTabs() {
+    if (!dom.presetTabs) return;
+    const index = missionPresetKeys.indexOf(
+      safeMissionPresetKey(missionGuideState.presetKey),
+    );
+    LSOASUI.segSet(dom.presetTabs, Math.max(0, index));
+  }
+
+  function syncTaskTypeIcon() {
+    const icon = dom.taskTypeIcon?.querySelector("i");
+    if (!icon) return;
+    icon.className = `ph-duotone ${LSOASUI.taskFamily(dom.taskTypeSelect?.value).icon}`;
+  }
+
+  function renderTaskFamilyLegend() {
+    if (!dom.taskFamilyLegend) return;
+    dom.taskFamilyLegend.innerHTML = Object.values(LSOASUI.taskFamilies)
+      .map(
+        (family) =>
+          `<li><span class="icon-well" aria-hidden="true"><i class="ph-duotone ${family.icon}"></i></span><span>${family.label}</span></li>`,
+      )
+      .join("");
+  }
+
   function renderMissionBrief() {
     const preset = getActiveMissionPreset();
     if (dom.missionPresetSelect) {
@@ -829,6 +664,7 @@
         preset && missionGuideState.presetKey,
       );
     }
+    syncPresetTabs();
     if (dom.missionBriefCode) dom.missionBriefCode.textContent = preset.id_code;
     if (dom.missionBriefSummary)
       dom.missionBriefSummary.textContent = preset.summary;
@@ -844,49 +680,84 @@
     }
   }
 
+  let renderedStepPreset = null;
+
+  function buildMissionStepItem(step, index) {
+    const family = LSOASUI.taskFamily(step.task_type);
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <button type="button" class="mission-step-item" data-step-index="${index}">
+        <span class="icon-well" aria-hidden="true"><i class="ph-duotone ${family.icon}"></i></span>
+        <span class="mission-step-title">
+          <span class="mission-step-name">${index + 1}. ${escapeHtml(step.title || "Step")}</span>
+          <span class="mission-step-badge"><i aria-hidden="true"></i><span></span></span>
+        </span>
+        <span class="mission-step-meta">
+          <span class="mission-step-chip">${escapeHtml(family.label)}</span>
+          <span class="mission-step-chip num">${escapeHtml(difficultyLabel(step.difficulty_level || "L2"))}</span>
+        </span>
+        <span class="mission-step-note">${escapeHtml(step.note || "")}</span>
+      </button>`;
+    return li;
+  }
+
   function renderMissionStepList() {
     if (!dom.missionStepList) return;
     const steps = getMissionStepList();
     if (steps.length === 0) {
       dom.missionStepList.innerHTML = "";
+      renderedStepPreset = null;
       return;
+    }
+
+    // Rebuild only when the preset changes; otherwise patch in place so status
+    // changes (planned, next, done) can animate.
+    if (
+      renderedStepPreset !== missionGuideState.presetKey ||
+      dom.missionStepList.children.length !== steps.length
+    ) {
+      dom.missionStepList.replaceChildren(...steps.map(buildMissionStepItem));
+      renderedStepPreset = missionGuideState.presetKey;
     }
 
     const nextIndex = Math.min(
       missionGuideState.completedCount,
       steps.length - 1,
     );
-    dom.missionStepList.innerHTML = steps
-      .map((step, index) => {
-        const isComplete = index < missionGuideState.completedCount;
-        const isNext =
-          missionGuideState.completedCount < steps.length &&
-          index === nextIndex;
-        const isApplied = index === missionGuideState.activeStepIndex;
-        const classes = [
-          "mission-step-item",
-          isComplete ? "is-complete" : "",
-          isNext ? "is-next" : "",
-          isApplied ? "is-applied" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
+    Array.from(dom.missionStepList.children).forEach((li, index) => {
+      const step = steps[index];
+      const button = li.firstElementChild;
+      const isComplete = index < missionGuideState.completedCount;
+      const isNext =
+        missionGuideState.completedCount < steps.length && index === nextIndex;
+      const isApplied = index === missionGuideState.activeStepIndex;
+      button.className = [
+        "mission-step-item",
+        isComplete ? "is-complete" : "",
+        isNext ? "is-next" : "",
+        isApplied ? "is-applied" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      button.setAttribute("aria-pressed", isApplied ? "true" : "false");
 
-        return `
-          <li class="${classes}" data-step-index="${index}">
-            <div class="mission-step-title">
-              <span>${index + 1}. ${escapeHtml(step.title || "Step")}</span>
-              <span class="mission-step-badge">${isComplete ? "DONE" : isNext ? "NEXT" : "PLAN"}</span>
-            </div>
-            <div class="mission-step-meta">
-              <span class="mission-step-chip">${escapeHtml(step.task_type || "movement")}</span>
-              <span class="mission-step-chip">${escapeHtml(step.difficulty_level || "L2")}</span>
-            </div>
-            <div class="mission-step-note">${escapeHtml(step.note || "")}</div>
-          </li>
-        `;
-      })
-      .join("");
+      const status = isComplete ? "done" : isNext ? "next" : "plan";
+      const badge = button.querySelector(".mission-step-badge");
+      if (badge.dataset.status !== status) {
+        const meta = STEP_STATUS[status];
+        const icon = badge.querySelector("i");
+        const firstPaint = badge.dataset.status === undefined;
+        icon.className = meta.icon;
+        badge.querySelector("span").textContent = meta.label;
+        badge.dataset.status = status;
+        if (!firstPaint) LSOASUI.pop(icon);
+
+        const family = LSOASUI.taskFamily(step.task_type);
+        const wellIcon = button.querySelector(".icon-well i");
+        wellIcon.className = `${status === "plan" ? "ph-duotone" : "ph-fill"} ${family.icon}`;
+        if (!firstPaint) LSOASUI.pop(wellIcon);
+      }
+    });
   }
 
   function applyMissionStepToControls(
@@ -930,6 +801,7 @@
     } else {
       syncTaskIdInput();
     }
+    syncTaskTypeIcon();
     renderMissionStepList();
 
     if (announce) {
@@ -1095,10 +967,6 @@
     };
   }
 
-  function isCompactFleetMode() {
-    return panelTelemetry?.classList.contains("compact-log");
-  }
-
   function loadPinnedRovers() {
     try {
       const raw = window.localStorage.getItem(pinStorageKey);
@@ -1218,64 +1086,152 @@
     return merged;
   }
 
-  function buildFleetCardMarkup(snapshot, compactMode) {
+  const fleetCardEls = new Map();
+  let selectedRoverId = null;
+
+  function setText(node, text) {
+    if (node && node.textContent !== text) node.textContent = text;
+  }
+
+  function setIcon(node, className) {
+    if (!node || node.dataset.icon === className) return false;
+    const firstPaint = node.dataset.icon === undefined;
+    node.className = className;
+    node.dataset.icon = className;
+    if (!firstPaint) LSOASUI.pop(node);
+    return true;
+  }
+
+  function createFleetCard(roverId) {
+    const el = document.createElement("article");
+    el.dataset.roverId = roverId;
+    el.tabIndex = 0;
+    el.innerHTML = `
+      <div class="fleet-card-header">
+        <span class="icon-well" data-role="rover-well" aria-hidden="true"><i data-role="rover-icon"></i></span>
+        <span class="fleet-card-rover-id" data-role="id"></span>
+        <button type="button" class="fleet-pin-btn" data-role="pin" data-rover-id="${escapeHtml(roverId)}"><i data-role="pin-icon" aria-hidden="true"></i></button>
+      </div>
+      <div class="fleet-card-badges">
+        <span class="fleet-card-state"><i data-role="state-icon" aria-hidden="true"></i><span data-role="state-text"></span></span>
+        <span class="selected-flag" data-role="selected"><i class="ph-fill ph-crosshair" aria-hidden="true"></i>Selected</span>
+      </div>
+      <div class="fleet-card-metrics">
+        <div class="fleet-card-metric">
+          <div class="fleet-card-metric-row"><span class="fleet-card-label">Battery</span><span class="fleet-card-value" data-role="battery-text"></span></div>
+          <div class="meter"><span class="meter-fill" data-role="battery-fill"></span></div>
+        </div>
+        <div class="fleet-card-metric">
+          <div class="fleet-card-metric-row"><span class="fleet-card-label">Solar</span><span class="fleet-card-value"><i data-role="solar-icon" aria-hidden="true"></i> <span data-role="solar-text"></span></span></div>
+        </div>
+        <div class="fleet-card-metric">
+          <div class="fleet-card-metric-row"><span class="fleet-card-label">Task</span><span class="fleet-card-value" data-role="task-family"></span></div>
+          <div class="fleet-task">
+            <span class="icon-well" data-role="task-well" aria-hidden="true"><i data-role="task-icon"></i></span>
+            <span class="fleet-task-id" data-role="task-id"></span>
+          </div>
+          <div class="meter" data-role="task-meter"><span class="meter-fill is-task" data-role="task-fill"></span></div>
+        </div>
+      </div>
+      <div class="fleet-fault" data-role="fault" hidden><i class="ph-fill ph-warning" data-role="fault-icon" aria-hidden="true"></i><span data-role="fault-text"></span></div>`;
+    const refs = {};
+    el.querySelectorAll("[data-role]").forEach((node) => {
+      refs[node.dataset.role] = node;
+    });
+    el._refs = refs;
+    return el;
+  }
+
+  function updateFleetCard(el, snapshot) {
+    const r = el._refs;
+    const roverId = snapshot.rover_id;
     const state = normalizeState(snapshot.state);
-    const stateClass = stateToClass(state);
-    const batteryPct = Math.round((snapshot.battery || 0) * 100);
+    const meta = LSOASUI.roverState(state);
+    const pinned = pinnedRoverIds.has(roverId);
+    const selected = roverId === selectedRoverId;
+    const executing = state === "EXECUTING";
+    const battery = clamp01(Number(snapshot.battery) || 0);
+    const batteryPct = Math.round(battery * 100);
     const solarExposure = snapshot.solar_exposure || 0;
-    const solarText = solarExposure >= 0.5 ? "SUNLIT" : "SHADOW";
-    const solarPct = Math.round(solarExposure * 100);
-    const taskText = snapshot.task_id
-      ? `${snapshot.task_id}${snapshot.task_progress !== null && snapshot.task_progress !== undefined ? ` (${snapshot.task_progress}/${snapshot.task_total_steps || "?"})` : ""}`
-      : "—";
-    const pinClass = pinnedRoverIds.has(snapshot.rover_id) ? "pinned" : "";
+    const sunlit = solarExposure >= 0.5;
+    const hasTask = Boolean(snapshot.task_id);
+    const family = LSOASUI.taskFamily(snapshot.active_task_type);
+    const label = formatRoverLabel(roverId);
 
-    return `
-      <article class="fleet-card ${stateClass} ${pinClass} ${compactMode ? "compact" : ""}" data-rover-id="${snapshot.rover_id}" tabindex="0">
-        <div class="fleet-card-header">
-          <span class="fleet-card-rover-id">${(snapshot.rover_id || "rover-?").toUpperCase()}</span>
-          <div class="fleet-card-actions">
-            <button type="button" class="fleet-pin-btn ${pinClass}" data-rover-id="${snapshot.rover_id}" title="${pinClass ? "Unpin rover" : "Pin rover"}">${pinClass ? "★" : "☆"}</button>
-          </div>
-          <span class="fleet-card-state">${state}</span>
-        </div>
-        <div class="fleet-card-metrics">
-          <div class="fleet-card-metric">
-            <span class="fleet-card-label">Battery</span>
-            <span class="fleet-card-value">${batteryPct}%</span>
-          </div>
-          <div class="fleet-card-metric">
-            <span class="fleet-card-label">Solar</span>
-            <span class="fleet-card-value">${solarText} (${solarPct}%)</span>
-          </div>
-          <div class="fleet-card-metric">
-            <span class="fleet-card-label">Task</span>
-            <span class="fleet-card-value">${taskText}</span>
-          </div>
-        </div>
-      </article>
-    `;
-  }
+    const className = [
+      "fleet-card",
+      stateToClass(state),
+      pinned ? "pinned" : "",
+      selected ? "is-selected" : "",
+      snapshot.fault ? "has-fault" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    if (el.className !== className) el.className = className;
+    el.setAttribute(
+      "aria-label",
+      `${label}, ${meta.label}, battery ${batteryPct} percent${selected ? ", selected" : ""}`,
+    );
 
-  function hideFleetHoverCard() {
-    if (!dom.fleetHoverCard) return;
-    dom.fleetHoverCard.hidden = true;
-    dom.fleetHoverCard.innerHTML = "";
-  }
+    setText(r.id, (roverId || "rover-?").toUpperCase());
+    setIcon(
+      r["rover-icon"],
+      `${executing || selected ? "ph-fill" : "ph-duotone"} ph-robot`,
+    );
+    r["rover-well"].classList.toggle("is-active", executing);
 
-  function showFleetHoverCard(roverId, anchorEl) {
-    if (!dom.fleetHoverCard || !isCompactFleetMode()) return;
-    const snapshot = fleetSnapshots[roverId];
-    if (!snapshot || !anchorEl) return;
+    r.pin.classList.toggle("pinned", pinned);
+    r.pin.setAttribute("aria-pressed", pinned ? "true" : "false");
+    r.pin.setAttribute("aria-label", `${pinned ? "Unpin" : "Pin"} ${label}`);
+    r["pin-icon"].className = pinned ? "ph-fill ph-star" : "ph ph-star";
 
-    dom.fleetHoverCard.innerHTML = buildFleetCardMarkup(snapshot, false);
-    dom.fleetHoverCard.hidden = false;
+    setIcon(r["state-icon"], meta.cls);
+    setText(r["state-text"], meta.label);
+    r.selected.hidden = !selected;
 
-    const rect = anchorEl.getBoundingClientRect();
-    const x = Math.min(window.innerWidth - 300, rect.right + 8);
-    const y = Math.min(window.innerHeight - 180, Math.max(8, rect.top));
-    dom.fleetHoverCard.style.left = `${Math.max(8, x)}px`;
-    dom.fleetHoverCard.style.top = `${Math.max(8, y)}px`;
+    setText(r["battery-text"], `${batteryPct}%`);
+    r["battery-fill"].style.setProperty("--v", String(battery));
+    r["battery-fill"].classList.toggle("is-low", batteryPct < 20);
+    r["battery-fill"].classList.toggle(
+      "is-mid",
+      batteryPct >= 20 && batteryPct < 50,
+    );
+
+    r["solar-icon"].className = sunlit ? "ph ph-sun" : "ph ph-moon-stars";
+    setText(
+      r["solar-text"],
+      `${sunlit ? "Sunlit" : "Shadow"} ${Math.round(solarExposure * 100)}%`,
+    );
+
+    setText(r["task-family"], hasTask ? family.label : "None");
+    setIcon(
+      r["task-icon"],
+      hasTask
+        ? `${executing ? "ph-fill" : "ph-duotone"} ${family.icon}`
+        : "ph-duotone ph-circle-dashed",
+    );
+    r["task-well"].classList.toggle("is-active", executing && hasTask);
+    const progress = snapshot.task_progress;
+    const total = snapshot.task_total_steps;
+    const hasProgress = hasTask && progress !== null && progress !== undefined;
+    setText(
+      r["task-id"],
+      hasTask
+        ? `${snapshot.task_id}${hasProgress ? ` (${progress}/${total || "?"})` : ""}`
+        : "No active task",
+    );
+    r["task-meter"].hidden = !hasProgress;
+    if (hasProgress) {
+      const frac = clamp01(Number(progress) / (Number(total) || Number(progress) || 1));
+      r["task-fill"].style.setProperty("--v", String(frac));
+    }
+
+    const hasFault = Boolean(snapshot.fault);
+    const hadFault = el.dataset.fault === "1";
+    r.fault.hidden = !hasFault;
+    if (hasFault) setText(r["fault-text"], `Fault: ${String(snapshot.fault)}`);
+    el.dataset.fault = hasFault ? "1" : "";
+    if (hasFault && !hadFault) LSOASUI.pulse(r["fault-icon"]);
   }
 
   function renderFleetGrid() {
@@ -1283,18 +1239,11 @@
 
     const entries = getFleetEntries();
     if (entries.length === 0) {
+      fleetCardEls.clear();
       dom.fleetGrid.innerHTML = `
         <div class="feed-empty">
-          <span class="feed-empty-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="wire-icon">
-              <rect x="6" y="9" width="12" height="7" rx="1.4"></rect>
-              <circle cx="9" cy="18.5" r="1.4"></circle>
-              <circle cx="15" cy="18.5" r="1.4"></circle>
-              <path d="M12 9V6"></path>
-              <path d="M9.5 12.5h5"></path>
-            </svg>
-          </span>
-          <span>Awaiting fleet telemetry...</span>
+          <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-robot"></i></span>
+          <span>Awaiting fleet telemetry</span>
         </div>
       `;
       if (dom.fleetGridSummary) {
@@ -1303,14 +1252,29 @@
       return;
     }
 
-    const compactMode = isCompactFleetMode();
     const visibleEntries = showAllRovers
       ? entries
       : getPriorityFleetEntries(entries);
 
-    dom.fleetGrid.innerHTML = visibleEntries
-      .map((snapshot) => buildFleetCardMarkup(snapshot, compactMode))
-      .join("");
+    dom.fleetGrid.querySelectorAll(".feed-empty").forEach((n) => n.remove());
+    const keep = new Set(visibleEntries.map((snapshot) => snapshot.rover_id));
+    fleetCardEls.forEach((el, roverId) => {
+      if (!keep.has(roverId)) {
+        el.remove();
+        fleetCardEls.delete(roverId);
+      }
+    });
+
+    visibleEntries.forEach((snapshot, index) => {
+      let el = fleetCardEls.get(snapshot.rover_id);
+      if (!el) {
+        el = createFleetCard(snapshot.rover_id);
+        fleetCardEls.set(snapshot.rover_id, el);
+      }
+      updateFleetCard(el, snapshot);
+      const current = dom.fleetGrid.children[index];
+      if (current !== el) dom.fleetGrid.insertBefore(el, current || null);
+    });
 
     if (dom.fleetGridSummary) {
       const mode = showAllRovers ? "all" : "priority";
@@ -1318,8 +1282,8 @@
     }
     if (dom.toggleFleetScopeBtn) {
       dom.toggleFleetScopeBtn.textContent = showAllRovers
-        ? "Show Priority"
-        : "Show All";
+        ? "Show priority"
+        : "Show all";
     }
   }
 
@@ -1351,7 +1315,17 @@
 
     if (dom.fleetTotalRovers) dom.fleetTotalRovers.textContent = String(total);
     if (dom.fleetStateDistribution) {
-      dom.fleetStateDistribution.textContent = `${counts.IDLE || 0} IDLE · ${counts.EXECUTING || 0} EXECUTING · ${counts.SAFE_MODE || 0} SAFE_MODE`;
+      const counters = {
+        idle: counts.IDLE || 0,
+        executing: counts.EXECUTING || 0,
+        safe: counts.SAFE_MODE || 0,
+      };
+      Object.keys(counters).forEach((key) => {
+        setText(
+          dom.fleetStateDistribution.querySelector(`[data-count="${key}"]`),
+          String(counters[key]),
+        );
+      });
     }
     if (dom.fleetAvgBattery) dom.fleetAvgBattery.textContent = `${avgBattery}%`;
     if (dom.fleetAvgSolar) dom.fleetAvgSolar.textContent = `${avgSolar}%`;
@@ -1367,7 +1341,7 @@
         stepTotal > 0
           ? Math.min(missionGuideState.activeStepIndex + 1, stepTotal)
           : 0;
-      dom.fleetMissionContext.textContent = `${missionGuideState.currentMissionPhase || "mission"} · Step ${stepCurrent}/${stepTotal || 0}`;
+      dom.fleetMissionContext.textContent = `${missionGuideState.currentMissionPhase || "mission"}, step ${stepCurrent} of ${stepTotal || 0}`;
     }
   }
 
@@ -1378,7 +1352,7 @@
     const roverIds = getFleetEntries().map((entry) => entry.rover_id);
 
     dom.roverTargetSelect.innerHTML =
-      '<option value="auto">Auto-Select (Best Rover)</option>';
+      '<option value="auto">Auto-select (best rover)</option>';
 
     roverIds.forEach((roverId) => {
       const option = document.createElement("option");
@@ -1403,9 +1377,6 @@
     renderFleetGrid();
     updateFleetBanner();
     refreshRoverSelectOptions();
-    if (!isCompactFleetMode()) {
-      hideFleetHoverCard();
-    }
   }
 
   function togglePinnedRover(roverId) {
@@ -1441,36 +1412,21 @@
       if (roverId) setSelectedRover(roverId);
     });
 
-    dom.fleetGrid.addEventListener("mouseover", (event) => {
-      if (!isCompactFleetMode()) return;
-      const card = event.target.closest(".fleet-card");
-      if (!card) return;
-      showFleetHoverCard(card.dataset.roverId, card);
-    });
-
-    dom.fleetGrid.addEventListener("focusin", (event) => {
-      if (!isCompactFleetMode()) return;
-      const card = event.target.closest(".fleet-card");
-      if (!card) return;
-      showFleetHoverCard(card.dataset.roverId, card);
-    });
-
-    dom.fleetGrid.addEventListener("mouseout", (event) => {
-      if (!isCompactFleetMode()) return;
-      const related = event.relatedTarget;
-      if (related && related.closest && related.closest(".fleet-card")) return;
-      hideFleetHoverCard();
-    });
-
-    dom.fleetGrid.addEventListener("focusout", () => {
-      if (!isCompactFleetMode()) return;
-      hideFleetHoverCard();
+    dom.fleetGrid.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (!event.target.classList.contains("fleet-card")) return;
+      event.preventDefault();
+      if (event.target.dataset.roverId) {
+        setSelectedRover(event.target.dataset.roverId);
+      }
     });
   }
 
   function setSelectedRover(roverId) {
     if (!roverId) return;
+    selectedRoverId = roverId;
     sim.setSelectedRover(roverId);
+    renderFleetGrid();
     if (dom.topoRoverLabel) {
       dom.topoRoverLabel.textContent = formatRoverLabel(roverId);
     }
@@ -1657,6 +1613,7 @@
       taskIdDirty = true;
     }
     if (dom.taskTypeSelect && taskType) dom.taskTypeSelect.value = taskType;
+    syncTaskTypeIcon();
     if (dom.taskDifficultySelect && difficultyLevel) {
       dom.taskDifficultySelect.value = difficultyLevel;
     }
@@ -1778,6 +1735,27 @@
     return distanceFromBottom <= thresholdPx;
   }
 
+  const FEED_TAG_ICONS = {
+    tlm: "ph-wave-sine",
+    cmd: "ph-paper-plane-tilt",
+    ack: "ph-check-circle",
+    "ack-fail": "ph-x-circle",
+    system: "ph-info",
+    task: "ph-path",
+    fault: "ph-warning",
+    relay: "ph-broadcast",
+    drop: "ph-prohibit",
+  };
+  // Strip emoji that the simulation engine prefixes to some log lines.
+  const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+
+  function plainLogText(text) {
+    return String(text ?? "")
+      .replace(EMOJI_RE, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
   function addFeedLine(tag, text) {
     if (!feedInitialized) {
       dom.telemetryFeed.innerHTML = "";
@@ -1793,12 +1771,11 @@
       .map((n) => String(n).padStart(2, "0"))
       .join(":");
 
-    line.innerHTML = `<span class="feed-ts">${ts}</span><span class="feed-tag tag-${tag}">[${tag.toUpperCase()}]</span> ${escapeHtml(text)}`;
+    const clean = plainLogText(text);
+    const icon = FEED_TAG_ICONS[tag] || "ph-info";
+    line.innerHTML = `<span class="feed-ts">${ts}</span><span class="feed-tag tag-${tag}"><i class="ph ${icon}" aria-hidden="true"></i>${tag.toUpperCase()}</span><span class="feed-text">${escapeHtml(clean)}</span>`;
 
     dom.telemetryFeed.appendChild(line);
-    if (dom.telemetryLastValue) {
-      dom.telemetryLastValue.textContent = `${ts} [${tag.toUpperCase()}] ${text}`;
-    }
 
     // Trim old lines
     while (dom.telemetryFeed.children.length > MAX_FEED_LINES) {
@@ -1891,9 +1868,12 @@
   });
 
   bus.on("earth:selected-rover", (data) => {
-    if (data?.rover_id && dom.topoRoverLabel) {
+    if (!data?.rover_id) return;
+    selectedRoverId = data.rover_id;
+    if (dom.topoRoverLabel) {
       dom.topoRoverLabel.textContent = formatRoverLabel(data.rover_id);
     }
+    renderFleetGrid();
   });
 
   // ─── Log events to feed ───
@@ -1920,7 +1900,7 @@
     entry.innerHTML = `
       <span class="cmd-log-id">${data.cmdId}</span>
       <span class="cmd-log-type">${data.cmdType}${data.taskId ? " " + data.taskId : ""}${data.taskType ? ` (${data.taskType}/${data.difficultyLevel || "L2"})` : ""}</span>
-      <span class="cmd-log-target">[${formatRoverLabel(data.roverId)}]</span>
+      <span class="cmd-log-target">${formatRoverLabel(data.roverId)}</span>
       <span class="cmd-log-status pending">PENDING</span>
     `;
 
@@ -1975,7 +1955,7 @@
         const modeText = info.buffered ? "relay queue" : "in-flight";
         return `<div class="pending-item">
         <span class="pending-id">${id}</span>
-        <span>${info.cmdType} [${formatRoverLabel(info.roverId)}] · ${modeText}</span>
+        <span>${info.cmdType} (${formatRoverLabel(info.roverId)}), ${modeText}</span>
         <span class="${timerClass}">${timerText}</span>
       </div>`;
       })
@@ -1999,9 +1979,11 @@
     particle.className = `signal-particle ${direction === "UPLINK" ? "uplink" : "downlink"}`;
     dom.topologyVisual.appendChild(particle);
 
-    const earthNode = document.getElementById("topo-earth");
-    const spaceLinkNode = document.getElementById("topo-spacelink");
-    const roverNode = document.getElementById("topo-rover");
+    const earthNode = document.querySelector("#topo-earth .topo-node-ring");
+    const spaceLinkNode = document.querySelector(
+      "#topo-spacelink .topo-node-ring",
+    );
+    const roverNode = document.querySelector("#topo-rover .topo-node-ring");
 
     // Get positions relative to topology container
     const containerRect = dom.topologyVisual.getBoundingClientRect();
@@ -2067,7 +2049,8 @@
     const positions = {};
 
     nodes.forEach((id) => {
-      const el = document.getElementById(id);
+      // Connect the icon circles, not the whole node, so lines never cross labels.
+      const el = document.querySelector(`#${id} .topo-node-ring`);
       if (!el) return;
       const rect = el.getBoundingClientRect();
       positions[id] = {
@@ -2112,14 +2095,21 @@
     svg.appendChild(line);
   }
 
-  // Draw lines after layout
-  LSOASTime.setTimeout(drawTopologyLines, 100);
-  window.addEventListener("resize", () => {
-    requestAnimationFrame(drawTopologyLines);
-    hideFleetHoverCard();
-    syncMobilePanelMode();
-    refreshOrbitalToggleLabel(is3DPanelOpen);
-  });
+  // Redraw the connector lines whenever the topology card changes size
+  // (layout, window resize, or its view becoming visible on narrow screens).
+  if (typeof ResizeObserver === "function" && dom.topologyVisual) {
+    new ResizeObserver(() => requestAnimationFrame(drawTopologyLines)).observe(
+      dom.topologyVisual,
+    );
+  } else {
+    LSOASTime.setTimeout(drawTopologyLines, 100);
+    window.addEventListener("resize", () =>
+      requestAnimationFrame(drawTopologyLines),
+    );
+  }
+  window.addEventListener("resize", () =>
+    refreshOrbitalToggleLabel(is3DPanelOpen),
+  );
 
   function triggerOrbitalAction(action, buttonEl = null) {
     if (!viz || typeof viz[action] !== "function") return;
@@ -2171,6 +2161,16 @@
         resetProgress: true,
       });
       openMissionControlsCard();
+    });
+  }
+
+  if (dom.presetTabs) {
+    LSOASUI.initSegmented(dom.presetTabs);
+    dom.presetTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-preset]");
+      if (!tab || !dom.missionPresetSelect) return;
+      dom.missionPresetSelect.value = tab.dataset.preset;
+      dom.missionPresetSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
   }
 
@@ -2231,10 +2231,10 @@
       if (dom.taskIdAutoToggle.checked) {
         taskIdDirty = false;
         syncTaskIdInput({ force: true });
-        addFeedLine("system", "🧾 Auto task ID generation enabled");
+        addFeedLine("system", "Auto task ID generation enabled");
       } else {
         updateTaskIdPreview();
-        addFeedLine("system", "🧾 Manual task ID mode enabled");
+        addFeedLine("system", "Manual task ID mode enabled");
       }
     });
   }
@@ -2243,13 +2243,14 @@
     dom.taskIdRegenerateBtn.addEventListener("click", () => {
       taskIdDirty = false;
       syncTaskIdInput({ force: true });
-      addFeedLine("system", `🧾 Task ID regenerated: ${dom.taskIdInput.value}`);
+      addFeedLine("system", `Task ID regenerated: ${dom.taskIdInput.value}`);
       pulseButton(dom.taskIdRegenerateBtn);
     });
   }
 
   if (dom.taskTypeSelect) {
     dom.taskTypeSelect.addEventListener("change", () => {
+      syncTaskTypeIcon();
       syncTaskIdInput();
       updateTaskIdPreview();
     });
@@ -2297,22 +2298,11 @@
   $("#btn-clear-telemetry").addEventListener("click", () => {
     dom.telemetryFeed.innerHTML = `
       <div class="feed-empty">
-        <span class="feed-empty-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" class="wire-icon">
-            <path d="M6 17l5-5"></path>
-            <path d="M8 19h7"></path>
-            <path d="M14 10a4 4 0 0 1 0 5.7"></path>
-            <path d="M16.6 7.4a7.5 7.5 0 0 1 0 10.6"></path>
-            <circle cx="6" cy="17" r="1.3"></circle>
-          </svg>
-        </span>
-        <span>Awaiting telemetry...</span>
+        <span class="icon-well" aria-hidden="true"><i class="ph-duotone ph-wave-sine"></i></span>
+        <span>Awaiting telemetry</span>
       </div>
     `;
     feedInitialized = false;
-    if (dom.telemetryLastValue) {
-      dom.telemetryLastValue.textContent = "Awaiting telemetry...";
-    }
   });
 
   // ─── Slider Controls ───
@@ -2387,20 +2377,26 @@
   // ─── Node Click Highlighting ───
   $$(".topo-node").forEach((node) => {
     node.addEventListener("click", () => {
-      $$(".topo-node").forEach((n) => n.classList.remove("active"));
+      $$(".topo-node").forEach((n) => {
+        n.classList.remove("active");
+        n.setAttribute("aria-pressed", "false");
+      });
       node.classList.add("active");
+      node.setAttribute("aria-pressed", "true");
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      node.click();
     });
   });
 
   // ─── Keyboard Shortcuts ───
   document.addEventListener("keydown", (e) => {
-    // Don't capture if user is typing in an input
+    // Don't capture if user is typing in an input, or using a browser shortcut
     if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
-
-    if (e.key === "Escape" && floatingPanel.classList.contains("panel-open")) {
-      set3DPanel(false);
-      return;
-    }
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (is3DPanelOpen && ["s", "a", "r"].includes(e.key.toLowerCase())) return;
 
     switch (e.key.toLowerCase()) {
       case "f":
@@ -2444,7 +2440,8 @@
   addFeedLine("system", "Space Link relay initialized");
   addFeedLine("system", "Rover fleet active - awaiting commands");
   addFeedLine("system", "Telemetry monitor listening");
-  addFeedLine("system", "───────────────────────────────");
+  renderTaskFamilyLegend();
+  syncTaskTypeIcon();
   applyScenarioFromUrl();
 
   console.log(

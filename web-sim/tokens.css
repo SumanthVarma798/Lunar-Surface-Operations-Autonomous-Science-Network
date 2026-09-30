@@ -92,6 +92,7 @@
   --sh-dark: #10131a;
   --edge: rgba(255, 255, 255, 0.07);
   --edge-strong: rgba(255, 255, 255, 0.22);
+  --ctl-edge: #66718a;
 
   --text: #e9edf5;
   --text-2: #aab3c5;
@@ -126,6 +127,7 @@
     --sh-dark: #b5bdcc;
     --edge: rgba(255, 255, 255, 0.85);
     --edge-strong: rgba(29, 35, 48, 0.4);
+    --ctl-edge: #6a758b;
 
     --text: #1b2230;
     --text-2: #465067;
@@ -160,6 +162,7 @@
   --sh-dark: #b5bdcc;
   --edge: rgba(255, 255, 255, 0.85);
   --edge-strong: rgba(29, 35, 48, 0.4);
+  --ctl-edge: #6a758b;
 
   --text: #1b2230;
   --text-2: #465067;
@@ -204,6 +207,7 @@
     --sh-dark: transparent;
     --edge: #c9d1e3;
     --edge-strong: #ffffff;
+    --ctl-edge: #ffffff;
     --text: #ffffff;
     --text-2: #e3e8f3;
     --text-3: #cdd5e6;
@@ -223,6 +227,7 @@
     --sh-dark: transparent;
     --edge: #2a3142;
     --edge-strong: #000000;
+    --ctl-edge: #000000;
     --text: #000000;
     --text-2: #1a2030;
     --text-3: #2a3142;
@@ -244,6 +249,7 @@
     --sh-dark: transparent;
     --edge: CanvasText;
     --edge-strong: CanvasText;
+    --ctl-edge: CanvasText;
     --text: CanvasText;
     --text-2: CanvasText;
     --text-3: CanvasText;
