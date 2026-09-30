@@ -37,7 +37,8 @@ jobs:
           test -f "${WEB_SIM_DIR}/index.html"
           test -f "${WEB_SIM_DIR}/app.js"
           test -f "${WEB_SIM_DIR}/simulation.js"
-          test -f "${WEB_SIM_DIR}/index.css"
+          test -f "${WEB_SIM_DIR}/styles.css"
+          test -f "${WEB_SIM_DIR}/tokens.css"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

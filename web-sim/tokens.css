@@ -1,0 +1,257 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LSOAS design tokens (soft UI / neumorphism)
+
+   One surface color family per theme. Every component is extruded from, or
+   pressed into, the same base color using paired shadows (light from the top
+   left, dark from the bottom right, both tinted to the base hue). Shadow never
+   carries meaning on its own: state is always also shown with text, an icon or
+   an accent color.
+
+   Radius scale (the only one used in this project)
+     --r-card     20px   cards, dialogs, large wells
+     --r-control  14px   buttons, inputs, selects, segmented tracks, inner tiles
+     --r-pill     full   chips, toggles, slider tracks, badges, round icon wells
+
+   Accents (exactly two)
+     --accent     blue          interactive, selected, focus
+     --accent-2   red/orange    alerts, faults, the active rover and task
+   Status colors (--ok, --warn, --danger) are semantic only.
+
+   Contrast targets: 4.5:1 body text, 3:1 UI components and large text.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: "Geist";
+  src: url("assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Theme-independent tokens ─── */
+:root {
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  --r-card: 20px;
+  --r-control: 14px;
+  --r-pill: 9999px;
+
+  /* Type scale */
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.875rem;
+  --fs-lg: 1rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.75rem;
+
+  /* Spacing (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Motion: one easing curve, four durations */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-press: 120ms;
+  --dur-fast: 220ms;
+  --dur-base: 420ms;
+  --dur-slow: 640ms;
+
+  /* Layering */
+  --z-rail: 10;
+  --z-header: 20;
+  --z-dialog: 40;
+  --z-toast: 50;
+
+  --header-h: 64px;
+}
+
+/* ─── Dark theme (default). Base hue ~222deg, never pure black. ─── */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface: #1c2029;
+  --surface-well: #181c24;
+  --sh-light: #272c39;
+  --sh-dark: #10131a;
+  --edge: rgba(255, 255, 255, 0.07);
+  --edge-strong: rgba(255, 255, 255, 0.22);
+
+  --text: #e9edf5;
+  --text-2: #aab3c5;
+  --text-3: #8f99ad;
+  --text-on-accent: #0d1424;
+
+  --accent: #7ba8ff;
+  --accent-soft: rgba(123, 168, 255, 0.16);
+  --accent-2: #ff8459;
+  --accent-2-soft: rgba(255, 132, 89, 0.16);
+
+  --ok: #5bd6a0;
+  --ok-soft: rgba(91, 214, 160, 0.15);
+  --warn: #f3bf4f;
+  --warn-soft: rgba(243, 191, 79, 0.15);
+  --danger: #ff7383;
+  --danger-soft: rgba(255, 115, 131, 0.16);
+
+  --focus: #9dbfff;
+  --scene-bg: #141821;
+  --scrim: rgba(8, 10, 15, 0.62);
+}
+
+/* ─── Light theme: system preference (unless the user forced dark) ─── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --surface: #e3e7ee;
+    --surface-well: #dce1e9;
+    --sh-light: #fafcff;
+    --sh-dark: #b5bdcc;
+    --edge: rgba(255, 255, 255, 0.85);
+    --edge-strong: rgba(29, 35, 48, 0.4);
+
+    --text: #1b2230;
+    --text-2: #465067;
+    --text-3: #566179;
+    --text-on-accent: #ffffff;
+
+    --accent: #2458d3;
+    --accent-soft: rgba(36, 88, 211, 0.13);
+    --accent-2: #ab3506;
+    --accent-2-soft: rgba(171, 53, 6, 0.12);
+
+    --ok: #096b3d;
+    --ok-soft: rgba(9, 107, 61, 0.13);
+    --warn: #8a5a00;
+    --warn-soft: rgba(138, 90, 0, 0.14);
+    --danger: #c2182f;
+    --danger-soft: rgba(194, 24, 47, 0.12);
+
+    --focus: #1d4bb8;
+    --scene-bg: #d3d9e4;
+    --scrim: rgba(40, 48, 66, 0.4);
+  }
+}
+
+/* ─── Light theme: explicit toggle ─── */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --surface: #e3e7ee;
+  --surface-well: #dce1e9;
+  --sh-light: #fafcff;
+  --sh-dark: #b5bdcc;
+  --edge: rgba(255, 255, 255, 0.85);
+  --edge-strong: rgba(29, 35, 48, 0.4);
+
+  --text: #1b2230;
+  --text-2: #465067;
+  --text-3: #566179;
+  --text-on-accent: #ffffff;
+
+  --accent: #2458d3;
+  --accent-soft: rgba(36, 88, 211, 0.13);
+  --accent-2: #ab3506;
+  --accent-2-soft: rgba(171, 53, 6, 0.12);
+
+  --ok: #096b3d;
+  --ok-soft: rgba(9, 107, 61, 0.13);
+  --warn: #8a5a00;
+  --warn-soft: rgba(138, 90, 0, 0.14);
+  --danger: #c2182f;
+  --danger-soft: rgba(194, 24, 47, 0.12);
+
+  --focus: #1d4bb8;
+  --scene-bg: #d3d9e4;
+  --scrim: rgba(40, 48, 66, 0.4);
+}
+
+/* ─── Shadow recipes (built from the theme's paired shadow colors) ─── */
+:root {
+  --sh-raised: -7px -7px 16px var(--sh-light), 7px 7px 16px var(--sh-dark);
+  --sh-raised-sm: -4px -4px 9px var(--sh-light), 4px 4px 9px var(--sh-dark);
+  --sh-raised-xs: -2px -2px 5px var(--sh-light), 2px 2px 5px var(--sh-dark);
+  --sh-inset: inset 6px 6px 12px var(--sh-dark),
+    inset -6px -6px 12px var(--sh-light);
+  --sh-inset-sm: inset 3px 3px 7px var(--sh-dark),
+    inset -3px -3px 7px var(--sh-light);
+}
+
+/* ─── Higher contrast requested: flatten, add solid borders, stronger text ─── */
+@media (prefers-contrast: more) {
+  :root,
+  :root[data-theme="dark"] {
+    --surface: #10131a;
+    --surface-well: #0a0c11;
+    --sh-light: transparent;
+    --sh-dark: transparent;
+    --edge: #c9d1e3;
+    --edge-strong: #ffffff;
+    --text: #ffffff;
+    --text-2: #e3e8f3;
+    --text-3: #cdd5e6;
+    --accent: #a9c6ff;
+    --accent-2: #ffa07f;
+    --ok: #7df0b9;
+    --warn: #ffd16f;
+    --danger: #ff9aa6;
+    --focus: #ffffff;
+  }
+
+  :root[data-theme="light"],
+  :root:not([data-theme="dark"]) {
+    --surface: #ffffff;
+    --surface-well: #f1f3f7;
+    --sh-light: transparent;
+    --sh-dark: transparent;
+    --edge: #2a3142;
+    --edge-strong: #000000;
+    --text: #000000;
+    --text-2: #1a2030;
+    --text-3: #2a3142;
+    --accent: #0f3fb0;
+    --accent-2: #8f2a00;
+    --ok: #005c33;
+    --warn: #6b4300;
+    --danger: #9e0f22;
+    --focus: #000000;
+  }
+}
+
+/* ─── Forced colors (Windows High Contrast): use system colors only ─── */
+@media (forced-colors: active) {
+  :root {
+    --surface: Canvas;
+    --surface-well: Canvas;
+    --sh-light: transparent;
+    --sh-dark: transparent;
+    --edge: CanvasText;
+    --edge-strong: CanvasText;
+    --text: CanvasText;
+    --text-2: CanvasText;
+    --text-3: CanvasText;
+    --accent: LinkText;
+    --accent-2: Mark;
+    --ok: CanvasText;
+    --warn: CanvasText;
+    --danger: CanvasText;
+    --focus: Highlight;
+  }
+}

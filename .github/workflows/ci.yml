@@ -114,7 +114,7 @@ jobs:
           grep -q '<title' web-sim/index.html && echo "  ✅ <title> tag"
           grep -q 'simulation.js' web-sim/index.html && echo "  ✅ simulation.js linked"
           grep -q 'app.js' web-sim/index.html && echo "  ✅ app.js linked"
-          grep -q 'index.css' web-sim/index.html && echo "  ✅ index.css linked"
+          grep -q 'styles.css' web-sim/index.html && echo "  ✅ styles.css linked"
           echo "✅ HTML structure valid"
 
       - name: JavaScript syntax check
@@ -133,16 +133,18 @@ jobs:
         run: |
           echo "Checking CSS..."
           # Basic checks: file exists and has content
-          [ -s web-sim/index.css ] && echo "  ✅ index.css exists and is non-empty"
-          # Check for obvious syntax issues (unmatched braces)
-          OPEN=$(grep -o '{' web-sim/index.css | wc -l)
-          CLOSE=$(grep -o '}' web-sim/index.css | wc -l)
-          if [ "$OPEN" -eq "$CLOSE" ]; then
-            echo "  ✅ CSS braces balanced ($OPEN pairs)"
-          else
-            echo "  ❌ CSS braces mismatch: $OPEN open vs $CLOSE close"
-            exit 1
-          fi
+          for f in web-sim/tokens.css web-sim/styles.css; do
+            [ -s "$f" ] && echo "  ✅ $f exists and is non-empty"
+            # Check for obvious syntax issues (unmatched braces)
+            OPEN=$(grep -o '{' "$f" | wc -l)
+            CLOSE=$(grep -o '}' "$f" | wc -l)
+            if [ "$OPEN" -eq "$CLOSE" ]; then
+              echo "  ✅ $f braces balanced ($OPEN pairs)"
+            else
+              echo "  ❌ $f braces mismatch: $OPEN open vs $CLOSE close"
+              exit 1
+            fi
+          done
           echo "✅ CSS valid"
 
       - name: Serve and smoke test
@@ -235,7 +237,8 @@ jobs:
           test -f web-sim/index.html
           test -f web-sim/app.js
           test -f web-sim/simulation.js
-          test -f web-sim/index.css
+          test -f web-sim/styles.css
+          test -f web-sim/tokens.css
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
