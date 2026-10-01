@@ -1,0 +1,25 @@
+LSOAS web-sim asset credits
+
+Moon surface map (assets/nasa/moon-nasa-svs-2048.jpg)
+  Source: NASA Scientific Visualization Studio, "CGI Moon Kit" (https://svs.gsfc.nasa.gov/4720),
+  built from Lunar Reconnaissance Orbiter data. Public domain in the United States.
+  Obtained via Wikimedia Commons (File:Moon_texture.jpg). Downscaled here from
+  3840x1920 to 2048x1024 and re-encoded as JPEG (about 0.7 MB).
+
+Other NASA files in assets/nasa/
+  earth-blue-marble-2048.png, earth-clouds-2048.jpg, sun-sdo-2048-0171.jpg,
+  moon-nasa.jpg, curiosity-nasa.stl
+  NASA imagery and models are generally public domain (NASA media usage guidelines).
+  The original source URLs for these files were not recorded when they were added to
+  the repository. Confirm each source before redistributing outside this project.
+  Note: moon-nasa.jpg and curiosity-nasa.stl are not loaded by the current web-sim.
+
+Fonts (assets/fonts/)
+  Geist and Geist Mono by Vercel, SIL Open Font License 1.1 (see OFL-LICENSE.txt).
+  Source: the "geist" npm package, version 1.7.2.
+
+Icons
+  Phosphor Icons (MIT), loaded from the jsDelivr CDN: https://phosphoricons.com
+
+3D library
+  three.js r160 (MIT), loaded on demand from unpkg when the orbital view first opens.

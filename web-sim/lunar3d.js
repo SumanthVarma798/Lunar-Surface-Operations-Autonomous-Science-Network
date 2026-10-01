@@ -107,14 +107,23 @@ class VisualizationController {
     };
     this.sunTextureUrl = "assets/nasa/sun-sdo-2048-0171.jpg";
 
+    this.active = false;
+    this.paused = false;
+    this.disposed = false;
+    this.frameId = 0;
+    this.resizeObserver = null;
+    this.palette = null;
+    this.onThemeChange = () => this.applyThemePalette();
+
     this.init();
     this.bindBus();
-    this.animate();
+    // The render loop starts when the host calls setActive(true).
   }
 
   init() {
+    this.palette = this.readPalette();
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x02040c);
+    this.scene.background = this.palette.sceneBg.clone();
 
     this.rootGroup = new THREE.Group();
     this.scene.add(this.rootGroup);
@@ -145,7 +154,116 @@ class VisualizationController {
     this.setupInteraction();
     this.setViewMode("orbital", false);
 
-    window.addEventListener("resize", () => this.onResize());
+    if (typeof ResizeObserver === "function") {
+      this.resizeObserver = new ResizeObserver(() => this.onResize());
+      this.resizeObserver.observe(this.container);
+    }
+    document.addEventListener("lsoas:theme", this.onThemeChange);
+    this.applyThemePalette();
+  }
+
+  /* Scene colors come from the same CSS tokens as the UI so the canvas matches
+     the surface in both themes. Falls back to the dark palette if a token is
+     not a plain hex color (for example under forced colors). */
+  readPalette() {
+    const css = getComputedStyle(document.documentElement);
+    const read = (name, fallback) => {
+      const raw = css.getPropertyValue(name).trim();
+      return /^#[0-9a-f]{3,8}$/i.test(raw)
+        ? new THREE.Color(raw)
+        : new THREE.Color(fallback);
+    };
+    const light = document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "light"
+      : window.matchMedia("(prefers-color-scheme: light)").matches;
+    return {
+      light,
+      sceneBg: read("--scene-bg", "#141821"),
+      accent: read("--accent", "#7ba8ff"),
+      accent2: read("--accent-2", "#ff8459"),
+      ok: read("--ok", "#5bd6a0"),
+      warn: read("--warn", "#f3bf4f"),
+      danger: read("--danger", "#ff7383"),
+      text2: read("--text-2", "#aab3c5"),
+    };
+  }
+
+  applyThemePalette() {
+    if (!this.scene) return;
+    this.palette = this.readPalette();
+    const p = this.palette;
+    this.scene.background.copy(p.sceneBg);
+
+    if (this.stars) {
+      this.stars.material.color.set(p.light ? 0x3a4660 : 0xffffff);
+      this.stars.material.opacity = p.light ? 0.55 : 0.75;
+    }
+
+    const restyle = (beam, clearColor, errorColor) => {
+      if (!beam || !beam.userData?.style) return;
+      beam.userData.style.clear.color = clearColor.getHex();
+      beam.userData.style.error.color = errorColor.getHex();
+      this.applyBeamStyle(beam, beam.userData.activeStyle || "clear");
+    };
+    this.satellites.forEach((sat) => {
+      restyle(sat.linkToEarth, p.accent, p.accent2);
+      restyle(sat.linkToRover, p.ok, p.accent2);
+      if (sat.orbitPath) sat.orbitPath.material.color.copy(p.text2);
+    });
+    this.interSatelliteLinks.forEach((link) =>
+      restyle(link.beam, p.text2, p.accent2),
+    );
+    this.rovers.forEach((rover) => this.updateRoverStateStyle(rover));
+  }
+
+  setActive(active) {
+    if (this.disposed) return;
+    const next = Boolean(active);
+    if (next === this.active) return;
+    this.active = next;
+    if (next) {
+      // Account for the time spent inactive so timers and physics do not jump.
+      const now = performance.now();
+      const away = now - this.lastFrameTs;
+      if (this.signalLossState.active) this.signalLossState.startedAtMs += away;
+      this.lastFrameTs = now;
+      this.onResize();
+      if (!this.frameId) this.frameId = requestAnimationFrame(() => this.animate());
+    } else if (this.frameId) {
+      cancelAnimationFrame(this.frameId);
+      this.frameId = 0;
+    }
+  }
+
+  setPaused(paused) {
+    this.paused = Boolean(paused);
+  }
+
+  /* Free GPU and DOM resources. Safe to call more than once. */
+  dispose() {
+    if (this.disposed) return;
+    this.setActive(false);
+    this.disposed = true;
+    if (this.resizeObserver) this.resizeObserver.disconnect();
+    document.removeEventListener("lsoas:theme", this.onThemeChange);
+    const textures = new Set();
+    this.scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      const materials = Array.isArray(obj.material)
+        ? obj.material
+        : obj.material
+          ? [obj.material]
+          : [];
+      materials.forEach((material) => {
+        Object.values(material).forEach((value) => {
+          if (value && value.isTexture) textures.add(value);
+        });
+        material.dispose();
+      });
+    });
+    textures.forEach((texture) => texture.dispose());
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
   }
 
   bindBus() {
@@ -162,24 +280,24 @@ class VisualizationController {
   }
 
   createLighting() {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.14);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xa8d6ff, 0x060708, 0.52);
+    const hemi = new THREE.HemisphereLight(0xdfe8f7, 0x2a2f3a, 0.62);
     hemi.position.set(0, 6, 0);
     this.scene.add(hemi);
 
-    this.sunLight = new THREE.DirectionalLight(0xf8fcff, 2.35);
+    this.sunLight = new THREE.DirectionalLight(0xfff6ea, 1.9);
     this.sunLight.position.copy(this.sunAnchorOrbital);
     this.scene.add(this.sunLight);
     this.scene.add(this.sunLight.target);
     this.sunLight.target.position.set(0, 0, 0);
 
-    const fill = new THREE.PointLight(0x7cc8ff, 0.55, 24, 2);
+    const fill = new THREE.PointLight(0xdfe8f7, 0.45, 24, 2);
     fill.position.set(-3.4, 2.1, 2.8);
     this.scene.add(fill);
 
-    const rim = new THREE.PointLight(0x3b82f6, 0.95, 18, 2);
+    const rim = new THREE.PointLight(0xdfe8f7, 0.4, 18, 2);
     rim.position.set(-2.8, 2.1, -3.6);
     this.scene.add(rim);
   }
@@ -203,9 +321,9 @@ class VisualizationController {
     const glow = new THREE.Mesh(
       new THREE.SphereGeometry(this.MOON_RADIUS * 1.045, 64, 64),
       new THREE.MeshBasicMaterial({
-        color: 0x5fa8ff,
+        color: 0x9fb8e6,
         transparent: true,
-        opacity: 0.065,
+        opacity: 0.05,
         blending: THREE.AdditiveBlending,
         side: THREE.BackSide,
       }),
@@ -223,8 +341,8 @@ class VisualizationController {
   }
 
   createProceduralMoonTexture() {
-    const width = 2048;
-    const height = 1024;
+    const width = 512;
+    const height = 256;
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -249,10 +367,10 @@ class VisualizationController {
     }
     ctx.putImageData(image, 0, 0);
 
-    for (let c = 0; c < 520; c += 1) {
+    for (let c = 0; c < 130; c += 1) {
       const x = Math.random() * width;
       const y = Math.random() * height;
-      const r = 3 + Math.random() * 30;
+      const r = 1 + Math.random() * 8;
       const ring = ctx.createRadialGradient(x, y, 0, x, y, r);
       ring.addColorStop(0, "rgba(235,235,235,0.16)");
       ring.addColorStop(0.55, "rgba(170,170,170,0.14)");
@@ -277,7 +395,7 @@ class VisualizationController {
   upgradeMoonTexture(material) {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(
-      "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg",
+      "assets/nasa/moon-nasa-svs-2048.jpg",
       (colorMap) => {
         colorMap.colorSpace = THREE.SRGBColorSpace;
         colorMap.anisotropy = Math.min(
@@ -295,7 +413,7 @@ class VisualizationController {
       () => {
         this.bus.emit("log", {
           tag: "system",
-          text: "WARN: External moon texture unavailable, using procedural lunar albedo",
+          text: "WARN: Moon texture unavailable, using procedural lunar albedo",
         });
       },
     );
@@ -887,29 +1005,35 @@ class VisualizationController {
       collisionCooldown: 0,
     };
 
-    const orbitPath = this.createOrbitPath(def.radius, basis, index, def.color);
+    const p = this.palette;
+    const orbitPath = this.createOrbitPath(
+      def.radius,
+      basis,
+      index,
+      p.text2.getHex(),
+    );
     const linkToEarth = this.createBeam({
       clear: {
-        color: 0x38bdf8,
-        opacity: 0.58,
+        color: p.accent.getHex(),
+        opacity: 0.7,
         dashed: false,
       },
       error: {
-        color: 0xef4444,
-        opacity: 0.76,
+        color: p.accent2.getHex(),
+        opacity: 0.85,
         dashed: false,
       },
       thickness: 0.012,
     });
     const linkToRover = this.createBeam({
       clear: {
-        color: 0x22c55e,
-        opacity: 0.64,
+        color: p.ok.getHex(),
+        opacity: 0.75,
         dashed: false,
       },
       error: {
-        color: 0xef4444,
-        opacity: 0.82,
+        color: p.accent2.getHex(),
+        opacity: 0.85,
         dashed: true,
       },
       thickness: 0.009,
@@ -941,7 +1065,7 @@ class VisualizationController {
       new THREE.LineDashedMaterial({
         color: orbitColor,
         transparent: true,
-        opacity: 0.58,
+        opacity: 0.4,
         dashSize: 0.11 + index * 0.02,
         gapSize: 0.07 + index * 0.015,
       }),
@@ -966,14 +1090,19 @@ class VisualizationController {
       gapSize: error?.gapSize ?? 0.06 + thickness * 4.5,
     };
 
-    const beam = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(),
-        new THREE.Vector3(0, 0.001, 0),
-      ]),
-      this.createBeamMaterial(clearStyle),
+    // Two vertices and their line distances are allocated once and then
+    // rewritten in place every frame (see updateBeam).
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, 0.001, 0]), 3),
     );
-    if (clearStyle.dashed) beam.computeLineDistances();
+    geometry.setAttribute(
+      "lineDistance",
+      new THREE.BufferAttribute(new Float32Array([0, 0.001]), 1),
+    );
+    const beam = new THREE.Line(geometry, this.createBeamMaterial(clearStyle));
+    beam.frustumCulled = false;
     beam.userData = {
       style: {
         clear: clearStyle,
@@ -995,15 +1124,15 @@ class VisualizationController {
         b: next,
         beam: this.createBeam({
           clear: {
-            color: 0x3b82f6,
-            opacity: 0.42,
+            color: this.palette.text2.getHex(),
+            opacity: 0.5,
             dashed: true,
             dashSize: 0.13,
             gapSize: 0.09,
           },
           error: {
-            color: 0xb45309,
-            opacity: 0.54,
+            color: this.palette.accent2.getHex(),
+            opacity: 0.6,
             dashed: true,
             dashSize: 0.13,
             gapSize: 0.09,
@@ -1057,7 +1186,6 @@ class VisualizationController {
       beam.material.needsUpdate = true;
     }
 
-    if (style.dashed) beam.computeLineDistances();
     beam.userData.activeStyle = styleKey;
   }
 
@@ -1102,11 +1230,14 @@ class VisualizationController {
     }
 
     beam.visible = true;
-    beam.geometry.setFromPoints([start, end]);
+    const position = beam.geometry.getAttribute("position");
+    position.setXYZ(0, start.x, start.y, start.z);
+    position.setXYZ(1, end.x, end.y, end.z);
+    position.needsUpdate = true;
+    const lineDistance = beam.geometry.getAttribute("lineDistance");
+    lineDistance.setX(1, length);
+    lineDistance.needsUpdate = true;
     this.setBeamBlockedState(beam, blocked);
-    if (beam.material && beam.material.type === "LineDashedMaterial") {
-      beam.computeLineDistances();
-    }
   }
 
   upsertFleetSnapshot(fleet) {
@@ -1244,7 +1375,7 @@ class VisualizationController {
     const execRing = new THREE.Mesh(
       new THREE.TorusGeometry(0.018, 0.002, 8, 24),
       new THREE.MeshBasicMaterial({
-        color: 0x3b82f6,
+        color: this.palette.accent2.getHex(),
         transparent: true,
         opacity: 0,
       }),
@@ -1252,6 +1383,30 @@ class VisualizationController {
     execRing.rotation.x = Math.PI / 2;
     execRing.position.y = 0.005;
     group.add(execRing);
+
+    // Flat marker rings on the surface: solid for the selected rover, a wider
+    // ring for a faulted one. Both are drawn without depth test so they stay
+    // readable from any camera angle.
+    const makeMarker = (inner, outer) => {
+      const marker = new THREE.Mesh(
+        new THREE.RingGeometry(inner, outer, 40),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.95,
+          side: THREE.DoubleSide,
+          depthTest: false,
+        }),
+      );
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.y = 0.003;
+      marker.renderOrder = 5;
+      marker.visible = false;
+      group.add(marker);
+      return marker;
+    };
+    const selectRing = makeMarker(0.03, 0.036);
+    const faultRing = makeMarker(0.042, 0.048);
 
     const rover = {
       id: roverId,
@@ -1261,6 +1416,8 @@ class VisualizationController {
       fallbackMaterial,
       beaconMaterial,
       execRing,
+      selectRing,
+      faultRing,
       execPhase: 0,
       modelMesh: null,
       modelMaterial: null,
@@ -1311,7 +1468,9 @@ class VisualizationController {
     this.selectedRoverId = roverId;
     this.rovers.forEach((rover, id) => {
       const selected = id === roverId;
+      rover.selected = selected;
       rover.group.scale.setScalar(selected ? 1.25 : 1.12);
+      this.updateRoverStateStyle(rover);
       rover.group.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return;
         if (!Object.prototype.hasOwnProperty.call(obj.material, "emissive"))
@@ -1324,33 +1483,38 @@ class VisualizationController {
 
   updateRoverStateStyle(rover) {
     const state = rover.state;
-    let accent = 0x34d399;
-    let fallbackEmissive = 0x0a1f16;
-
-    if (state === "EXECUTING") {
-      accent = 0x3b82f6;
-      fallbackEmissive = 0x11244d;
-    } else if (state === "SAFE_MODE") {
-      accent = 0xf59e0b;
-      fallbackEmissive = 0x3a2a09;
-    } else if (state === "ERROR") {
-      accent = 0xef4444;
-      fallbackEmissive = 0x450f0f;
-    }
+    const p = this.palette;
+    // Same state colors as the UI: idle ok, running accent-2, safe mode warn, fault danger
+    let accent = p.ok;
+    if (state === "EXECUTING") accent = p.accent2;
+    else if (state === "SAFE_MODE") accent = p.warn;
+    else if (state === "ERROR") accent = p.danger;
 
     if (rover.fallbackMaterial) {
-      rover.fallbackMaterial.color.setHex(accent);
-      rover.fallbackMaterial.emissive.setHex(fallbackEmissive);
+      rover.fallbackMaterial.color.copy(accent);
+      rover.fallbackMaterial.emissive.copy(accent).multiplyScalar(0.2);
     }
 
     if (rover.beaconMaterial) {
-      rover.beaconMaterial.color.setHex(accent);
+      rover.beaconMaterial.color.copy(accent);
     }
 
     if (rover.modelMaterial) {
       rover.modelMaterial.color.setHex(0xc6d0dc);
-      this.tmpColor.setHex(accent).multiplyScalar(0.26);
+      this.tmpColor.copy(accent).multiplyScalar(0.26);
       rover.modelMaterial.emissive.copy(this.tmpColor);
+    }
+
+    if (rover.execRing) rover.execRing.material.color.copy(p.accent2);
+    if (rover.selectRing) {
+      rover.selectRing.visible = Boolean(rover.selected);
+      rover.selectRing.material.color.copy(p.accent2);
+    }
+    if (rover.faultRing) {
+      rover.faultRing.visible = state === "ERROR" || state === "SAFE_MODE";
+      rover.faultRing.material.color.copy(
+        state === "ERROR" ? p.danger : p.warn,
+      );
     }
   }
 
@@ -1506,13 +1670,13 @@ class VisualizationController {
       const activeText = `Active ${this.formatDurationMs(activeDurationMs)}`;
       if (lossValueEl) lossValueEl.textContent = activeText;
       if (stripValueEl) {
-        stripValueEl.textContent = `LOS outage active: ${this.formatDurationMs(activeDurationMs)}`;
+        stripValueEl.textContent = `Signal outage active: ${this.formatDurationMs(activeDurationMs)}`;
       }
       if (metaEl) {
         const reason =
           this.linkStatus.issueReason || "Issue: no line-of-sight contact";
         metaEl.classList.add("warning");
-        metaEl.textContent = `${reason} · Outage ${this.formatDurationMs(activeDurationMs)}`;
+        metaEl.textContent = `${reason}, outage ${this.formatDurationMs(activeDurationMs)}`;
       }
       return;
     }
@@ -1521,13 +1685,13 @@ class VisualizationController {
       const lastText = `Last ${this.formatDurationMs(tracker.lastDurationMs)}`;
       if (lossValueEl) lossValueEl.textContent = lastText;
       if (stripValueEl) {
-        stripValueEl.textContent = `Last LOS outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
+        stripValueEl.textContent = `Last signal outage: ${this.formatDurationMs(tracker.lastDurationMs)}`;
       }
       return;
     }
 
     if (lossValueEl) lossValueEl.textContent = "--";
-    if (stripValueEl) stripValueEl.textContent = "Last LOS outage: --";
+    if (stripValueEl) stripValueEl.textContent = "Last signal outage: --";
   }
 
   updateCamera(force = false) {
@@ -1613,9 +1777,9 @@ class VisualizationController {
 
     if (!selectedRover) {
       if (roverEarthAngleEl)
-        roverEarthAngleEl.textContent = "Rover→Earth angle: --";
+        roverEarthAngleEl.textContent = "Rover to Earth angle: --";
       if (roverSideEl) roverSideEl.textContent = "Lunar side: --";
-      if (roverCoordsEl) roverCoordsEl.textContent = "Lat -- · Lon --";
+      if (roverCoordsEl) roverCoordsEl.textContent = "Lat -- / Lon --";
       if (earthBearingEl) earthBearingEl.textContent = "--";
       return;
     }
@@ -1629,13 +1793,13 @@ class VisualizationController {
     const onNearSide = roverEarthAngle <= 90;
 
     if (roverEarthAngleEl) {
-      roverEarthAngleEl.textContent = `Rover→Earth angle: ${roverEarthAngle.toFixed(1)}°`;
+      roverEarthAngleEl.textContent = `Rover to Earth angle: ${roverEarthAngle.toFixed(1)}°`;
     }
     if (roverSideEl) {
       roverSideEl.textContent = `Lunar side: ${onNearSide ? "Nearside" : "Farside"}`;
     }
     if (roverCoordsEl) {
-      roverCoordsEl.textContent = `Lat ${Number(selectedRover.lat).toFixed(2)}° · Lon ${Number(selectedRover.lon).toFixed(2)}°`;
+      roverCoordsEl.textContent = `Lat ${Number(selectedRover.lat).toFixed(2)}° / Lon ${Number(selectedRover.lon).toFixed(2)}°`;
     }
 
     const worldUp = new THREE.Vector3(0, 1, 0);
@@ -1698,8 +1862,8 @@ class VisualizationController {
     if (linksValueEl) {
       linksValueEl.textContent =
         total > 0
-          ? `E ${earthClear}/${earthTotal} · R ${roverClear}/${roverTotal}`
-          : "E 0/0 · R 0/0";
+          ? `E ${earthClear}/${earthTotal}, R ${roverClear}/${roverTotal}`
+          : "E 0/0, R 0/0";
     }
     if (zoomValueEl) zoomValueEl.textContent = `${zoomFactor}x`;
     if (fleetValueEl) fleetValueEl.textContent = String(roverCount);
@@ -1712,7 +1876,7 @@ class VisualizationController {
       if (metaEl) {
         metaEl.classList.remove("warning");
         metaEl.textContent =
-          "Awaiting stable comm links · LMB Orbit · Shift+LMB Pan · Wheel Zoom";
+          "Awaiting stable comm links. Left drag orbits, Shift + left drag pans, wheel zooms";
       }
       this.syncNavigationTelemetry();
       this.updateSignalLossUi();
@@ -1727,7 +1891,7 @@ class VisualizationController {
         metaEl.classList.add("warning");
         metaEl.textContent =
           this.linkStatus.issueReason ||
-          "Issue detected · Check relay geometry";
+          "Issue detected, check relay geometry";
       }
     } else {
       if (losValueEl) losValueEl.textContent = "Nominal";
@@ -1735,14 +1899,14 @@ class VisualizationController {
       setCardState(linksCardEl, "good");
       if (metaEl) {
         metaEl.classList.remove("warning");
-        metaEl.textContent = `Nominal network geometry · Earth ${earthClear}/${earthTotal} · Rover ${roverClear}/${roverTotal}`;
+        metaEl.textContent = `Nominal network geometry, Earth ${earthClear}/${earthTotal}, Rover ${roverClear}/${roverTotal}`;
       }
     }
 
     if (selectedRover && metaEl) {
       const lat = Number(selectedRover.lat).toFixed(2);
       const lon = Number(selectedRover.lon).toFixed(2);
-      metaEl.textContent += ` · Focus ${selectedLabel} (${lat}, ${lon})`;
+      metaEl.textContent += `, focus ${selectedLabel} (${lat}, ${lon})`;
       setCardState(roverCardEl, "good");
     } else {
       setCardState(roverCardEl, null);
@@ -2068,9 +2232,11 @@ class VisualizationController {
   }
 
   onResize() {
+    if (this.disposed) return;
     this.width = this.container.clientWidth;
     this.height = this.container.clientHeight;
-    if (!this.camera || !this.renderer) return;
+    if (!this.camera || !this.renderer || this.width === 0 || this.height === 0)
+      return;
 
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
@@ -2078,14 +2244,19 @@ class VisualizationController {
   }
 
   animate() {
-    requestAnimationFrame(() => this.animate());
+    if (!this.active || this.disposed) {
+      this.frameId = 0;
+      return;
+    }
+    this.frameId = requestAnimationFrame(() => this.animate());
     const now = performance.now();
     let realDt = (now - this.lastFrameTs) / 1000;
     this.lastFrameTs = now;
 
-    // Scale simulation physics/rotations with multiplier
+    // Scale simulation physics/rotations with multiplier; a paused scene keeps
+    // rendering (so the camera still responds) but nothing in it moves.
     let mult = typeof LSOASTime !== "undefined" ? LSOASTime.multiplier : 1;
-    let dt = realDt * mult;
+    let dt = this.paused ? 0 : realDt * mult;
     const clampedDt = Math.min(Math.max(dt, 0), 0.06 * mult);
 
     this.physicsStep(dt);

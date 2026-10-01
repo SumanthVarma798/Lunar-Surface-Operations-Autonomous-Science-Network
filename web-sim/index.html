@@ -563,6 +563,10 @@
             <h2 id="orbital-title">Orbital operations view</h2>
             <p class="card-sub floating-panel-meta" id="lunar-meta">Left drag orbits, Shift + left drag pans, wheel zooms</p>
           </div>
+          <button class="btn btn-sm" id="btn-pause-3d" type="button" aria-pressed="false">
+            <i class="ph ph-pause" aria-hidden="true"></i>
+            <span>Pause</span>
+          </button>
           <button class="btn btn-icon" id="btn-close-3d" type="button" title="Close orbital view" aria-label="Close Orbital View">
             <i class="ph ph-x" aria-hidden="true"></i>
           </button>
@@ -661,8 +665,6 @@
 
     <div class="toast-region" id="toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
 
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
     <script src="lunar3d.js"></script>
     <script src="simulation.js"></script>
     <script src="ui.js"></script>

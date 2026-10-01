@@ -1925,6 +1925,17 @@ input.input-field {
   pointer-events: none;
 }
 
+.orbital-note {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  max-width: calc(100% - 32px);
+  white-space: normal;
+  text-align: center;
+}
+
 .orbital-legend {
   display: flex;
   flex-wrap: wrap;

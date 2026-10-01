@@ -168,7 +168,13 @@
   }
 
   /* ─── Dialog: focus trap, inert background, Escape ─── */
-  const dialogState = { el: null, opener: null, onClose: null, onKey: null };
+  const dialogState = {
+    el: null,
+    opener: null,
+    onClose: null,
+    onKey: null,
+    initialFocus: null,
+  };
   const INERT_ROOTS = ["#top-bar", ".view-nav", "#app"];
   const FOCUSABLE =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -207,10 +213,16 @@
       }
     };
     document.addEventListener("keydown", dialogState.onKey, true);
-    requestAnimationFrame(() => {
-      const target = initialFocus || $(FOCUSABLE, el);
-      if (target) target.focus({ preventScroll: true });
-    });
+    // Focus moves once the dialog is visible: elements inside a visibility:hidden
+    // dialog cannot take focus. The caller invokes focusDialog() at that point.
+    dialogState.initialFocus = initialFocus || null;
+  }
+
+  function focusDialog() {
+    const el = dialogState.el;
+    if (!el) return;
+    const target = dialogState.initialFocus || $(FOCUSABLE, el);
+    if (target) target.focus({ preventScroll: true });
   }
 
   function closeDialog() {
@@ -402,6 +414,7 @@
     segSet,
     initSegmented,
     openDialog,
+    focusDialog,
     closeDialog,
   };
 

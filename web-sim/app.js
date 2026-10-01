@@ -28,15 +28,88 @@
   const bus = sim.bus;
 
   // ─── Orbital Visualization ───
+  // Three.js, the textures and the rover model load on first open, not at boot.
   let viz = null;
-  if (window.THREE) {
-    try {
-      viz = new VisualizationController(bus, "visualization-container");
-    } catch (err) {
-      // Keep mission control usable even when WebGL is unavailable (e.g. headless test runs).
+  let vizLoading = null;
+  let vizUnavailable = false;
+  const THREE_SRC = "https://unpkg.com/three@0.160.0/build/three.min.js";
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement("script");
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => reject(new Error(`Could not load ${src}`));
+      document.head.appendChild(el);
+    });
+  }
+
+  function ensureViz() {
+    if (viz) return Promise.resolve(viz);
+    if (vizLoading) return vizLoading;
+    vizLoading = (async () => {
+      if (!window.THREE) {
+        // The Curiosity STL loader (examples/js) no longer exists in three r160,
+        // so the built-in rover mesh is used.
+        await loadScript(THREE_SRC);
+      }
+      const created = new VisualizationController(bus, "visualization-container");
+      created.setPaused(pauseBtnState.paused);
+      created.upsertFleetSnapshot(sim.getFleetState());
+      created.setSelectedRover(sim.getSelectedRover());
+      viz = created;
+      return created;
+    })().catch((err) => {
+      // Keep mission control usable when WebGL or the CDN is unavailable.
       console.warn("Orbital visualization disabled:", err);
-      viz = null;
+      vizUnavailable = true;
+      vizLoading = null;
+      throw err;
+    });
+    return vizLoading;
+  }
+
+  function setOrbitalStatus(kind) {
+    const stage = $("#visualization-container");
+    if (!stage) return;
+    let note = stage.querySelector(".orbital-note");
+    if (!kind) {
+      if (note) note.remove();
+      return;
     }
+    if (!note) {
+      note = document.createElement("div");
+      note.className = "orbital-note chip";
+      stage.appendChild(note);
+    }
+    note.classList.toggle("chip-warn", kind === "error");
+    note.textContent =
+      kind === "error"
+        ? "The 3D view needs WebGL and could not start in this browser."
+        : "Loading orbital view";
+  }
+
+  window.addEventListener("pagehide", () => {
+    if (viz) viz.dispose();
+  });
+
+  const pauseBtn = $("#btn-pause-3d");
+  const pauseBtnState = { paused: LSOASUI.reducedMotion() };
+
+  function paintPauseButton() {
+    if (!pauseBtn) return;
+    const paused = pauseBtnState.paused;
+    pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+    pauseBtn.querySelector("i").className = paused ? "ph ph-play" : "ph ph-pause";
+    pauseBtn.querySelector("span").textContent = paused ? "Resume" : "Pause";
+  }
+  paintPauseButton();
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", () => {
+      pauseBtnState.paused = !pauseBtnState.paused;
+      paintPauseButton();
+      if (viz) viz.setPaused(pauseBtnState.paused);
+    });
   }
 
   // Toggle Orbital Panel
@@ -91,9 +164,25 @@
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           floatingPanel.classList.add("panel-open");
+          LSOASUI.focusDialog();
         });
       });
+      if (vizUnavailable) {
+        setOrbitalStatus("error");
+      } else {
+        if (!viz) setOrbitalStatus("loading");
+        ensureViz()
+          .then((v) => {
+            setOrbitalStatus(null);
+            if (is3DPanelOpen) v.setActive(true);
+          })
+          .catch(() => {
+            setOrbitalStatus("error");
+            LSOASUI.toast("The 3D view is unavailable in this browser", "warn");
+          });
+      }
     } else {
+      if (viz) viz.setActive(false);
       floatingPanel.classList.remove("panel-open");
       floatingPanel.setAttribute("aria-hidden", "true");
       LSOASUI.closeDialog();
