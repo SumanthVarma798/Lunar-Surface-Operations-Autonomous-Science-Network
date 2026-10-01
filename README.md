@@ -1,4 +1,9 @@
 <p align="center">
+  <a href="https://sumanthvarma798.github.io/Lunar-Surface-Operations-Autonomous-Science-Network/"><strong>Open the live web simulation</strong></a><br/>
+  <sub>https://sumanthvarma798.github.io/Lunar-Surface-Operations-Autonomous-Science-Network/</sub>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/ROS%202-Humble-blue?style=for-the-badge&logo=ros" alt="ROS 2 Humble" />
   <img src="https://img.shields.io/badge/Python-3.10+-green?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Three.js-WebGL-black?style=for-the-badge&logo=threedotjs" alt="Three.js" />
