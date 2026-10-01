@@ -27,14 +27,23 @@ The project is now redesigned around a Chandrayaan-themed future mission concept
 
 ### Reality Basis
 
-Real mission references:
+Real mission references (links checked 2026-09-30):
 
 - [ISRO Chandrayaan-3 details](https://www.isro.gov.in/Chandrayaan3_Details.html)
-- [ISRO Chandrayaan-3 updates (Pragyan payload operations)](https://www.isro.gov.in/Ch3_Details.html)
-- [ISRO Chandrayaan-4 approval and mission objectives](https://www.isro.gov.in/UnionCabinetapprovesChandrayaan4mission.html)
-- [JAXA LUPEX mission overview](https://global.jaxa.jp/projects/sas/lupex/)
+- [ISRO Chandrayaan-3 launch vehicle brochure (PDF)](https://www.isro.gov.in/media_isro/pdf/Missions/LVM3/LVM3M4_Chandrayaan3_brochure.pdf)
+- [PIB: Union Cabinet approval for Chandrayaan-4](https://www.pib.gov.in/PressReleasePage.aspx?PRID=2055983)
+- [ISRO: Chandrayaan-4 lunar sample return national science meet](https://www.isro.gov.in/ISRO_Nationalsciencemeet_ch4.html)
+- [JAXA: Lunar Polar Exploration Mission (LUPEX)](https://www.exploration.jaxa.jp/e/program/lunarpolar/)
 
-Future extrapolation in this repo:
+What those sources say, and what this repo does with it:
+
+- **Chandrayaan-3.** The 26 kg Pragyan rover carried a LIBS and an APXS spectrometer and was designed for one lunar day (about 14 Earth days). It landed near the south pole at Shiv Shakti Point on 23 August 2023 ([dates: Wikipedia](https://en.wikipedia.org/wiki/Chandrayaan-3)). The CY3 preset is a teaching analog of that surface work.
+- **Chandrayaan-4.** Approved by the Union Cabinet in September 2024. The goal is to land, collect a sample with a robotic arm, launch from the surface and return it to Earth, with a south polar landing site near permanently shadowed regions. ISRO's page lists a 2027 timeline; more recent ISRO statements point to 2028 ([reporting](https://www.deccanherald.com/india/isro-to-triple-spacecraft-output-launch-chandrayaan-4-in-2028-chairman-v-narayanan-3799777)). The CY4 preset models the sample chain, not the real mission timeline.
+- **LUPEX.** A joint JAXA and ISRO south polar mission (India calls it Chandrayaan-5) with NASA and ESA instruments, planned on a Japanese H3 rocket, no earlier than 2028 according to JAXA. The LUPEX preset models a water-ice survey in that spirit.
+
+Mission dates move often. Treat the linked pages as the source of truth.
+
+Future extrapolation in this repo (not an announced mission):
 
 - Multi-purpose rover swarm for base predeploy and base-build logistics.
 - Pushing/regolith handling and sample transfer workflows at larger operational scale.
@@ -53,6 +62,8 @@ Future extrapolation in this repo:
 6. `sample-handling` - transfer/handling pipeline
 
 ### Difficulty Levels
+
+These are simulation model parameters chosen for teaching, not published mission data.
 
 | Level | Base Fault Rate |
 | --- | --- |
@@ -102,6 +113,8 @@ Supporting docs:
 
 ## Dashboard Screenshots
 
+Captured from the web simulation at 1440 x 900 with the scenario query parameters listed under Quick Start.
+
 ### Main Mission Dashboard States
 
 Idle operations
@@ -118,23 +131,27 @@ Safe mode command flow
 
 ### Mission Setup and Selection Flows
 
-Battery-informed rover selection
+Auto-selected rover (best battery and capability match)
 
-![Battery-informed rover selection](docs/screenshots/phase1-battery-selection.png)
+![Auto-selected rover](docs/screenshots/phase1-battery-selection.png)
 
 Manual rover selection
 
 ![Manual rover selection](docs/screenshots/phase1-manual-selection.png)
 
-Telemetry-first mission stream
+Telemetry stream and command log during a digging task
 
 ![Telemetry stream focus](docs/screenshots/phase1-telemetry-load.png)
 
-### Visual Theme Variant
+### Themes and Orbital View
 
-Light theme reference
+Light theme
 
 ![Light theme dashboard view](docs/screenshots/dashboard-light-theme.png)
+
+Orbital operations view (dialog)
+
+![Orbital operations view](docs/screenshots/dashboard-orbital.png)
 
 ---
 
@@ -157,8 +174,44 @@ Useful query params:
 - `?scenario=safe-mode&task=CY4-SAMPLE-008&task_type=sample-handling&difficulty=L4`
 - `?mission=cy3-pragyan`
 - `?mission=cy4-sample-return&target_site=Sample%20Depot%20Alpha`
+- `?open3d=1` opens the orbital view on load
 
 Dashboard task IDs are auto-generated (mission + task type + difficulty + sequence), and can still be manually edited at any time.
+
+### Web Simulation UI
+
+A soft-UI (neumorphic) mission control dashboard. No build step: plain HTML, CSS and JavaScript.
+
+| File | Role |
+| --- | --- |
+| `web-sim/index.html` | Markup |
+| `web-sim/tokens.css` | Design tokens: colors, one radius scale, shadows, motion, fonts. Dark, light, high-contrast and forced-colors variants |
+| `web-sim/styles.css` | Layout and components |
+| `web-sim/theme.js` | Applies the saved theme before first paint |
+| `web-sim/ui.js` | Theme toggle, segmented controls, dialog focus trap, toasts, number count-ups, icon maps |
+| `web-sim/app.js` | Controller that connects the UI to the simulation |
+| `web-sim/simulation.js` | Browser-side simulation engine |
+| `web-sim/lunar3d.js` | Orbital scene. Three.js and the textures load the first time the orbital view opens |
+
+Design notes:
+
+- Dark theme by default, light theme from the system setting or the header toggle (saved in `localStorage`). Text and icons meet WCAG AA contrast on every surface (4.5:1 text, 3:1 icons and control borders). Shadows never carry state on their own: state is also shown with text, icons or an accent color.
+- Two accents: blue for interactive and selected, orange for the active rover or task. Green, amber and red are status colors only.
+- Fonts: Geist and Geist Mono, self-hosted in `web-sim/assets/fonts`. Icons: Phosphor, loaded from the jsDelivr CDN. Without the CDN the icons are missing but every control still has a text label.
+- Motion uses only `transform` and `opacity`, one easing curve, and is removed under `prefers-reduced-motion`. The only looping animation is the spinner on a running rover.
+- Keyboard: `S` start task, `A` abort, `Shift+S` safe mode, `R` reset rover. In the orbital view: `F` focus rover, `H` reset view, `T` top view, `Esc` closes.
+- Asset credits are in `web-sim/assets/CREDITS.txt`.
+
+Run the Playwright tests (they expect the server on port 8085):
+
+```bash
+cd web-sim
+npm ci
+python3 -m http.server 8085 &
+npx playwright test --project=chromium
+```
+
+The `webkit` project also needs `npx playwright install webkit`.
 
 ### ROS 2 Simulation
 

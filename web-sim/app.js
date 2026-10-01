@@ -124,15 +124,15 @@
     const viewportWidth = window.innerWidth || 1280;
     if (viewportWidth <= 520) return "Orbital";
     if (viewportWidth <= 920) return "Orbital view";
-    return "Orbital Operations View";
+    return "Orbital operations view";
   }
 
   function refreshOrbitalToggleLabel(open) {
     if (!btnToggleLabel) return;
     const nextLabel = getResponsiveOrbitalToggleLabel();
     const actionLabel = open
-      ? "Close Orbital Operations View"
-      : "Open Orbital Operations View";
+      ? "Close orbital operations view"
+      : "Open orbital operations view";
     btnToggleLabel.textContent = nextLabel;
     if (btnToggle) {
       btnToggle.setAttribute("title", actionLabel);
@@ -411,8 +411,8 @@
       mission_phase: "CY3-ops",
       title: "Chandrayaan-3 Pragyan Surface Ops",
       summary:
-        "Traverse, image, and run in-situ surface science analogs around a Pragyan-style landing zone.",
-      payload_tags: ["Pragyan", "LIBS", "APXS", "NavCam"],
+        "Traverse, image and run in-situ science near a Pragyan-style landing zone. Based on Chandrayaan-3, whose rover carried LIBS and APXS spectrometers.",
+      payload_tags: ["Pragyan rover", "LIBS", "APXS", "NavCam"],
       default_target_site: "Shiv Shakti Point Sector-A",
       default_rover_strategy: "rover-1",
       steps: [
@@ -447,8 +447,8 @@
       mission_phase: "CY4-sample-chain",
       title: "Chandrayaan-4 Sample Return Chain",
       summary:
-        "A teaching sequence for prospecting, extraction, sample custody, and transfer preparation.",
-      payload_tags: ["Sampling Drill", "Transfer Canister", "Surface Relay"],
+        "Prospecting, drilling, sample custody and transfer, modeled on ISRO's Chandrayaan-4 sample-return plan (launch planned for 2027-28).",
+      payload_tags: ["Drill and scoop", "Robotic arm", "Ascent module"],
       default_target_site: "Sample Depot Alpha",
       default_rover_strategy: "rover-2",
       steps: [
@@ -491,8 +491,8 @@
       mission_phase: "LUPEX-prospecting",
       title: "LUPEX Polar Ice Prospecting",
       summary:
-        "Polar traverse and subsurface investigation sequence focused on volatile resource mapping.",
-      payload_tags: ["Polar Traverse", "Volatile Mapping", "Drill Ops"],
+        "South polar water-ice survey modeled on the joint JAXA and ISRO LUPEX mission (launch no earlier than 2028).",
+      payload_tags: ["JAXA and ISRO", "Water-ice survey", "Drill"],
       default_target_site: "Polar Shadow Boundary",
       default_rover_strategy: "rover-3",
       steps: [
@@ -527,7 +527,7 @@
       mission_phase: "base-build",
       title: "Future Chandrayaan Base Build",
       summary:
-        "Multipurpose swarm scenario for regolith logistics, infrastructure staging, and base readiness.",
+        "Teaching scenario (not an announced mission): a rover swarm handling regolith logistics and base readiness.",
       payload_tags: ["Swarm Ops", "Regolith Handling", "Infrastructure Build"],
       default_target_site: "Bharati Base Site-01",
       default_rover_strategy: "auto",
@@ -1328,7 +1328,13 @@
     const hasFault = Boolean(snapshot.fault);
     const hadFault = el.dataset.fault === "1";
     r.fault.hidden = !hasFault;
-    if (hasFault) setText(r["fault-text"], `Fault: ${String(snapshot.fault)}`);
+    if (hasFault) {
+      const faultText = String(snapshot.fault);
+      setText(
+        r["fault-text"],
+        /^fault/i.test(faultText) ? faultText : `Fault: ${faultText}`,
+      );
+    }
     el.dataset.fault = hasFault ? "1" : "";
     if (hasFault && !hadFault) LSOASUI.pulse(r["fault-icon"]);
   }
@@ -1921,7 +1927,7 @@
     }
 
     // Selected rover topo node state
-    dom.roverState.textContent = normalizeState(data.state);
+    dom.roverState.textContent = LSOASUI.roverState(data.state).label;
     dom.roverState.className = `topo-node-state ${stateClass}`;
 
     // Add telemetry to feed
