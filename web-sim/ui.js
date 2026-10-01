@@ -258,6 +258,121 @@
     });
   }
 
+  /* ─── Number count-ups: one shared rAF loop that runs only while tweening ─── */
+  const tweens = new Set();
+  let tweenFrame = 0;
+
+  function tick(now) {
+    tweens.forEach((t) => {
+      const p = Math.min(1, (now - t.start) / t.dur);
+      const eased = 1 - Math.pow(1 - p, 4);
+      t.el.textContent = t.fmt(t.from + (t.to - t.from) * eased);
+      if (p === 1) tweens.delete(t);
+    });
+    tweenFrame = tweens.size ? requestAnimationFrame(tick) : 0;
+  }
+
+  /* Ease a readout to a new value. Falls back to an instant update when motion
+     is reduced, the tab is hidden, or there is no previous value. */
+  function setNumber(el, to, { decimals = 0, suffix = "" } = {}) {
+    if (!el) return;
+    const fmt = (v) => v.toFixed(decimals) + suffix;
+    const from = Number(el._n);
+    el._n = to;
+    tweens.forEach((t) => {
+      if (t.el === el) tweens.delete(t);
+    });
+    if (
+      reducedMotion() ||
+      document.hidden ||
+      !Number.isFinite(from) ||
+      from === to
+    ) {
+      el.textContent = fmt(to);
+      return;
+    }
+    tweens.add({ el, from, to, start: performance.now(), dur: 600, fmt });
+    if (!tweenFrame) tweenFrame = requestAnimationFrame(tick);
+  }
+
+  /* Replay the swap-in animation (CSS) when an element's content is replaced. */
+  function swap(el) {
+    if (!el || reducedMotion()) return;
+    el.classList.remove("swap-in");
+    void el.offsetWidth;
+    el.classList.add("swap-in");
+  }
+
+  /* ─── Toasts ─── */
+  const TOAST_ICONS = {
+    ok: "ph-fill ph-check-circle",
+    info: "ph-fill ph-info",
+    warn: "ph-fill ph-warning",
+    danger: "ph-fill ph-warning-octagon",
+  };
+  const MAX_TOASTS = 3;
+  let lastToast = { text: "", at: 0 };
+
+  function dismissToast(el, instant) {
+    if (!el || el.dataset.leaving) return;
+    el.dataset.leaving = "1";
+    if (instant || reducedMotion() || !el.animate) {
+      el.remove();
+      return;
+    }
+    const exit = el.animate(
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: "translateX(24px)" },
+      ],
+      { duration: 260, easing: EASE, fill: "forwards" },
+    );
+    exit.onfinish = () => el.remove();
+  }
+
+  function toast(text, tone = "info", { duration = 5000 } = {}) {
+    const region = $("#toast-region");
+    if (!region || !text) return;
+    const now = Date.now();
+    if (text === lastToast.text && now - lastToast.at < 2000) return;
+    lastToast = { text, at: now };
+    while (region.children.length >= MAX_TOASTS) {
+      dismissToast(region.firstElementChild, true);
+    }
+
+    const el = document.createElement("div");
+    el.className = `toast is-${TOAST_ICONS[tone] ? tone : "info"}`;
+    el.innerHTML =
+      `<span class="icon-well" aria-hidden="true"><i class="${TOAST_ICONS[tone] || TOAST_ICONS.info}"></i></span>` +
+      '<span class="toast-text"></span>' +
+      '<button type="button" class="toast-close" aria-label="Dismiss notification"><i class="ph ph-x" aria-hidden="true"></i></button>';
+    el.querySelector(".toast-text").textContent = text;
+    region.appendChild(el);
+
+    if (el.animate && !reducedMotion()) {
+      el.animate(
+        [
+          { opacity: 0, transform: "translateY(16px) scale(0.98)" },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 420, easing: EASE },
+      );
+    }
+
+    let timer = setTimeout(() => dismissToast(el), duration);
+    const hold = () => clearTimeout(timer);
+    const release = () => {
+      timer = setTimeout(() => dismissToast(el), 2000);
+    };
+    el.addEventListener("pointerenter", hold);
+    el.addEventListener("pointerleave", release);
+    el.addEventListener("focusin", hold);
+    el.addEventListener("focusout", release);
+    el.querySelector(".toast-close").addEventListener("click", () =>
+      dismissToast(el),
+    );
+  }
+
   /* The header wraps to two rows on narrow screens. Keep --header-h equal to its
      real height so sticky elements below it line up. */
   function initHeaderHeight() {
@@ -280,6 +395,9 @@
     taskFamilies: TASK_FAMILIES,
     pop,
     pulse,
+    swap,
+    setNumber,
+    toast,
     transition,
     segSet,
     initSegmented,

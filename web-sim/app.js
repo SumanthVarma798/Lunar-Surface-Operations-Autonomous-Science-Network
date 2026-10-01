@@ -657,8 +657,14 @@
       .join("");
   }
 
+  let renderedBriefPreset = null;
+
   function renderMissionBrief() {
     const preset = getActiveMissionPreset();
+    const presetChanged =
+      renderedBriefPreset !== null &&
+      renderedBriefPreset !== missionGuideState.presetKey;
+    renderedBriefPreset = missionGuideState.presetKey;
     if (dom.missionPresetSelect) {
       dom.missionPresetSelect.value = safeMissionPresetKey(
         preset && missionGuideState.presetKey,
@@ -678,6 +684,7 @@
         )
         .join("");
     }
+    if (presetChanged) LSOASUI.swap($("#mission-brief-card"));
   }
 
   let renderedStepPreset = null;
@@ -685,6 +692,7 @@
   function buildMissionStepItem(step, index) {
     const family = LSOASUI.taskFamily(step.task_type);
     const li = document.createElement("li");
+    li.style.setProperty("--i", String(index));
     li.innerHTML = `
       <button type="button" class="mission-step-item" data-step-index="${index}">
         <span class="icon-well" aria-hidden="true"><i class="ph-duotone ${family.icon}"></i></span>
@@ -840,6 +848,7 @@
 
     if (announce) {
       addFeedLine("system", `Mission preset loaded: ${preset.title}`);
+      LSOASUI.toast(`Preset loaded: ${preset.title}`, "info");
     }
   }
 
@@ -882,6 +891,7 @@
         "system",
         "Mission guide sequence complete. Use Reset Guide to run again.",
       );
+      LSOASUI.toast("Mission guide sequence complete", "ok");
       return;
     }
 
@@ -1189,7 +1199,7 @@
     setText(r["state-text"], meta.label);
     r.selected.hidden = !selected;
 
-    setText(r["battery-text"], `${batteryPct}%`);
+    LSOASUI.setNumber(r["battery-text"], batteryPct, { suffix: "%" });
     r["battery-fill"].style.setProperty("--v", String(battery));
     r["battery-fill"].classList.toggle("is-low", batteryPct < 20);
     r["battery-fill"].classList.toggle(
@@ -1313,7 +1323,7 @@
     const avgSolar = total === 0 ? 0 : Math.round((solarSum / total) * 100);
     const avgRisk = total === 0 ? 0 : (riskSum / total) * 100;
 
-    if (dom.fleetTotalRovers) dom.fleetTotalRovers.textContent = String(total);
+    LSOASUI.setNumber(dom.fleetTotalRovers, total);
     if (dom.fleetStateDistribution) {
       const counters = {
         idle: counts.IDLE || 0,
@@ -1321,18 +1331,24 @@
         safe: counts.SAFE_MODE || 0,
       };
       Object.keys(counters).forEach((key) => {
-        setText(
+        LSOASUI.setNumber(
           dom.fleetStateDistribution.querySelector(`[data-count="${key}"]`),
-          String(counters[key]),
+          counters[key],
         );
       });
     }
-    if (dom.fleetAvgBattery) dom.fleetAvgBattery.textContent = `${avgBattery}%`;
-    if (dom.fleetAvgSolar) dom.fleetAvgSolar.textContent = `${avgSolar}%`;
-    if (dom.fleetAvgRisk)
-      dom.fleetAvgRisk.textContent = `${avgRisk.toFixed(1)}%`;
+    LSOASUI.setNumber(dom.fleetAvgBattery, avgBattery, { suffix: "%" });
+    LSOASUI.setNumber(dom.fleetAvgSolar, avgSolar, { suffix: "%" });
+    LSOASUI.setNumber(dom.fleetAvgRisk, avgRisk, { decimals: 1, suffix: "%" });
     if (dom.fleetCommandAck) {
-      dom.fleetCommandAck.textContent = `${trafficCounters.commandsSent} / ${trafficCounters.acksReceived}`;
+      LSOASUI.setNumber(
+        dom.fleetCommandAck.querySelector('[data-n="sent"]'),
+        trafficCounters.commandsSent,
+      );
+      LSOASUI.setNumber(
+        dom.fleetCommandAck.querySelector('[data-n="ack"]'),
+        trafficCounters.acksReceived,
+      );
     }
     if (dom.fleetMissionContext) {
       const steps = getMissionStepList();
@@ -1506,10 +1522,9 @@
         );
         roverId = assignment?.selected_rover || null;
         if (!roverId) {
-          addFeedLine(
-            "ack-fail",
-            `No rover available for ${selectedTask.task_type}/${selectedTask.difficulty_level}: ${assignment?.reject_reason || "feasibility check failed"}`,
-          );
+          const reason = `No rover available for ${selectedTask.task_type}/${selectedTask.difficulty_level}: ${assignment?.reject_reason || "feasibility check failed"}`;
+          addFeedLine("ack-fail", reason);
+          LSOASUI.toast(reason, "danger");
           return null;
         }
         const topScore = assignment?.scored_candidates?.[0];
@@ -1531,6 +1546,7 @@
 
     if (!roverId) {
       addFeedLine("ack-fail", "No rover available for command dispatch");
+      LSOASUI.toast("No rover available for command dispatch", "danger");
       return null;
     }
 
@@ -1869,9 +1885,11 @@
 
   bus.on("earth:selected-rover", (data) => {
     if (!data?.rover_id) return;
+    const roverChanged = selectedRoverId !== data.rover_id;
     selectedRoverId = data.rover_id;
     if (dom.topoRoverLabel) {
       dom.topoRoverLabel.textContent = formatRoverLabel(data.rover_id);
+      if (roverChanged) LSOASUI.swap(dom.topoRoverLabel);
     }
     renderFleetGrid();
   });
@@ -1879,6 +1897,7 @@
   // ─── Log events to feed ───
   bus.on("log", (data) => {
     addFeedLine(data.tag, data.text);
+    if (data.tag === "fault") LSOASUI.toast(plainLogText(data.text), "danger");
   });
 
   // ─── Command Log ───
@@ -1916,12 +1935,15 @@
     if (data.status === "ACCEPTED") {
       statusEl.textContent = `ACCEPTED (${data.rtt?.toFixed(2) || "?"}s)`;
       statusEl.className = "cmd-log-status accepted";
+      LSOASUI.toast(`Command ${data.cmdId} accepted`, "ok");
     } else if (data.status === "TIMEOUT") {
       statusEl.textContent = "TIMEOUT";
       statusEl.className = "cmd-log-status timeout";
+      LSOASUI.toast(`Command ${data.cmdId} timed out`, "warn");
     } else {
       statusEl.textContent = "REJECTED";
       statusEl.className = "cmd-log-status rejected";
+      LSOASUI.toast(`Command ${data.cmdId} rejected`, "danger");
     }
   });
 
@@ -2008,24 +2030,24 @@
     const endX = endRect.left + endRect.width / 2 - containerRect.left;
     const endY = endRect.top + endRect.height / 2 - containerRect.top;
 
-    particle.style.left = startX + "px";
-    particle.style.top = startY + "px";
+    particle.style.left = "0px";
+    particle.style.top = "0px";
 
     const animDuration = Math.min(duration * 1000, 3000);
-    const halfDur = animDuration / 2;
+    const at = (x, y) => `translate(${x}px, ${y}px)`;
 
-    // Animate to midpoint then to endpoint
+    // Animate to midpoint then to endpoint (transform and opacity only)
     const anim = particle.animate(
       [
-        { left: startX + "px", top: startY + "px", opacity: 0.2, offset: 0 },
-        { left: startX + "px", top: startY + "px", opacity: 1, offset: 0.05 },
-        { left: midX + "px", top: midY + "px", opacity: 1, offset: 0.5 },
-        { left: endX + "px", top: endY + "px", opacity: 1, offset: 0.92 },
-        { left: endX + "px", top: endY + "px", opacity: 0, offset: 1 },
+        { transform: at(startX, startY), opacity: 0.2, offset: 0 },
+        { transform: at(startX, startY), opacity: 1, offset: 0.05 },
+        { transform: at(midX, midY), opacity: 1, offset: 0.5 },
+        { transform: at(endX, endY), opacity: 1, offset: 0.92 },
+        { transform: at(endX, endY), opacity: 0, offset: 1 },
       ],
       {
         duration: animDuration,
-        easing: "ease-in-out",
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
         fill: "forwards",
       },
     );
