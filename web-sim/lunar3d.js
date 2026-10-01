@@ -30,6 +30,8 @@ class VisualizationController {
     this.sunGroup = null;
     this.sunLight = null;
     this.latestCelestialFrame = null;
+    this.celestialModel = null;
+    this.celestialNowMs = 0;
     this.displayEarthMoonDistanceLu = 10.8;
     this.displaySunDistanceClampLu = { min: 88, max: 320 };
 
@@ -227,6 +229,7 @@ class VisualizationController {
       const away = now - this.lastFrameTs;
       if (this.signalLossState.active) this.signalLossState.startedAtMs += away;
       this.lastFrameTs = now;
+      if (this.celestialModel) this.celestialNowMs = LSOASTime.now();
       this.onResize();
       if (!this.frameId) this.frameId = requestAnimationFrame(() => this.animate());
     } else if (this.frameId) {
@@ -749,10 +752,53 @@ class VisualizationController {
     );
   }
 
+  /* The simulation publishes the ephemeris once a second, but its orbit model
+     * sweeps Earth around the Moon far faster than that. Chasing each sample
+     * with a straight-line lerp cut across the Moon and depended on frame rate.
+     * Instead, keep a copy of the simulation's own CelestialDynamics model and
+     * evaluate it every rendered frame on a clock that follows the sim speed
+     * multiplier, so Earth moves continuously along its true circular path. */
   setCelestialFrame(frame) {
     if (!frame || !frame.earth_from_moon_km || !frame.sun_from_moon_km) return;
     this.latestCelestialFrame = frame;
 
+    // Only a complete ephemeris frame can seed the model (telemetry carries a
+    // partial "celestial" payload without a timestamp).
+    if (
+      !this.celestialModel &&
+      typeof CelestialDynamics === "function" &&
+      Number.isFinite(frame.ts) &&
+      Number.isFinite(frame.sim_elapsed_days)
+    ) {
+      const model = new CelestialDynamics();
+      model.startEpochMs =
+        frame.ts * 1000 - (frame.sim_elapsed_days / model.simDaysPerSecond) * 1000;
+      this.celestialModel = model;
+      this.celestialNowMs = LSOASTime.now();
+    }
+
+    this.applyFrameAnchors(this.celestialModel ? this.celestialModel.computeFrame(this.celestialNowMs) : frame);
+
+    // Initial snap if they are uninitialized (at 0,0,0)
+    if (this.earthBase && this.earthBase.position.lengthSq() < 0.1) {
+      this.earthBase.position.copy(this.earthAnchorOrbital);
+    }
+    if (this.sunGroup && this.sunGroup.position.lengthSq() < 0.1) {
+      this.sunGroup.position.copy(this.sunAnchorOrbital);
+      if (this.sunLight) {
+        this.sunLight.position.copy(this.sunAnchorOrbital);
+      }
+    }
+  }
+
+  advanceCelestialClock(deltaMs) {
+    if (!this.celestialModel) return false;
+    this.celestialNowMs += deltaMs;
+    this.applyFrameAnchors(this.celestialModel.computeFrame(this.celestialNowMs));
+    return true;
+  }
+
+  applyFrameAnchors(frame) {
     const earthKmVec = frame.earth_from_moon_km;
     const sunKmVec = frame.sun_from_moon_km;
     const earthDistKm = Math.max(
@@ -786,17 +832,6 @@ class VisualizationController {
       .normalize()
       .multiplyScalar(sunDistanceLu);
     this.sunAnchorOrbital.copy(this.tmpVecC);
-
-    // Initial snap if they are uninitialized (at 0,0,0)
-    if (this.earthBase && this.earthBase.position.lengthSq() < 0.1) {
-      this.earthBase.position.copy(this.earthAnchorOrbital);
-    }
-    if (this.sunGroup && this.sunGroup.position.lengthSq() < 0.1) {
-      this.sunGroup.position.copy(this.sunAnchorOrbital);
-      if (this.sunLight) {
-        this.sunLight.position.copy(this.sunAnchorOrbital);
-      }
-    }
   }
 
   createSatellites() {
@@ -2261,15 +2296,22 @@ class VisualizationController {
 
     this.physicsStep(dt);
 
+    // Earth and Sun follow the simulation's orbit model continuously; when the
+    // model is unavailable they fall back to easing toward the latest sample.
+    const modelDriven = this.advanceCelestialClock(
+      this.paused ? 0 : Math.min(realDt, 0.25) * 1000 * mult,
+    );
     if (this.earthBase) {
       this.earthBase.rotation.y += clampedDt * 0.032;
-      if (this.earthAnchorOrbital) {
+      if (modelDriven) {
+        this.earthBase.position.copy(this.earthAnchorOrbital);
+      } else {
         this.earthBase.position.lerp(
           this.earthAnchorOrbital,
           Math.min(clampedDt * 2.0, 1.0),
         );
-        this.earthAnchor.copy(this.earthBase.position);
       }
+      this.earthAnchor.copy(this.earthBase.position);
     }
     if (this.earthCloudLayer) {
       this.earthCloudLayer.rotation.y += clampedDt * 0.065;
@@ -2278,10 +2320,14 @@ class VisualizationController {
       this.sunSurface.rotation.y += clampedDt * 0.018;
     }
     if (this.sunGroup && this.sunAnchorOrbital) {
-      this.sunGroup.position.lerp(
-        this.sunAnchorOrbital,
-        Math.min(clampedDt * 2.0, 1.0),
-      );
+      if (modelDriven) {
+        this.sunGroup.position.copy(this.sunAnchorOrbital);
+      } else {
+        this.sunGroup.position.lerp(
+          this.sunAnchorOrbital,
+          Math.min(clampedDt * 2.0, 1.0),
+        );
+      }
       if (this.sunLight) {
         this.sunLight.position.copy(this.sunGroup.position);
       }
